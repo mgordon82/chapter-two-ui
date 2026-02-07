@@ -11,92 +11,155 @@ import {
   ListItem
 } from '@mui/material';
 import { useAppSelector } from '../../../app/hooks';
+import type { PlanData } from '../../../types/plan'; // <-- adjust path
 
 const InsightsPreview: React.FC = () => {
-  const planData = useAppSelector((state) => state.insights.plan);
-  console.log('plan data', planData);
+  // Allow undefined while loading / before first response
+  const planData = useAppSelector((state) => state.insights.plan) as
+    | PlanData
+    | undefined;
+
+  if (!planData) {
+    return (
+      <Card variant='outlined'>
+        <CardContent>
+          <Stack spacing={2}>
+            <Typography variant='h6'>Plan Details</Typography>
+            <Typography variant='body2' color='text.secondary'>
+              No plan yet. Enter your macros and generate a plan to preview it
+              here.
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { assumptions, dailyTargets, meals, notes } = planData;
+
   return (
     <Card variant='outlined'>
       <CardContent>
         <Stack spacing={2}>
           <Typography variant='h6'>Plan Details</Typography>
+
           <Typography variant='body2' color='text.secondary'>
-            In a future version, Chapter Two will analyze what you wrote and
-            surface tailored insights and resources. For now, these are example
-            reflections that show the kind of guidance this tool can offer.
+            {assumptions.notes}
+          </Typography>
+
+          <Typography variant='body2' color='text.secondary'>
+            {notes}
           </Typography>
 
           <Divider />
 
-          <Box>
-            <Typography variant='body2' color='text.secondary' mb={2}>
-              {planData?.assumptions.notes}
-            </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              {planData?.notes}
-            </Typography>
-          </Box>
-          <Stack direction='row' gap={3}>
+          <Stack direction='row' gap={3} flexWrap='wrap'>
             <Stack>
-              Calories{' '}
-              <Chip color='info' label={planData?.dailyTargets.calories} />
+              <Typography variant='caption' color='text.secondary'>
+                Calories
+              </Typography>
+              <Chip color='info' label={dailyTargets.calories} />
             </Stack>
+
             <Stack>
-              Protein{' '}
-              <Chip color='success' label={planData?.dailyTargets.protein} />
+              <Typography variant='caption' color='text.secondary'>
+                Protein
+              </Typography>
+              <Chip color='success' label={dailyTargets.protein} />
             </Stack>
+
             <Stack>
-              Carbs{' '}
-              <Chip color='warning' label={planData?.dailyTargets.carbs} />
+              <Typography variant='caption' color='text.secondary'>
+                Carbs
+              </Typography>
+              <Chip color='warning' label={dailyTargets.carbs} />
             </Stack>
+
             <Stack>
-              Fat <Chip color='error' label={planData?.dailyTargets.fat} />
+              <Typography variant='caption' color='text.secondary'>
+                Fat
+              </Typography>
+              <Chip color='error' label={dailyTargets.fat} />
             </Stack>
           </Stack>
+
+          <Divider />
+
           <Box>
-            {planData?.meals.map((meal, index) => {
+            {meals.map((meal) => {
+              const key = `${meal.mealType}-${meal.name}`;
+
               return (
-                <Box key={index}>
-                  <Typography textTransform='uppercase'>
+                <Box key={key} mb={3}>
+                  <Typography variant='overline' color='text.secondary'>
                     {meal.mealType}
                   </Typography>
-                  <Stack direction='row' gap={3} justifyContent='space-between'>
-                    <Stack>
-                      <Typography>{meal.name}</Typography>
-                      <Typography>{meal.description}</Typography>
-                      <Typography>{meal.portionGuidance}</Typography>
-                      <Typography>Substitutions (optional)</Typography>
-                      <List>
-                        {meal.swapOptions.length > 0 &&
-                          meal.swapOptions.map((option, key) => {
-                            return <ListItem key={key}>{option}</ListItem>;
-                          })}
-                      </List>
+
+                  <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    gap={3}
+                    justifyContent='space-between'
+                  >
+                    <Stack spacing={0.5} flex={1}>
+                      <Typography variant='subtitle1'>{meal.name}</Typography>
+                      <Typography variant='body2' color='text.secondary'>
+                        {meal.description}
+                      </Typography>
+                      <Typography variant='body2'>
+                        <strong>Portion:</strong> {meal.portionGuidance}
+                      </Typography>
+
+                      {meal.swapOptions?.length ? (
+                        <>
+                          <Typography variant='body2' mt={1}>
+                            <strong>Substitutions (optional)</strong>
+                          </Typography>
+                          <List dense>
+                            {meal.swapOptions.map((option) => (
+                              <ListItem key={option} sx={{ py: 0 }}>
+                                {option}
+                              </ListItem>
+                            ))}
+                          </List>
+                        </>
+                      ) : null}
                     </Stack>
-                    <Stack>
+
+                    <Stack spacing={1} minWidth={180}>
                       <Stack>
-                        Calories{' '}
+                        <Typography variant='caption' color='text.secondary'>
+                          Calories
+                        </Typography>
                         <Chip
                           color='info'
                           label={meal.estimatedMacros.calories}
                         />
                       </Stack>
+
                       <Stack>
-                        Protein{' '}
+                        <Typography variant='caption' color='text.secondary'>
+                          Protein
+                        </Typography>
                         <Chip
                           color='success'
                           label={meal.estimatedMacros.protein}
                         />
                       </Stack>
+
                       <Stack>
-                        Carbs{' '}
+                        <Typography variant='caption' color='text.secondary'>
+                          Carbs
+                        </Typography>
                         <Chip
                           color='warning'
                           label={meal.estimatedMacros.carbs}
                         />
                       </Stack>
+
                       <Stack>
-                        Fat{' '}
+                        <Typography variant='caption' color='text.secondary'>
+                          Fat
+                        </Typography>
                         <Chip color='error' label={meal.estimatedMacros.fat} />
                       </Stack>
                     </Stack>

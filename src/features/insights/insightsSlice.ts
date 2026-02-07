@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  plan: null
+  plan: undefined
 };
 
 const insightsSlice = createSlice({
@@ -12,7 +12,7 @@ const insightsSlice = createSlice({
       state.plan = action.payload;
     },
     insightsCleared(state) {
-      state.plan = null;
+      state.plan = undefined;
     }
   }
 });
