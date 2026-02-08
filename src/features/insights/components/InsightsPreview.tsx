@@ -11,10 +11,9 @@ import {
   ListItem
 } from '@mui/material';
 import { useAppSelector } from '../../../app/hooks';
-import type { PlanData } from '../../../types/plan'; // <-- adjust path
+import type { PlanData } from '../../../types/plan';
 
 const InsightsPreview: React.FC = () => {
-  // Allow undefined while loading / before first response
   const planData = useAppSelector((state) => state.insights.plan) as
     | PlanData
     | undefined;
@@ -35,7 +34,7 @@ const InsightsPreview: React.FC = () => {
     );
   }
 
-  const { assumptions, dailyTargets, meals, notes } = planData;
+  const { assumptions, meals, notes } = planData;
 
   return (
     <Card variant='outlined'>
@@ -50,38 +49,6 @@ const InsightsPreview: React.FC = () => {
           <Typography variant='body2' color='text.secondary'>
             {notes}
           </Typography>
-
-          <Divider />
-
-          <Stack direction='row' gap={3} flexWrap='wrap'>
-            <Stack>
-              <Typography variant='caption' color='text.secondary'>
-                Calories
-              </Typography>
-              <Chip color='info' label={dailyTargets.calories} />
-            </Stack>
-
-            <Stack>
-              <Typography variant='caption' color='text.secondary'>
-                Protein
-              </Typography>
-              <Chip color='success' label={dailyTargets.protein} />
-            </Stack>
-
-            <Stack>
-              <Typography variant='caption' color='text.secondary'>
-                Carbs
-              </Typography>
-              <Chip color='warning' label={dailyTargets.carbs} />
-            </Stack>
-
-            <Stack>
-              <Typography variant='caption' color='text.secondary'>
-                Fat
-              </Typography>
-              <Chip color='error' label={dailyTargets.fat} />
-            </Stack>
-          </Stack>
 
           <Divider />
 

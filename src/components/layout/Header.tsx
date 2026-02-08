@@ -1,7 +1,13 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Stack } from '@mui/material';
+import MacroItem from '../macroItem';
+import { useAppSelector } from '../../app/hooks';
+import type { PlanData } from '../../types/plan';
 
 const Header: React.FC = () => {
+  const planData = useAppSelector((state) => state.insights.plan) as
+    | PlanData
+    | undefined;
   return (
     <AppBar
       position='sticky'
@@ -13,21 +19,57 @@ const Header: React.FC = () => {
       }}
     >
       <Toolbar sx={{ px: 0, minHeight: 64 }}>
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography
-            variant='h5'
-            fontWeight={700}
-            sx={{
-              letterSpacing: 0.5
-            }}
-          >
-            Chapter Two
-          </Typography>
-          <Typography variant='caption' color='text.secondary'>
-            Expanding the adventure of <em>your</em> story
-          </Typography>
-        </Box>
-        {/* nav items or user avatar here later */}
+        <Stack
+          direction='row'
+          justifyContent='space-between'
+          alignItems='center'
+          flexGrow={1}
+        >
+          <Stack direction='row' alignItems='flex-end' gap={2}>
+            <Typography
+              variant='h5'
+              fontWeight={700}
+              sx={{
+                letterSpacing: 0.5
+              }}
+            >
+              Ch.
+              <br />
+              Two
+            </Typography>
+            <Typography variant='caption' color='text.secondary'>
+              Expanding the adventure of <em>your</em> story
+            </Typography>
+          </Stack>
+          <Stack direction='row' alignItems='flex-end' gap={3}>
+            <MacroItem
+              name='Calories'
+              value={planData?.dailyTargets.calories || 0}
+              unit='kcal'
+              color='#2563EB'
+            />
+            <MacroItem
+              name='Protein'
+              value={planData?.dailyTargets.protein || 0}
+              unit='g'
+              color='#16A34A'
+            />
+
+            <MacroItem
+              name='Carbs'
+              value={planData?.dailyTargets.carbs || 0}
+              unit='g'
+              color='#F59E0B'
+            />
+
+            <MacroItem
+              name='Fat'
+              value={planData?.dailyTargets.fat || 0}
+              unit='g'
+              color='#DC2626'
+            />
+          </Stack>
+        </Stack>
       </Toolbar>
     </AppBar>
   );
