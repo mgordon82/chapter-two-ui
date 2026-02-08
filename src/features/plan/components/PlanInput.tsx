@@ -8,53 +8,49 @@ import {
   Alert
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
-import {
-  storyUpdated,
-  storyCleared,
-  storyAnalysisRequested
-} from '../storySlice';
+import { planUpdated, planCleared, planAnalysisRequested } from '../planSlice';
 import { insightsCleared } from '../../insights/insightsSlice';
 
-const StoryInput: React.FC = () => {
+const PlanInput: React.FC = () => {
   const dispatch = useAppDispatch();
   const {
-    text: storyText,
+    text: planText,
     isAnalyzing,
     error
-  } = useAppSelector((state) => state.story);
+  } = useAppSelector((state) => state.plan);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    dispatch(storyUpdated(e.target.value));
+    dispatch(planUpdated(e.target.value));
   };
 
   const handleClear = () => {
-    dispatch(storyCleared());
+    dispatch(planCleared());
     dispatch(insightsCleared());
   };
 
   const handleSubmit = () => {
-    dispatch(storyAnalysisRequested());
+    dispatch(planAnalysisRequested());
   };
 
   return (
     <Box>
       <Typography variant='h6' gutterBottom>
-        Tell us what happened
+        What are you macro numbers?
       </Typography>
       <Typography variant='body2' color='text.secondary' gutterBottom>
-        Describe your experience in your own words. There’s no right or wrong
-        way to share it.
+        Give a brief explanation of your macros and any restrictions and we can
+        give you some meals that match those numbers.
       </Typography>
 
       <TextField
         multiline
         minRows={6}
         fullWidth
-        value={storyText}
+        value={planText}
         onChange={handleChange}
-        placeholder='For example: My manager has been making comments about my medical condition and...'
+        placeholder='For example: 160g protein, 130g carbs, 50g fats, no dietary restrictions'
         sx={{ mt: 2 }}
       />
       <Stack
@@ -70,16 +66,12 @@ const StoryInput: React.FC = () => {
           justifyContent='flex-end'
           sx={{ mt: 2 }}
         >
-          <Button
-            variant='outlined'
-            onClick={handleClear}
-            disabled={!storyText}
-          >
+          <Button variant='outlined' onClick={handleClear} disabled={!planText}>
             Clear
           </Button>
           <Button
             variant='contained'
-            disabled={!storyText}
+            disabled={!planText}
             onClick={handleSubmit}
             loading={isAnalyzing}
             loadingIndicator='Analyzing...'
@@ -93,4 +85,4 @@ const StoryInput: React.FC = () => {
   );
 };
 
-export default StoryInput;
+export default PlanInput;

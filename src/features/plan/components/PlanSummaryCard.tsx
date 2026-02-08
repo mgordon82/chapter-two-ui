@@ -4,15 +4,15 @@ import { useAppSelector } from '../../../app/hooks';
 
 const MAX_PREVIEW_CHARS = 260;
 
-const StorySummaryCard: React.FC = () => {
-  const storyText = useAppSelector((state) => state.story.text.trim());
+const PlanSummaryCard: React.FC = () => {
+  const planText = useAppSelector((state) => state.plan.text.trim());
 
   const preview =
-    storyText.length > MAX_PREVIEW_CHARS
-      ? storyText.slice(0, MAX_PREVIEW_CHARS) + '…'
-      : storyText;
+    planText.length > MAX_PREVIEW_CHARS
+      ? planText.slice(0, MAX_PREVIEW_CHARS) + '…'
+      : planText;
 
-  const isEmpty = storyText.length === 0;
+  const isEmpty = planText.length === 0;
 
   return (
     <Card variant='outlined'>
@@ -23,12 +23,12 @@ const StorySummaryCard: React.FC = () => {
             justifyContent='space-between'
             alignItems='center'
           >
-            <Typography variant='h6'>Your story so far</Typography>
+            <Typography variant='h6'>Your plan so far</Typography>
             {!isEmpty && (
               <Chip
                 size='small'
-                label={`${storyText.length} character${
-                  storyText.length === 1 ? '' : 's'
+                label={`${planText.length} character${
+                  planText.length === 1 ? '' : 's'
                 }`}
               />
             )}
@@ -36,7 +36,7 @@ const StorySummaryCard: React.FC = () => {
 
           {isEmpty ? (
             <Typography variant='body2' color='text.secondary'>
-              Start typing above to see a summary of your story here. This area
+              Start typing above to see a summary of your plan here. This area
               will eventually power insights and resource suggestions.
             </Typography>
           ) : (
@@ -50,4 +50,4 @@ const StorySummaryCard: React.FC = () => {
   );
 };
 
-export default StorySummaryCard;
+export default PlanSummaryCard;

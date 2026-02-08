@@ -1,7 +1,6 @@
 import React from 'react';
 import { Stack, Typography, Paper } from '@mui/material';
-import StoryInput from '../features/story/components/StoryInput';
-// import StorySummaryCard from '../features/story/components/StorySummaryCard';
+import PlanInput from '../features/plan/components/PlanInput';
 import InsightsPreview from '../features/insights/components/InsightsPreview';
 
 const HomePage: React.FC = () => {
@@ -13,9 +12,8 @@ const HomePage: React.FC = () => {
       </Typography>
 
       <Paper elevation={2} sx={{ p: 3 }}>
-        <StoryInput />
+        <PlanInput />
       </Paper>
-      {/* <StorySummaryCard /> */}
       <InsightsPreview />
     </Stack>
   );

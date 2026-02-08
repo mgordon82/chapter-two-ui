@@ -1,39 +1,39 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export interface StoryState {
+export interface PlanState {
   text: string;
   isAnalyzing: boolean;
   hasSubmittedOnce: boolean;
   error: string;
 }
 
-const initialState: StoryState = {
+const initialState: PlanState = {
   text: '',
   isAnalyzing: false,
   hasSubmittedOnce: false,
   error: ''
 };
 
-const storySlice = createSlice({
-  name: 'story',
+const planSlice = createSlice({
+  name: 'plan',
   initialState,
   reducers: {
-    storyAnalysisRequested(state) {
+    planAnalysisRequested(state) {
       state.error = '';
       state.isAnalyzing = true;
     },
-    storyAnalysisSucceeded(state) {
+    planAnalysisSucceeded(state) {
       state.isAnalyzing = false;
       state.hasSubmittedOnce = true;
     },
-    storyAnalysisFailed(state, action: PayloadAction<string>) {
+    planAnalysisFailed(state, action: PayloadAction<string>) {
       state.isAnalyzing = false;
       state.error = action.payload;
     },
-    storyUpdated(state, action: PayloadAction<string>) {
+    planUpdated(state, action: PayloadAction<string>) {
       state.text = action.payload;
     },
-    storyCleared(state) {
+    planCleared(state) {
       state.text = '';
       state.error = '';
     }
@@ -41,10 +41,10 @@ const storySlice = createSlice({
 });
 
 export const {
-  storyAnalysisRequested,
-  storyAnalysisSucceeded,
-  storyAnalysisFailed,
-  storyUpdated,
-  storyCleared
-} = storySlice.actions;
-export default storySlice.reducer;
+  planAnalysisRequested,
+  planAnalysisSucceeded,
+  planAnalysisFailed,
+  planUpdated,
+  planCleared
+} = planSlice.actions;
+export default planSlice.reducer;

@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { createEpicMiddleware } from 'redux-observable';
-import storyReducer from '../features/story/storySlice';
+import planReducer from '../features/plan/planSlice';
 import insightsReducer from '../features/insights/insightsSlice';
 import { rootEpic } from './rootEpic';
 
@@ -8,7 +8,7 @@ const epicMiddleware = createEpicMiddleware();
 
 export const store = configureStore({
   reducer: {
-    story: storyReducer,
+    plan: planReducer,
     insights: insightsReducer
   },
   middleware: (getDefaultMiddleware) =>
