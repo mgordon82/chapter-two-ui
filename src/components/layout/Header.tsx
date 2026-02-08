@@ -37,9 +37,9 @@ const Header: React.FC = () => {
               <br />
               Two
             </Typography>
-            <Typography variant='caption' color='text.secondary'>
+            {/* <Typography variant='caption' color='text.secondary'>
               Expanding the adventure of <em>your</em> story
-            </Typography>
+            </Typography> */}
           </Stack>
           <Stack direction='row' alignItems='flex-end' gap={3}>
             <MacroItem
