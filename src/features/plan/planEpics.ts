@@ -8,7 +8,6 @@ import {
   type PlanState
 } from './planSlice';
 import { insightsSet } from '../insights/insightsSlice';
-// import type { InsightItem } from '../../types/insights';
 
 type ApiAnalysisResponse = {
   analysisSummary: string;
@@ -21,23 +20,54 @@ type ApiAnalysisResponse = {
   metadata: unknown;
 };
 
+type RootState = { plan: PlanState };
+
+const parseRequiredInt = (value: string): number | null => {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+
+  const num = Number(trimmed);
+  if (!Number.isFinite(num)) return null;
+  if (!Number.isInteger(num)) return null;
+  if (num < 0) return null;
+
+  return num;
+};
+
 export const analyzePlanEpic: Epic = (action$, state$) =>
   action$.pipe(
     ofType(planAnalysisRequested.type),
     mergeMap(() => {
-      const root = state$.value as unknown as { plan: PlanState };
-      const planText = root.plan.text.trim();
+      const root = state$.value as unknown as RootState;
+      const { macros } = root.plan;
 
-      if (!planText) {
+      const calories = parseRequiredInt(macros.calories);
+      const protein = parseRequiredInt(macros.protein);
+      const carbs = parseRequiredInt(macros.carbs);
+      const fats = parseRequiredInt(macros.fats);
+
+      if (
+        calories === null ||
+        protein === null ||
+        carbs === null ||
+        fats === null
+      ) {
         return of(
-          planAnalysisFailed('Please enter your plan before continuing.')
+          planAnalysisFailed(
+            'Please enter valid numbers for calories, protein, carbs, and fats.'
+          )
         );
       }
 
       const API_URL = import.meta.env.VITE_API_URL;
 
       const payload = {
-        planText
+        macros: {
+          calories,
+          protein,
+          carbs,
+          fats
+        }
       };
 
       return from(
@@ -58,9 +88,7 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
           return res.json() as Promise<ApiAnalysisResponse>;
         })
       ).pipe(
-        mergeMap((data) => {
-          return of(insightsSet(data), planAnalysisSucceeded());
-        }),
+        mergeMap((data) => of(insightsSet(data), planAnalysisSucceeded())),
         catchError((err) =>
           of(
             planAnalysisFailed(

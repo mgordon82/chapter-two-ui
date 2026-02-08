@@ -8,22 +8,23 @@ import {
   Alert
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
-import { planUpdated, planCleared, planAnalysisRequested } from '../planSlice';
+import {
+  macroFieldUpdated,
+  planCleared,
+  planAnalysisRequested
+} from '../planSlice';
 import { insightsCleared } from '../../insights/insightsSlice';
+
+type MacroField = 'calories' | 'protein' | 'carbs' | 'fats';
 
 const PlanInput: React.FC = () => {
   const dispatch = useAppDispatch();
-  const {
-    text: planText,
-    isAnalyzing,
-    error
-  } = useAppSelector((state) => state.plan);
+  const { macros, isAnalyzing, error } = useAppSelector((state) => state.plan);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    dispatch(planUpdated(e.target.value));
-  };
+  const handleMacroChange =
+    (field: MacroField) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      dispatch(macroFieldUpdated({ field, value: e.target.value }));
+    };
 
   const handleClear = () => {
     dispatch(planCleared());
@@ -34,25 +35,64 @@ const PlanInput: React.FC = () => {
     dispatch(planAnalysisRequested());
   };
 
+  const allFilled =
+    macros.calories !== '' &&
+    macros.protein !== '' &&
+    macros.carbs !== '' &&
+    macros.fats !== '';
+
   return (
     <Box>
       <Typography variant='h6' gutterBottom>
-        What are you macro numbers?
-      </Typography>
-      <Typography variant='body2' color='text.secondary' gutterBottom>
-        Give a brief explanation of your macros and any restrictions and we can
-        give you some meals that match those numbers.
+        What are your macro numbers?
       </Typography>
 
-      <TextField
-        multiline
-        minRows={6}
-        fullWidth
-        value={planText}
-        onChange={handleChange}
-        placeholder='For example: 160g protein, 130g carbs, 50g fats, no dietary restrictions'
-        sx={{ mt: 2 }}
-      />
+      <Typography variant='body2' color='text.secondary' gutterBottom>
+        Enter your daily targets. All fields are required.
+      </Typography>
+
+      <Stack spacing={2} sx={{ mt: 2 }}>
+        <TextField
+          label='Calories'
+          type='number'
+          required
+          fullWidth
+          value={macros.calories}
+          onChange={handleMacroChange('calories')}
+          inputProps={{ min: 0, step: 1 }}
+        />
+
+        <TextField
+          label='Protein (g)'
+          type='number'
+          required
+          fullWidth
+          value={macros.protein}
+          onChange={handleMacroChange('protein')}
+          inputProps={{ min: 0, step: 1 }}
+        />
+
+        <TextField
+          label='Carbs (g)'
+          type='number'
+          required
+          fullWidth
+          value={macros.carbs}
+          onChange={handleMacroChange('carbs')}
+          inputProps={{ min: 0, step: 1 }}
+        />
+
+        <TextField
+          label='Fats (g)'
+          type='number'
+          required
+          fullWidth
+          value={macros.fats}
+          onChange={handleMacroChange('fats')}
+          inputProps={{ min: 0, step: 1 }}
+        />
+      </Stack>
+
       <Stack
         direction='row'
         alignItems='center'
@@ -60,18 +100,24 @@ const PlanInput: React.FC = () => {
         sx={{ mt: 2 }}
       >
         <Box>{error !== '' && <Alert severity='error'>{error}</Alert>}</Box>
+
         <Stack
           direction='row'
           spacing={2}
           justifyContent='flex-end'
           sx={{ mt: 2 }}
         >
-          <Button variant='outlined' onClick={handleClear} disabled={!planText}>
+          <Button
+            variant='outlined'
+            onClick={handleClear}
+            disabled={!allFilled}
+          >
             Clear
           </Button>
+
           <Button
             variant='contained'
-            disabled={!planText}
+            disabled={!allFilled}
             onClick={handleSubmit}
             loading={isAnalyzing}
             loadingIndicator='Analyzing...'
