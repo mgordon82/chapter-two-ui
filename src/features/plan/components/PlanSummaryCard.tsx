@@ -2,17 +2,14 @@ import React from 'react';
 import { Card, CardContent, Typography, Stack, Chip } from '@mui/material';
 import { useAppSelector } from '../../../app/hooks';
 
-const MAX_PREVIEW_CHARS = 260;
-
 const PlanSummaryCard: React.FC = () => {
-  const planText = useAppSelector((state) => state.plan.text.trim());
+  const { macros } = useAppSelector((state) => state.plan);
 
-  const preview =
-    planText.length > MAX_PREVIEW_CHARS
-      ? planText.slice(0, MAX_PREVIEW_CHARS) + '…'
-      : planText;
-
-  const isEmpty = planText.length === 0;
+  const isEmpty =
+    macros.calories === '' &&
+    macros.protein === '' &&
+    macros.carbs === '' &&
+    macros.fats === '';
 
   return (
     <Card variant='outlined'>
@@ -23,26 +20,30 @@ const PlanSummaryCard: React.FC = () => {
             justifyContent='space-between'
             alignItems='center'
           >
-            <Typography variant='h6'>Your plan so far</Typography>
-            {!isEmpty && (
-              <Chip
-                size='small'
-                label={`${planText.length} character${
-                  planText.length === 1 ? '' : 's'
-                }`}
-              />
-            )}
+            <Typography variant='h6'>Your macro targets</Typography>
+            {!isEmpty && <Chip size='small' label='Structured input' />}
           </Stack>
 
           {isEmpty ? (
             <Typography variant='body2' color='text.secondary'>
-              Start typing above to see a summary of your plan here. This area
-              will eventually power insights and resource suggestions.
+              Enter your daily calories and macros above to see a summary here.
+              These targets will be used to generate meals and insights.
             </Typography>
           ) : (
-            <Typography variant='body1' sx={{ whiteSpace: 'pre-wrap' }}>
-              {preview}
-            </Typography>
+            <Stack spacing={0.5}>
+              <Typography variant='body1'>
+                <strong>Calories:</strong> {macros.calories}
+              </Typography>
+              <Typography variant='body1'>
+                <strong>Protein:</strong> {macros.protein} g
+              </Typography>
+              <Typography variant='body1'>
+                <strong>Carbs:</strong> {macros.carbs} g
+              </Typography>
+              <Typography variant='body1'>
+                <strong>Fats:</strong> {macros.fats} g
+              </Typography>
+            </Stack>
           )}
         </Stack>
       </CardContent>
