@@ -11,7 +11,8 @@ import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import {
   macroFieldUpdated,
   planCleared,
-  planAnalysisRequested
+  planAnalysisRequested,
+  detailsUpdated
 } from '../planSlice';
 import { insightsCleared } from '../../insights/insightsSlice';
 
@@ -19,16 +20,28 @@ type MacroField = 'calories' | 'protein' | 'carbs' | 'fats';
 
 const PlanInput: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { macros, isAnalyzing, error } = useAppSelector((state) => state.plan);
+  const { macros, details, isAnalyzing, error } = useAppSelector(
+    (state) => state.plan
+  );
+
+  const [openMoreDetails, setOpenMoreDetails] = React.useState(false);
 
   const handleMacroChange =
     (field: MacroField) => (e: React.ChangeEvent<HTMLInputElement>) => {
       dispatch(macroFieldUpdated({ field, value: e.target.value }));
     };
 
+  const handleMoreDetails = (e: React.ChangeEvent<HTMLInputElement>) => {
+    dispatch(detailsUpdated(e.target.value));
+  };
+
   const handleClear = () => {
     dispatch(planCleared());
     dispatch(insightsCleared());
+  };
+
+  const handleOpenDetails = () => {
+    setOpenMoreDetails(true);
   };
 
   const handleSubmit = () => {
@@ -51,7 +64,7 @@ const PlanInput: React.FC = () => {
         Enter your daily targets. All fields are required.
       </Typography>
 
-      <Stack spacing={2} sx={{ mt: 2 }}>
+      <Stack spacing={2} sx={{ my: 2 }}>
         <TextField
           label='Calories'
           type='number'
@@ -93,6 +106,26 @@ const PlanInput: React.FC = () => {
         />
       </Stack>
 
+      <Stack direction='row' justifyContent='right' flexGrow={0}>
+        <Button variant='text' onClick={handleOpenDetails}>
+          + Add Details
+        </Button>
+      </Stack>
+      {openMoreDetails && (
+        <Stack flexGrow={1}>
+          <Typography>Additional Details</Typography>
+          <TextField
+            multiline
+            minRows={3}
+            fullWidth
+            value={details}
+            onChange={handleMoreDetails}
+            placeholder='Add additional details like dietary restrictions or preferences'
+            sx={{ mt: 2 }}
+          />
+        </Stack>
+      )}
+
       <Stack
         direction='row'
         alignItems='center'
@@ -107,11 +140,7 @@ const PlanInput: React.FC = () => {
           justifyContent='flex-end'
           sx={{ mt: 2 }}
         >
-          <Button
-            variant='outlined'
-            onClick={handleClear}
-            disabled={!allFilled}
-          >
+          <Button variant='outlined' onClick={handleClear}>
             Clear
           </Button>
 

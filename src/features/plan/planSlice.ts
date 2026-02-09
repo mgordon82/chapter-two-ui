@@ -11,6 +11,7 @@ export interface MacrosState {
 
 export interface PlanState {
   macros: MacrosState;
+  details: string;
   isAnalyzing: boolean;
   hasSubmittedOnce: boolean;
   error: string;
@@ -25,6 +26,7 @@ const emptyMacros: MacrosState = {
 
 const initialState: PlanState = {
   macros: emptyMacros,
+  details: '',
   isAnalyzing: false,
   hasSubmittedOnce: false,
   error: ''
@@ -56,6 +58,11 @@ const planSlice = createSlice({
       state.macros[field] = value;
     },
 
+    detailsUpdated(state, action) {
+      const details = action.payload;
+      state.details = details;
+    },
+
     // Optional convenience if you ever want to set all at once (presets, autofill, etc.)
     macrosSet(state, action: PayloadAction<MacrosState>) {
       state.macros = action.payload;
@@ -63,6 +70,7 @@ const planSlice = createSlice({
 
     planCleared(state) {
       state.macros = emptyMacros;
+      state.details = '';
       state.error = '';
       state.isAnalyzing = false;
       state.hasSubmittedOnce = false;
@@ -75,6 +83,7 @@ export const {
   planAnalysisSucceeded,
   planAnalysisFailed,
   macroFieldUpdated,
+  detailsUpdated,
   macrosSet,
   planCleared
 } = planSlice.actions;

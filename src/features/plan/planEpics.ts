@@ -39,7 +39,7 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
     ofType(planAnalysisRequested.type),
     mergeMap(() => {
       const root = state$.value as unknown as RootState;
-      const { macros } = root.plan;
+      const { macros, details } = root.plan;
 
       const calories = parseRequiredInt(macros.calories);
       const protein = parseRequiredInt(macros.protein);
@@ -67,7 +67,8 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
           protein,
           carbs,
           fats
-        }
+        },
+        details
       };
 
       return from(
