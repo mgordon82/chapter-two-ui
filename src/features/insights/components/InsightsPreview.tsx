@@ -23,7 +23,9 @@ const InsightsPreview: React.FC = () => {
       <Card variant='outlined'>
         <CardContent>
           <Stack spacing={2}>
-            <Typography variant='h6'>Plan Details</Typography>
+            <Typography component='h3' variant='h5'>
+              Plan Details
+            </Typography>
             <Typography variant='body2' color='text.secondary'>
               No plan yet. Enter your macros and generate a plan to preview it
               here.
@@ -40,7 +42,9 @@ const InsightsPreview: React.FC = () => {
     <Card variant='outlined'>
       <CardContent>
         <Stack spacing={2}>
-          <Typography variant='h6'>Plan Details</Typography>
+          <Typography component='h3' variant='h5'>
+            Plan Details
+          </Typography>
 
           <Typography variant='body2' color='text.secondary'>
             {assumptions.notes}

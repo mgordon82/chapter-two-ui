@@ -1,19 +1,18 @@
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+/* body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-image: url('src/assets/background.svg');
+  background-size: 809px;
+  background-position: center;
+  background-repeat: repeat;
 }
 
 a {
@@ -22,4 +21,4 @@ a {
 }
 a:hover {
   text-decoration: underline;
-}
+} */

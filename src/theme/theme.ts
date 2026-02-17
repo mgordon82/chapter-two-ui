@@ -9,16 +9,36 @@ export const theme = createTheme({
     secondary: {
       main: '#F4A261'
     }
-    // background: {
-    //   default: '#f5f5f5',
-    //   paper: '#ffffff'
-    // }
   },
+
   shape: {
     borderRadius: 12
   },
+
   typography: {
-    fontFamily:
-      '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    // Default body font
+    fontFamily: '"Source Sans 3", sans-serif',
+
+    h1: {
+      fontFamily: '"Anton", sans-serif',
+      letterSpacing: '0.02em'
+    },
+    h2: {
+      fontFamily: '"Anton", sans-serif',
+      letterSpacing: '0.02em'
+    },
+    h3: {
+      fontFamily: '"Anton", sans-serif',
+      letterSpacing: '0.02em'
+    },
+    h4: {
+      fontFamily: '"Anton", sans-serif'
+    },
+    h5: {
+      fontFamily: '"Anton", sans-serif'
+    },
+    h6: {
+      fontFamily: '"Anton", sans-serif'
+    }
   }
 });

@@ -1,24 +1,33 @@
 import React from 'react';
-import { Box, Container } from '@mui/material';
-import Header from './Header';
+import { Outlet } from 'react-router-dom';
+import { Box } from '@mui/material';
+import BackgroundImg from '../../assets/background.svg?url';
+import Footer from './Footer';
 
-interface AppLayoutProps {
-  children: React.ReactNode;
-}
-
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+const AppLayout: React.FC = () => {
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: 'background.default'
-      }}
-    >
-      <Header />
-
-      <Container maxWidth='md' sx={{ py: 4 }}>
-        {children}
-      </Container>
+    <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          backgroundImage: `url("${BackgroundImg}")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '809px'
+        }}
+      />
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          pointerEvents: 'none'
+        }}
+      />
+      <Outlet />
+      <Footer />
     </Box>
   );
 };
