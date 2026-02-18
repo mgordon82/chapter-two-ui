@@ -10,7 +10,6 @@ type ResultRowProps = {
 
 type CoachCalculatedValuesPanelProps = {
   weightGoalLabel: string | null;
-  timeline: string | null;
   bmr: number | null;
   tdee: number | null;
 };
@@ -36,7 +35,6 @@ const ResultRow = ({ label, value, unit, hint }: ResultRowProps) => (
 
 export const CoachCalculatedValuesPanel = ({
   weightGoalLabel,
-  timeline,
   bmr,
   tdee
 }: CoachCalculatedValuesPanelProps) => {
@@ -58,7 +56,6 @@ export const CoachCalculatedValuesPanel = ({
       <Stack spacing={2.5}>
         <Section title='Goal Summary'>
           <ResultRow label='Weight Goal' value={weightGoalLabel} />
-          <ResultRow label='Ideal Timeline' value={timeline} unit='weeks' />
         </Section>
 
         <Divider />

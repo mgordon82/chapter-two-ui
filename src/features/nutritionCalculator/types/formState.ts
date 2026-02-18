@@ -22,7 +22,6 @@ export type FormState = {
   age: string;
   activityLevel: ActivityLevel | '';
   goal: Goal | '';
-  idealTimelineWeeks: string;
   rateLevel: RateLevel | '';
 
   measurementUnitPref: MeasurementUnit;
@@ -46,7 +45,6 @@ export const initialFormState: FormState = {
   age: '',
   activityLevel: '' as ActivityLevel,
   goal: '' as Goal,
-  idealTimelineWeeks: '',
   rateLevel: '' as RateLevel,
 
   measurementUnitPref: 'cm' as MeasurementUnit,

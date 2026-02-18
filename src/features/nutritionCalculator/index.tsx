@@ -35,10 +35,7 @@ const ClientNutritionCalculator = () => {
       heightCm: form.heightCm ? Number(form.heightCm) : null,
       weightKg: form.weightKg ? Number(form.weightKg) : null,
       goalWeightKg: form.goalWeightKg ? Number(form.goalWeightKg) : null,
-      age: form.age ? Number(form.age) : null,
-      idealTimelineWeeks: form.idealTimelineWeeks
-        ? Number(form.idealTimelineWeeks)
-        : null
+      age: form.age ? Number(form.age) : null
     };
   }, [form]);
 
@@ -145,7 +142,6 @@ const ClientNutritionCalculator = () => {
         >
           <CoachCalculatedValuesPanel
             weightGoalLabel={weightGoal.label}
-            timeline={form.idealTimelineWeeks}
             bmr={bmr}
             tdee={tdee}
           />

@@ -232,29 +232,15 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
             />
 
             <TextField
-              type='number'
-              fullWidth
-              label='Ideal Timeline (weeks)'
-              value={form.idealTimelineWeeks}
-              onChange={handleChange('idealTimelineWeeks')}
-              inputProps={{ min: 0 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position='end'>weeks</InputAdornment>
-                )
-              }}
-            />
-
-            <TextField
               select
               fullWidth
-              label='Rate Level'
+              label='Effort Rate Level'
               value={form.rateLevel}
               onChange={handleChange('rateLevel')}
             >
-              <MenuItem value='beginner'>Beginner</MenuItem>
-              <MenuItem value='intermediate'>Intermediate</MenuItem>
-              <MenuItem value='advanced'>Advanced</MenuItem>
+              <MenuItem value='low'>Low</MenuItem>
+              <MenuItem value='moderate'>Moderate</MenuItem>
+              <MenuItem value='extreme'>Extreme</MenuItem>
             </TextField>
           </Stack>
         </Stack>
