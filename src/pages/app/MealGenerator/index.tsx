@@ -1,7 +1,7 @@
 import React from 'react';
 import { Stack, Typography } from '@mui/material';
-import PlanInput from '../../features/plan/components/PlanInput';
-import InsightsPreview from '../../features/insights/components/InsightsPreview';
+import PlanInput from '../../../features/plan/components/PlanInput';
+import InsightsPreview from '../../../features/insights/components/InsightsPreview';
 
 const MealGenerator: React.FC = () => {
   return (

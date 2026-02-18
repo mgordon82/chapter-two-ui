@@ -5,9 +5,10 @@ import PublicLayout from '../components/layout/PublicLayout';
 import PrivateLayout from '../components/layout/PrivateLayout';
 import RequireAuth from '../components/layout/RequireAuth';
 
-import HomePage from '../pages/public/HomePage';
+import LandingPage from '../pages/public/LandingPage';
 import MealGenerator from '../pages/app/MealGenerator';
 import AppLayout from '../components/layout/AppLayout';
+import ClientNutritionCalculator from '../pages/app/ClientNutritionCalculator';
 // import LoginPage from '../pages/public/LoginPage';
 // import InvitePage from '../pages/public/InvitePage';
 
@@ -16,7 +17,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       <Route element={<AppLayout />}>
         <Route element={<PublicLayout />}>
-          <Route path='/' element={<HomePage />} />
+          <Route path='/' element={<LandingPage />} />
           {/* <Route path="/login" element={<LoginPage />} />
         <Route path="/invite/:token" element={<InvitePage />} /> */}
         </Route>
@@ -24,6 +25,10 @@ const AppRoutes: React.FC = () => {
         <Route element={<RequireAuth />}>
           <Route element={<PrivateLayout />}>
             <Route path='/app/meal-generator' element={<MealGenerator />} />
+            <Route
+              path='/app/nutrition-calculator'
+              element={<ClientNutritionCalculator />}
+            />
           </Route>
         </Route>
 

@@ -1,17 +1,18 @@
 import React from 'react';
 import {
-  Card,
-  CardContent,
   Typography,
   Stack,
   Chip,
   Divider,
   Box,
   List,
-  ListItem
+  ListItem,
+  Paper
 } from '@mui/material';
 import { useAppSelector } from '../../../app/hooks';
 import type { PlanData } from '../../../types/plan';
+import { Section } from '../../../components/sections/section';
+import { capitalize } from '../../../utils/formatting';
 
 const InsightsPreview: React.FC = () => {
   const planData = useAppSelector((state) => state.insights.plan) as
@@ -20,52 +21,64 @@ const InsightsPreview: React.FC = () => {
 
   if (!planData) {
     return (
-      <Card variant='outlined'>
-        <CardContent>
-          <Stack spacing={2}>
-            <Typography component='h3' variant='h5'>
-              Plan Details
-            </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              No plan yet. Enter your macros and generate a plan to preview it
-              here.
-            </Typography>
-          </Stack>
-        </CardContent>
-      </Card>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 2,
+          mb: 2,
+          borderRadius: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)'
+        }}
+      >
+        <Stack spacing={2}>
+          <Typography component='h3' variant='h5'>
+            Plan Details
+          </Typography>
+          <Typography variant='body2' color='text.secondary'>
+            No plan yet. Enter your macros and generate a plan to preview it
+            here.
+          </Typography>
+        </Stack>
+      </Paper>
     );
   }
 
   const { assumptions, meals, notes } = planData;
 
   return (
-    <Card variant='outlined'>
-      <CardContent>
-        <Stack spacing={2}>
-          <Typography component='h3' variant='h5'>
-            Plan Details
-          </Typography>
+    <Paper
+      elevation={1}
+      sx={{
+        p: 2,
+        mb: 2,
+        borderRadius: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(4px)'
+      }}
+    >
+      <Stack spacing={2}>
+        <Typography component='h3' variant='h5'>
+          Plan Details
+        </Typography>
 
-          <Typography variant='body2' color='text.secondary'>
-            {assumptions.notes}
-          </Typography>
+        <Typography variant='body2' color='text.secondary'>
+          {assumptions.notes}
+        </Typography>
 
-          <Typography variant='body2' color='text.secondary'>
-            {notes}
-          </Typography>
+        <Typography variant='body2' color='text.secondary'>
+          {notes}
+        </Typography>
 
-          <Divider />
+        <Divider />
 
-          <Box>
-            {meals.map((meal) => {
-              const key = `${meal.mealType}-${meal.name}`;
+        <Box>
+          {meals.map((meal) => {
+            const key = `${meal.mealType}-${meal.name}`;
 
-              return (
-                <Box key={key} mb={3}>
-                  <Typography variant='overline' color='text.secondary'>
-                    {meal.mealType}
-                  </Typography>
-
+            return (
+              <Box key={key} mb={3}>
+                <Section title={capitalize(meal.mealType)}>
                   <Stack
                     direction={{ xs: 'column', md: 'row' }}
                     gap={3}
@@ -88,7 +101,7 @@ const InsightsPreview: React.FC = () => {
                           <List dense>
                             {meal.swapOptions.map((option) => (
                               <ListItem key={option} sx={{ py: 0 }}>
-                                {option}
+                                {capitalize(option)}
                               </ListItem>
                             ))}
                           </List>
@@ -135,13 +148,14 @@ const InsightsPreview: React.FC = () => {
                       </Stack>
                     </Stack>
                   </Stack>
-                </Box>
-              );
-            })}
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
+                </Section>
+                <Divider sx={{ mt: 3 }} />
+              </Box>
+            );
+          })}
+        </Box>
+      </Stack>
+    </Paper>
   );
 };
 

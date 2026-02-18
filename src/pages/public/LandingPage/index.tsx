@@ -1,11 +1,11 @@
 import React from 'react';
 import { Box, Button, Stack, Typography } from '@mui/material';
-import coachPhoto from '../../assets/photos/coach/image02.jpg';
-import jackPhoto from '../../assets/photos/clients/jack.jpg';
-import ryanPhoto from '../../assets/photos/clients/ryan.jpg';
-import MediaSection from '../../components/sections/mediaSection';
+import coachPhoto from '../../../assets/photos/coach/image02.jpg';
+import jackPhoto from '../../../assets/photos/clients/jack.jpg';
+import ryanPhoto from '../../../assets/photos/clients/ryan.jpg';
+import MediaSection from '../../../components/sections/mediaSection';
 
-const HomePage: React.FC = () => {
+const LandingPage: React.FC = () => {
   return (
     <Box>
       <Typography
@@ -87,4 +87,4 @@ const HomePage: React.FC = () => {
   );
 };
 
-export default HomePage;
+export default LandingPage;
