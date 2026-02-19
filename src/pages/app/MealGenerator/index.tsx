@@ -6,7 +6,7 @@ import InsightsPreview from '../../../features/insights/components/InsightsPrevi
 const MealGenerator: React.FC = () => {
   return (
     <Stack spacing={3}>
-      <Typography component='h2' variant='h4'>
+      <Typography component='h2' variant='h5'>
         Meal Generator
       </Typography>
       <Typography variant='body1' color='text.secondary'>

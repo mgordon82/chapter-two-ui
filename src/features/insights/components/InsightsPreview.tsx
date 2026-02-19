@@ -32,7 +32,7 @@ const InsightsPreview: React.FC = () => {
         }}
       >
         <Stack spacing={2}>
-          <Typography component='h3' variant='h5'>
+          <Typography component='h3' variant='h6'>
             Plan Details
           </Typography>
           <Typography variant='body2' color='text.secondary'>
@@ -58,7 +58,7 @@ const InsightsPreview: React.FC = () => {
       }}
     >
       <Stack spacing={2}>
-        <Typography component='h3' variant='h5'>
+        <Typography component='h3' variant='h6'>
           Plan Details
         </Typography>
 

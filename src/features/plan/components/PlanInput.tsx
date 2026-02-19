@@ -66,7 +66,7 @@ const PlanInput: React.FC = () => {
       }}
     >
       <Box>
-        <Typography component='h3' variant='h5' gutterBottom>
+        <Typography component='h3' variant='h6' gutterBottom>
           What are your macro numbers?
         </Typography>
 

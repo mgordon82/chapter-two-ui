@@ -76,7 +76,7 @@ const ClientNutritionCalculator = () => {
   return (
     <Box sx={{ width: '100%' }}>
       <Typography component='h2' variant='h5' sx={{ mb: 2 }}>
-        Client Profile
+        Client Nutrition Profile
       </Typography>
 
       {/* Main layout: column on mobile, row on desktop */}
@@ -112,7 +112,6 @@ const ClientNutritionCalculator = () => {
           >
             <Button
               variant='outlined'
-              color='inherit'
               onClick={clear}
               sx={{
                 width: { xs: '100%', sm: 'auto' }
