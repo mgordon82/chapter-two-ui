@@ -1,1 +1,1 @@
-export type Goal = 'muscle_gain' | 'fat_loss';
+export type Goal = 'muscle_gain' | 'fat_loss' | 'maintain';

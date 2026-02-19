@@ -136,14 +136,16 @@ const ClientNutritionCalculator = () => {
         {/* Right: results panel */}
         <Box
           sx={{
-            width: { xs: '100%', md: 380 }, // fixed-ish width on desktop, full width on mobile
+            width: { xs: '100%', md: 380 },
             flexShrink: 0
           }}
         >
           <CoachCalculatedValuesPanel
             weightGoalLabel={weightGoal.label}
+            goal={inputs.goal}
             bmr={bmr}
             tdee={tdee}
+            weightKg={inputs.weightKg}
           />
         </Box>
       </Stack>

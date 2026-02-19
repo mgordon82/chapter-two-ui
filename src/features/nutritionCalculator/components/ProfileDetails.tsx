@@ -196,9 +196,9 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
               onChange={handleChange('activityLevel')}
             >
               <MenuItem value='sedentary'>Sedentary</MenuItem>
-              <MenuItem value='mostly_sedentary'>Mostly Sedentary</MenuItem>
               <MenuItem value='lightly_active'>Lightly Active</MenuItem>
-              <MenuItem value='highly_active'>Highly Active</MenuItem>
+              <MenuItem value='moderately_active'>Moderately Active</MenuItem>
+              <MenuItem value='very_active'>Very Active</MenuItem>
               <MenuItem value='extremely_active'>Extremely Active</MenuItem>
             </TextField>
 
@@ -211,6 +211,7 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
             >
               <MenuItem value='muscle_gain'>Muscle Gain</MenuItem>
               <MenuItem value='fat_loss'>Fat Loss</MenuItem>
+              <MenuItem value='maintain'>Maintain</MenuItem>
             </TextField>
           </Stack>
 

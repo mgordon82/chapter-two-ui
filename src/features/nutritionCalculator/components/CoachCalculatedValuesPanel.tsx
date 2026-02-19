@@ -1,26 +1,32 @@
 import { Paper, Stack, Typography, Divider } from '@mui/material';
 import { Section } from '../../../components/sections/section';
+import { calculateDailyCalorieTarget } from '../calculations/dailyCalorieTarget';
+import type { Goal } from '../types/goal';
+import { calculateMacros, type MacroResult } from '../calculations/dailyMacros';
 
 type ResultRowProps = {
   label: string;
   value?: string | number | null;
   unit?: string;
   hint?: string;
+  color?: string;
 };
 
 type CoachCalculatedValuesPanelProps = {
   weightGoalLabel: string | null;
+  goal: Goal | null;
   bmr: number | null;
   tdee: number | null;
+  weightKg: number | null;
 };
 
-const ResultRow = ({ label, value, unit, hint }: ResultRowProps) => (
+const ResultRow = ({ label, value, unit, hint, color }: ResultRowProps) => (
   <Stack spacing={0.5}>
     <Stack direction='row' justifyContent='space-between' alignItems='baseline'>
       <Typography variant='body2' color='text.secondary'>
         {label}
       </Typography>
-      <Typography variant='subtitle1' fontWeight={600}>
+      <Typography variant='subtitle1' fontWeight={600} color={color}>
         {value ?? '—'}
         {unit ? ` ${unit}` : ''}
       </Typography>
@@ -35,9 +41,20 @@ const ResultRow = ({ label, value, unit, hint }: ResultRowProps) => (
 
 export const CoachCalculatedValuesPanel = ({
   weightGoalLabel,
+  goal,
   bmr,
-  tdee
+  tdee,
+  weightKg
 }: CoachCalculatedValuesPanelProps) => {
+  const dailyCalorieTarget =
+    tdee && goal && calculateDailyCalorieTarget(tdee, goal);
+
+  let macros: MacroResult | null = null;
+
+  if (dailyCalorieTarget != null && weightKg != null) {
+    macros = calculateMacros(dailyCalorieTarget, weightKg);
+  }
+
   return (
     <Paper
       elevation={1}
@@ -77,20 +94,41 @@ export const CoachCalculatedValuesPanel = ({
 
         <Divider />
 
-        <Section title='Plan Targets'>
-          <ResultRow label='Ideal Loss Per Week' value='—' unit='kg' />
-          <ResultRow label='Ideal Loss Per Week' value='—' unit='%' />
-          <ResultRow label='Targeted Deficit' value='—' unit='kcal/day' />
-          <ResultRow label='Daily Calorie Deficit' value='—' unit='kcal/day' />
+        {/* <Section title='Plan Targets'>
+          <ResultRow
+            label='Calorie Target'
+            value={dailyCalorieTarget}
+            unit='kcal/day'
+          />
         </Section>
 
-        <Divider />
+        <Divider /> */}
 
         <Section title='Daily Targets'>
-          <ResultRow label='Daily Calories' value='—' unit='kcal' />
-          <ResultRow label='Daily Protein' value='—' unit='g' />
-          <ResultRow label='Daily Carbs' value='—' unit='g' />
-          <ResultRow label='Daily Fats' value='—' unit='g' />
+          <ResultRow
+            label='Daily Calories'
+            value={dailyCalorieTarget}
+            unit='kcal'
+            color='#2563EB'
+          />
+          <ResultRow
+            label='Daily Protein'
+            value={macros?.protein}
+            unit='g'
+            color='#16A34A'
+          />
+          <ResultRow
+            label='Daily Carbs'
+            value={macros?.carbs}
+            unit='g'
+            color='#F59E0B'
+          />
+          <ResultRow
+            label='Daily Fats'
+            value={macros?.fat}
+            unit='g'
+            color='#DC2626'
+          />
         </Section>
       </Stack>
     </Paper>

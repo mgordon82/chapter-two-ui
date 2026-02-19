@@ -7,12 +7,12 @@ export const getActivityMultiplier = (
 
   switch (activityLevel) {
     case 'sedentary':
-      return 1.15;
-    case 'mostly_sedentary':
-      return 1.3;
+      return 1.2;
     case 'lightly_active':
+      return 1.375;
+    case 'moderately_active':
       return 1.55;
-    case 'highly_active':
+    case 'very_active':
       return 1.725;
     case 'extremely_active':
       return 1.9;
