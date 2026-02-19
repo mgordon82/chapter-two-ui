@@ -128,7 +128,7 @@ const ClientNutritionCalculator = () => {
                 width: { xs: '100%', sm: 'auto' }
               }}
             >
-              Submit
+              Save
             </Button>
           </Stack>
         </Box>
