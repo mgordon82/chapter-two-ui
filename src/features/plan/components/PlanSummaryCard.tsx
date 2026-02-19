@@ -9,7 +9,7 @@ const PlanSummaryCard: React.FC = () => {
     macros.calories === '' &&
     macros.protein === '' &&
     macros.carbs === '' &&
-    macros.fats === '';
+    macros.fat === '';
 
   return (
     <Card variant='outlined'>
@@ -41,7 +41,7 @@ const PlanSummaryCard: React.FC = () => {
                 <strong>Carbs:</strong> {macros.carbs} g
               </Typography>
               <Typography variant='body1'>
-                <strong>Fats:</strong> {macros.fats} g
+                <strong>Fat:</strong> {macros.fat} g
               </Typography>
             </Stack>
           )}

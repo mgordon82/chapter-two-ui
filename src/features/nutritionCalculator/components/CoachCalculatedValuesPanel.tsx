@@ -111,7 +111,7 @@ export const CoachCalculatedValuesPanel = ({
             color='#F59E0B'
           />
           <ResultRow
-            label='Daily Fats'
+            label='Daily Fat'
             value={macros?.fat}
             unit='g'
             color='#DC2626'

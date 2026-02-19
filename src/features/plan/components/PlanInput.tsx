@@ -157,7 +157,7 @@ const PlanInput: React.FC = () => {
           />
 
           <TextField
-            label='Fats (g)'
+            label='Fat (g)'
             type='number'
             required
             fullWidth
