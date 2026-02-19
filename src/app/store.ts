@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { createEpicMiddleware } from 'redux-observable';
 import planReducer from '../features/plan/planSlice';
 import insightsReducer from '../features/insights/insightsSlice';
+import nutritionCalculatorReducer from '../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 import { rootEpic } from './rootEpic';
 
 const epicMiddleware = createEpicMiddleware();
@@ -9,7 +10,8 @@ const epicMiddleware = createEpicMiddleware();
 export const store = configureStore({
   reducer: {
     plan: planReducer,
-    insights: insightsReducer
+    insights: insightsReducer,
+    nutritionCalculator: nutritionCalculatorReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -22,17 +22,18 @@ type ApiAnalysisResponse = {
 
 type RootState = { plan: PlanState };
 
-const parseRequiredInt = (value: string): number | null => {
+const parseRequiredNumber = (value: string): number | null => {
   const trimmed = value.trim();
   if (trimmed === '') return null;
 
   const num = Number(trimmed);
   if (!Number.isFinite(num)) return null;
-  if (!Number.isInteger(num)) return null;
   if (num < 0) return null;
 
   return num;
 };
+
+const toInt = (n: number) => Math.round(n);
 
 export const analyzePlanEpic: Epic = (action$, state$) =>
   action$.pipe(
@@ -41,17 +42,12 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
       const root = state$.value as unknown as RootState;
       const { macros, details } = root.plan;
 
-      const calories = parseRequiredInt(macros.calories);
-      const protein = parseRequiredInt(macros.protein);
-      const carbs = parseRequiredInt(macros.carbs);
-      const fats = parseRequiredInt(macros.fats);
+      const caloriesN = parseRequiredNumber(macros.calories);
+      const proteinN = parseRequiredNumber(macros.protein);
+      const carbsN = parseRequiredNumber(macros.carbs);
+      const fatsN = parseRequiredNumber(macros.fat);
 
-      if (
-        calories === null ||
-        protein === null ||
-        carbs === null ||
-        fats === null
-      ) {
+      if ([caloriesN, proteinN, carbsN, fatsN].some((v) => v === null)) {
         return of(
           planAnalysisFailed(
             'Please enter valid numbers for calories, protein, carbs, and fats.'
@@ -63,10 +59,10 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
 
       const payload = {
         macros: {
-          calories,
-          protein,
-          carbs,
-          fats
+          calories: toInt(caloriesN!),
+          protein: toInt(proteinN!),
+          carbs: toInt(carbsN!),
+          fats: toInt(fatsN!)
         },
         details
       };

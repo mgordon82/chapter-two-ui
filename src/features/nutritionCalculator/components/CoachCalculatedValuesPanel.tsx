@@ -1,8 +1,6 @@
 import { Paper, Stack, Typography, Divider } from '@mui/material';
 import { Section } from '../../../components/sections/section';
-import { calculateDailyCalorieTarget } from '../calculations/dailyCalorieTarget';
-import type { Goal } from '../types/goal';
-import { calculateMacros, type MacroResult } from '../calculations/dailyMacros';
+import type { MacroResult } from '../calculations/dailyMacros';
 
 type ResultRowProps = {
   label: string;
@@ -14,10 +12,9 @@ type ResultRowProps = {
 
 type CoachCalculatedValuesPanelProps = {
   weightGoalLabel: string | null;
-  goal: Goal | null;
   bmr: number | null;
   tdee: number | null;
-  weightKg: number | null;
+  macros: MacroResult | null;
 };
 
 const ResultRow = ({ label, value, unit, hint, color }: ResultRowProps) => (
@@ -41,20 +38,10 @@ const ResultRow = ({ label, value, unit, hint, color }: ResultRowProps) => (
 
 export const CoachCalculatedValuesPanel = ({
   weightGoalLabel,
-  goal,
   bmr,
   tdee,
-  weightKg
+  macros
 }: CoachCalculatedValuesPanelProps) => {
-  const dailyCalorieTarget =
-    tdee && goal && calculateDailyCalorieTarget(tdee, goal);
-
-  let macros: MacroResult | null = null;
-
-  if (dailyCalorieTarget != null && weightKg != null) {
-    macros = calculateMacros(dailyCalorieTarget, weightKg);
-  }
-
   return (
     <Paper
       elevation={1}
@@ -107,7 +94,7 @@ export const CoachCalculatedValuesPanel = ({
         <Section title='Daily Targets'>
           <ResultRow
             label='Daily Calories'
-            value={dailyCalorieTarget}
+            value={macros?.calories}
             unit='kcal'
             color='#2563EB'
           />

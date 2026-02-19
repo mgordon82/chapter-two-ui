@@ -1,12 +1,12 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export type MacroField = 'calories' | 'protein' | 'carbs' | 'fats';
+export type MacroField = 'calories' | 'protein' | 'carbs' | 'fat';
 
 export interface MacrosState {
   calories: string;
   protein: string;
   carbs: string;
-  fats: string;
+  fat: string;
 }
 
 export interface PlanState {
@@ -21,7 +21,7 @@ const emptyMacros: MacrosState = {
   calories: '',
   protein: '',
   carbs: '',
-  fats: ''
+  fat: ''
 };
 
 const initialState: PlanState = {
@@ -49,7 +49,6 @@ const planSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Update one field (used by each input)
     macroFieldUpdated(
       state,
       action: PayloadAction<{ field: MacroField; value: string }>
@@ -63,7 +62,6 @@ const planSlice = createSlice({
       state.details = details;
     },
 
-    // Optional convenience if you ever want to set all at once (presets, autofill, etc.)
     macrosSet(state, action: PayloadAction<MacrosState>) {
       state.macros = action.payload;
     },

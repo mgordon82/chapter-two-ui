@@ -10,8 +10,13 @@ import ProfileDetails from './components/ProfileDetails';
 import { CoachCalculatedValuesPanel } from './components/CoachCalculatedValuesPanel';
 
 import { useClientProfileForm } from './hooks/useClientProfileForm';
+import { useDispatch } from 'react-redux';
+import { saveNutritionProfile } from './redux/nutritionCalculatorSlice';
+import { calculateMacros, type MacroResult } from './calculations/dailyMacros';
+import { calculateDailyCalorieTarget } from './calculations/dailyCalorieTarget';
 
 const ClientNutritionCalculator = () => {
+  const dispatch = useDispatch();
   const {
     form,
     setField,
@@ -56,7 +61,16 @@ const ClientNutritionCalculator = () => {
     return calcTdee(bmr, inputs.activityLevel);
   }, [bmr, inputs.activityLevel]);
 
-  const handleSubmit = () => {
+  const dailyCalorieTarget =
+    tdee && inputs.goal && calculateDailyCalorieTarget(tdee, inputs.goal);
+
+  let macros: MacroResult | null = null;
+
+  if (dailyCalorieTarget != null && inputs.weightKg != null) {
+    macros = calculateMacros(dailyCalorieTarget, inputs.weightKg);
+  }
+
+  const handleSave = () => {
     const payload = {
       inputs,
       calculated: {
@@ -64,13 +78,15 @@ const ClientNutritionCalculator = () => {
         tdee,
         weightGoal
       },
+      macros,
       preferences: {
         measurementUnitPref: form.measurementUnitPref,
         weightUnitPref: form.weightUnitPref
       }
     };
 
-    console.log('Form Submitted:', payload);
+    console.log('Form Saved:', payload);
+    dispatch(saveNutritionProfile(payload));
   };
 
   return (
@@ -122,7 +138,7 @@ const ClientNutritionCalculator = () => {
 
             <Button
               variant='contained'
-              onClick={handleSubmit}
+              onClick={handleSave}
               sx={{
                 width: { xs: '100%', sm: 'auto' }
               }}
@@ -141,10 +157,9 @@ const ClientNutritionCalculator = () => {
         >
           <CoachCalculatedValuesPanel
             weightGoalLabel={weightGoal.label}
-            goal={inputs.goal}
             bmr={bmr}
             tdee={tdee}
-            weightKg={inputs.weightKg}
+            macros={macros}
           />
         </Box>
       </Stack>

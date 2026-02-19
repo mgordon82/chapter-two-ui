@@ -16,16 +16,67 @@ import {
   detailsUpdated
 } from '../planSlice';
 import { insightsCleared } from '../../insights/insightsSlice';
+import type { MacroResult } from '../../nutritionCalculator/calculations/dailyMacros';
 
-type MacroField = 'calories' | 'protein' | 'carbs' | 'fats';
+type MacroField = 'calories' | 'protein' | 'carbs' | 'fat';
+
+const toStr = (v: number | null | undefined) => (v == null ? '' : String(v));
 
 const PlanInput: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { macros, details, isAnalyzing, error } = useAppSelector(
-    (state) => state.plan
+
+  const {
+    macros: planMacros,
+    details,
+    isAnalyzing,
+    error
+  } = useAppSelector((state) => state.plan);
+
+  const savedMacros = useAppSelector(
+    (state) => state.nutritionCalculator.lastSubmitted?.macros ?? null
   );
 
   const [openMoreDetails, setOpenMoreDetails] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!savedMacros) return;
+
+    const planEmpty =
+      planMacros.calories === '' &&
+      planMacros.protein === '' &&
+      planMacros.carbs === '' &&
+      planMacros.fat === '';
+
+    if (!planEmpty) return;
+
+    dispatch(
+      macroFieldUpdated({
+        field: 'calories',
+        value: toStr(savedMacros.calories)
+      })
+    );
+    dispatch(
+      macroFieldUpdated({ field: 'protein', value: toStr(savedMacros.protein) })
+    );
+    dispatch(
+      macroFieldUpdated({ field: 'carbs', value: toStr(savedMacros.carbs) })
+    );
+    dispatch(
+      macroFieldUpdated({
+        field: 'fat',
+        value: toStr(
+          (savedMacros as MacroResult).fat ?? (savedMacros as MacroResult).fat
+        )
+      })
+    );
+  }, [
+    dispatch,
+    savedMacros,
+    planMacros.calories,
+    planMacros.protein,
+    planMacros.carbs,
+    planMacros.fat
+  ]);
 
   const handleMacroChange =
     (field: MacroField) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +93,7 @@ const PlanInput: React.FC = () => {
   };
 
   const handleOpenDetails = () => {
-    setOpenMoreDetails(!openMoreDetails);
+    setOpenMoreDetails((v) => !v);
   };
 
   const handleSubmit = () => {
@@ -50,10 +101,10 @@ const PlanInput: React.FC = () => {
   };
 
   const allFilled =
-    macros.calories !== '' &&
-    macros.protein !== '' &&
-    macros.carbs !== '' &&
-    macros.fats !== '';
+    planMacros.calories !== '' &&
+    planMacros.protein !== '' &&
+    planMacros.carbs !== '' &&
+    planMacros.fat !== '';
 
   return (
     <Paper
@@ -80,7 +131,7 @@ const PlanInput: React.FC = () => {
             type='number'
             required
             fullWidth
-            value={macros.calories}
+            value={planMacros.calories}
             onChange={handleMacroChange('calories')}
             inputProps={{ min: 0, step: 1 }}
           />
@@ -90,7 +141,7 @@ const PlanInput: React.FC = () => {
             type='number'
             required
             fullWidth
-            value={macros.protein}
+            value={planMacros.protein}
             onChange={handleMacroChange('protein')}
             inputProps={{ min: 0, step: 1 }}
           />
@@ -100,7 +151,7 @@ const PlanInput: React.FC = () => {
             type='number'
             required
             fullWidth
-            value={macros.carbs}
+            value={planMacros.carbs}
             onChange={handleMacroChange('carbs')}
             inputProps={{ min: 0, step: 1 }}
           />
@@ -110,8 +161,8 @@ const PlanInput: React.FC = () => {
             type='number'
             required
             fullWidth
-            value={macros.fats}
-            onChange={handleMacroChange('fats')}
+            value={planMacros.fat}
+            onChange={handleMacroChange('fat')}
             inputProps={{ min: 0, step: 1 }}
           />
         </Stack>
@@ -121,6 +172,7 @@ const PlanInput: React.FC = () => {
             + Add Details
           </Button>
         </Stack>
+
         {openMoreDetails && (
           <Stack flexGrow={1}>
             <Typography>Additional Details</Typography>
@@ -158,9 +210,8 @@ const PlanInput: React.FC = () => {
               variant='contained'
               disabled={!allFilled}
               onClick={handleSubmit}
-              loading={isAnalyzing}
-              loadingIndicator='Analyzing...'
               sx={{ px: 3 }}
+              loading={isAnalyzing}
             >
               Analyze
             </Button>

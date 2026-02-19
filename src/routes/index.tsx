@@ -29,6 +29,10 @@ const AppRoutes: React.FC = () => {
               path='/app/nutrition-calculator'
               element={<ClientNutritionCalculator />}
             />
+            <Route
+              path='/app/nutrition-profile'
+              element={<ClientNutritionCalculator />}
+            />
           </Route>
         </Route>
 
