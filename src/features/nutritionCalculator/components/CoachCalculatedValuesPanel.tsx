@@ -81,16 +81,6 @@ export const CoachCalculatedValuesPanel = ({
 
         <Divider />
 
-        {/* <Section title='Plan Targets'>
-          <ResultRow
-            label='Calorie Target'
-            value={dailyCalorieTarget}
-            unit='kcal/day'
-          />
-        </Section>
-
-        <Divider /> */}
-
         <Section title='Daily Targets'>
           <ResultRow
             label='Daily Calories'
