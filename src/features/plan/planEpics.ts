@@ -8,6 +8,7 @@ import {
   type PlanState
 } from './planSlice';
 import { insightsSet } from '../insights/insightsSlice';
+import { getAccessToken } from '../../auth/helpers/getAccessToken';
 
 type ApiAnalysisResponse = {
   analysisSummary: string;
@@ -68,13 +69,21 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
       };
 
       return from(
-        fetch(`${API_URL}/api/plan/analyze`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        }).then(async (res) => {
+        (async () => {
+          const token = await getAccessToken();
+          if (!token) {
+            throw new Error('You must be signed in to analyze a plan.');
+          }
+
+          const res = await fetch(`${API_URL}/api/plan/analyze`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+
           if (!res.ok) {
             const message =
               (await res.text().catch(() => '')) ||
@@ -82,8 +91,8 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
             throw new Error(message);
           }
 
-          return res.json() as Promise<ApiAnalysisResponse>;
-        })
+          return (await res.json()) as ApiAnalysisResponse;
+        })()
       ).pipe(
         mergeMap((data) => of(insightsSet(data), planAnalysisSucceeded())),
         catchError((err) =>

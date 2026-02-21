@@ -3,9 +3,17 @@ import { Outlet } from 'react-router-dom';
 import { Box } from '@mui/material';
 import BackgroundImg from '../../assets/background.svg?url';
 import Footer from './Footer';
+import { useDispatch } from 'react-redux';
+import { authInitRequested } from '../../auth/authSlice';
 
 const AppLayout: React.FC = () => {
   const drawerWidth = 240;
+
+  const dispatch = useDispatch();
+
+  React.useEffect(() => {
+    dispatch(authInitRequested());
+  }, [dispatch]);
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100vh' }}>

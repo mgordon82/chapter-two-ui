@@ -7,6 +7,9 @@ import App from './App';
 import { store } from './app/store';
 import { theme } from './theme/theme';
 import './index.css';
+import { configureAmplify } from './auth/amplify';
+
+configureAmplify();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
