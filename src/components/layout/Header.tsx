@@ -14,11 +14,11 @@ import {
   Divider,
   Box,
   useMediaQuery,
-  Avatar
+  Avatar,
+  Button
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 import MacroItem from '../macroItem';
@@ -52,11 +52,6 @@ const Header: React.FC = () => {
 
   const navItems = [
     {
-      label: 'Client Nutrition Profile',
-      path: '/app/nutrition-profile',
-      icon: <PersonIcon />
-    },
-    {
       label: 'Meal Generator',
       path: '/app/meal-generator',
       icon: <RestaurantMenuIcon />
@@ -75,9 +70,16 @@ const Header: React.FC = () => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
         <Stack direction='row' alignItems='center' spacing={1.5}>
-          <Avatar sx={{ width: 40, height: 40 }}>
-            {initials(user?.displayName)}
-          </Avatar>
+          <Button
+            onClick={() => {
+              navigate('/app/nutrition-profile');
+              closeMobileDrawer();
+            }}
+          >
+            <Avatar sx={{ width: 40, height: 40 }}>
+              {initials(user?.displayName)}
+            </Avatar>
+          </Button>
 
           <Box sx={{ minWidth: 0 }}>
             <Typography variant='subtitle1' fontWeight={700} noWrap>

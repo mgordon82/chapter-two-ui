@@ -7,8 +7,6 @@ import { useDispatch } from 'react-redux';
 import { authInitRequested } from '../../auth/authSlice';
 
 const AppLayout: React.FC = () => {
-  const drawerWidth = 240;
-
   const dispatch = useDispatch();
 
   React.useEffect(() => {
@@ -39,7 +37,6 @@ const AppLayout: React.FC = () => {
 
       <Box
         sx={{
-          ml: { md: `${drawerWidth}px` },
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column'
