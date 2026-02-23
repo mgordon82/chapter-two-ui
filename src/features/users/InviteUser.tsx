@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import {
   inviteUserCleared,
   inviteUserRequested
-} from './redux/InviteUserSlice';
+} from './redux/inviteUserSlice';
 
 const InviteUser: React.FC = () => {
   const dispatch = useAppDispatch();
