@@ -21,6 +21,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
 import MacroItem from '../macroItem';
 import { useAppSelector } from '../../app/hooks';
@@ -42,7 +43,15 @@ const Header: React.FC = () => {
     (state) => state.nutritionCalculator.lastSubmitted?.macros
   );
 
-  const user = useAppSelector((state) => state.auth.currentUser);
+  const profile = useAppSelector(
+    (s) => s.nutritionCalculator.loadedProfile?.profile
+  );
+
+  const firstName = profile?.firstName?.trim() ?? '';
+  const lastName = profile?.lastName?.trim() ?? '';
+
+  const displayName = [firstName, lastName].filter(Boolean).join(' ');
+  const greeting = displayName || 'Welcome';
 
   const toggleMobileDrawer = () => setMobileOpen((v) => !v);
   const closeMobileDrawer = () => setMobileOpen(false);
@@ -65,11 +74,11 @@ const Header: React.FC = () => {
   ];
 
   const initials = (name?: string | null) => {
-    if (!name) return '?';
+    if (!name) return <PersonOutlineIcon />;
     const parts = name.trim().split(' ').filter(Boolean);
     const a = parts[0]?.[0] ?? '';
     const b = parts[1]?.[0] ?? '';
-    return (a + b).toUpperCase() || a.toUpperCase() || '?';
+    return (a + b).toUpperCase() || a.toUpperCase() || <PersonOutlineIcon />;
   };
 
   const drawerContent = (
@@ -83,7 +92,7 @@ const Header: React.FC = () => {
             }}
           >
             <Avatar sx={{ width: 40, height: 40 }}>
-              {initials(user?.displayName)}
+              {initials(displayName)}
             </Avatar>
           </Button>
 
@@ -96,7 +105,7 @@ const Header: React.FC = () => {
               }}
             >
               <Typography variant='subtitle1' fontWeight={700} noWrap>
-                {user?.displayName ?? 'Welcome'}
+                {greeting}
               </Typography>
             </Button>
           </Box>
