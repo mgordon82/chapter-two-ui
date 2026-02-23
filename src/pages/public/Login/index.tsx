@@ -1,4 +1,3 @@
-// src/pages/public/Login/index.tsx
 import React from 'react';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';

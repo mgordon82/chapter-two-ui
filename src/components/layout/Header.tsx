@@ -20,6 +20,7 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 import MacroItem from '../macroItem';
 import { useAppSelector } from '../../app/hooks';
@@ -55,6 +56,11 @@ const Header: React.FC = () => {
       label: 'Meal Generator',
       path: '/app/meal-generator',
       icon: <RestaurantMenuIcon />
+    },
+    {
+      label: 'Invite User',
+      path: '/app/users/invite',
+      icon: <PersonAddIcon />
     }
   ];
 

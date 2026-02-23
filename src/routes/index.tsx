@@ -10,6 +10,7 @@ import MealGenerator from '../pages/app/MealGenerator';
 import AppLayout from '../components/layout/AppLayout';
 import ClientNutritionCalculator from '../pages/app/ClientNutritionCalculator';
 import Login from '../pages/public/Login';
+import InviteUser from '../features/users/InviteUser';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -27,6 +28,7 @@ const AppRoutes: React.FC = () => {
               element={<ClientNutritionCalculator />}
             />
             <Route path='/app/meal-generator' element={<MealGenerator />} />
+            <Route path='/app/users/invite' element={<InviteUser />} />
           </Route>
         </Route>
 
