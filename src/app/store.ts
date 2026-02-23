@@ -4,7 +4,7 @@ import authReducer from '../auth/authSlice';
 import planReducer from '../features/plan/planSlice';
 import insightsReducer from '../features/insights/insightsSlice';
 import nutritionCalculatorReducer from '../features/nutritionCalculator/redux/nutritionCalculatorSlice';
-import inviteUserReducer from '../features/users/redux/InviteUserSlice';
+import inviteUserReducer from '../features/users/redux/inviteUserSlice';
 import { rootEpic } from './rootEpic';
 
 const epicMiddleware = createEpicMiddleware();
