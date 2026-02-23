@@ -14,6 +14,7 @@ import {
 
 import { completeNewPassword, isAuthenticated, login, logout } from './index';
 import { fetchCurrentUser } from './helpers/fetchCurrentUser';
+import { activateCurrentUser } from './helpers/activateCurrentUser';
 
 type AppAction = { type: string; payload?: unknown };
 
@@ -114,7 +115,52 @@ export const authEpic: Epic = (action$) =>
         const { newPassword } = a.payload as { newPassword: string };
 
         return of(authStepSet('SIGNING_IN')).pipe(
-          mergeMap(() => from(completeNewPassword(newPassword))),
+          mergeMap(() =>
+            from(completeNewPassword(newPassword)).pipe(
+              catchError((err: unknown) => {
+                const msg =
+                  err instanceof Error
+                    ? err.message
+                    : 'Failed to set new password';
+
+                return of(
+                  authErrorSet(msg),
+                  authStepSet('NEW_PASSWORD_REQUIRED')
+                );
+              })
+            )
+          ),
+
+          mergeMap(() =>
+            from(activateCurrentUser()).pipe(
+              catchError((err: unknown) => {
+                const msg =
+                  err instanceof Error ? err.message : 'Activation failed';
+
+                return from(logout()).pipe(
+                  mergeMap(() =>
+                    of(
+                      currentUserSet(null),
+                      authErrorSet(
+                        `Password updated, but activation failed. Please sign in again. (${msg})`
+                      ),
+                      authStepSet('SIGNED_OUT')
+                    )
+                  ),
+                  catchError(() =>
+                    of(
+                      currentUserSet(null),
+                      authErrorSet(
+                        `Password updated, but activation failed. Please sign in again. (${msg})`
+                      ),
+                      authStepSet('SIGNED_OUT')
+                    )
+                  )
+                );
+              })
+            )
+          ),
+
           mergeMap(() =>
             from(fetchCurrentUser()).pipe(
               mergeMap((user) =>
@@ -146,12 +192,7 @@ export const authEpic: Epic = (action$) =>
                 );
               })
             )
-          ),
-          catchError((err: unknown) => {
-            const msg =
-              err instanceof Error ? err.message : 'Failed to set new password';
-            return of(authErrorSet(msg), authStepSet('NEW_PASSWORD_REQUIRED'));
-          })
+          )
         );
       }
 
