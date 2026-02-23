@@ -1,5 +1,3 @@
-// import { round } from '../../../utils/calculations/helpers';
-
 export interface MacroResult {
   calories: number | null;
   protein: number | null;

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { calcWeightGoal } from './calculations/weightGoal';
 import { calcBmr } from './calculations/bmr';
@@ -11,12 +11,27 @@ import { CoachCalculatedValuesPanel } from './components/CoachCalculatedValuesPa
 
 import { useClientProfileForm } from './hooks/useClientProfileForm';
 import { useDispatch } from 'react-redux';
-import { saveNutritionProfile } from './redux/nutritionCalculatorSlice';
+import {
+  loadUserProfileRequested,
+  persistUserProfileRequested,
+  saveNutritionProfile,
+  type UserProfileUpsertPayload
+} from './redux/nutritionCalculatorSlice';
 import { calculateMacros, type MacroResult } from './calculations/dailyMacros';
 import { calculateDailyCalorieTarget } from './calculations/dailyCalorieTarget';
+import { useAppSelector } from '../../app/hooks';
 
 const ClientNutritionCalculator = () => {
   const dispatch = useDispatch();
+  const hydratedRef = useRef(false);
+  const loadedProfile = useAppSelector(
+    (s) => s.nutritionCalculator.loadedProfile
+  );
+
+  useEffect(() => {
+    dispatch(loadUserProfileRequested());
+  }, [dispatch]);
+
   const {
     form,
     setField,
@@ -29,6 +44,66 @@ const ClientNutritionCalculator = () => {
     handleMeasurementUnitPrefChange,
     handleWeightUnitPrefChange
   } = useClientProfileForm();
+
+  useEffect(() => {
+    if (!loadedProfile) return;
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    const p = loadedProfile.profile;
+
+    handleMeasurementUnitPrefChange(p.preferences.measurementUnitPref);
+    handleWeightUnitPrefChange(p.preferences.weightUnitPref);
+
+    setField('firstName', p.firstName ?? '');
+    setField('lastName', p.lastName ?? '');
+    setField('gender', p.gender ?? '');
+    setField('activityLevel', p.activityLevel ?? '');
+    setField('goal', p.goal ?? '');
+    setField('rateLevel', p.rateLevel ?? '');
+    setField('age', p.age != null ? String(p.age) : '');
+
+    if (p.weightKg != null) {
+      if (p.preferences.weightUnitPref === 'lbs') {
+        const lbs = p.weightKg * 2.2046226218;
+        handleWeightDisplayChange(String(Math.round(lbs)));
+      } else {
+        handleWeightDisplayChange(String(p.weightKg));
+      }
+    }
+
+    if (p.goalWeightKg != null) {
+      if (p.preferences.weightUnitPref === 'lbs') {
+        const lbs = p.goalWeightKg * 2.2046226218;
+        handleGoalWeightDisplayChange(String(Math.round(lbs)));
+      } else {
+        handleGoalWeightDisplayChange(String(p.goalWeightKg));
+      }
+    }
+
+    if (p.heightCm != null) {
+      if (p.preferences.measurementUnitPref === 'ft') {
+        const totalIn = p.heightCm / 2.54;
+        const feet = Math.floor(totalIn / 12);
+        const inches = Math.round(totalIn - feet * 12);
+
+        handleHeightFeetChange(String(feet));
+        handleHeightInchesChange(String(inches));
+      } else {
+        handleHeightCmChange(String(p.heightCm));
+      }
+    }
+
+    // 4) CRITICAL: stamp canonical metric fields LAST so calculations + save work
+    setField('heightCm', p.heightCm != null ? String(p.heightCm) : '');
+    setField('weightKg', p.weightKg != null ? String(p.weightKg) : '');
+    setField(
+      'goalWeightKg',
+      p.goalWeightKg != null ? String(p.goalWeightKg) : ''
+    );
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedProfile]);
 
   const inputs = useMemo(() => {
     return {
@@ -71,13 +146,9 @@ const ClientNutritionCalculator = () => {
   }
 
   const handleSave = () => {
-    const payload = {
+    const reduxPayload = {
       inputs,
-      calculated: {
-        bmr,
-        tdee,
-        weightGoal
-      },
+      calculated: { bmr, tdee, weightGoal },
       macros,
       preferences: {
         measurementUnitPref: form.measurementUnitPref,
@@ -85,8 +156,45 @@ const ClientNutritionCalculator = () => {
       }
     };
 
-    console.log('Form Saved:', payload);
-    dispatch(saveNutritionProfile(payload));
+    dispatch(saveNutritionProfile(reduxPayload));
+
+    if (!macros) {
+      return;
+    }
+
+    const apiPayload: UserProfileUpsertPayload = {
+      profile: {
+        firstName: form.firstName || null,
+        lastName: form.lastName || null,
+        gender: inputs.gender,
+        age: inputs.age,
+        heightCm: inputs.heightCm,
+        weightKg: inputs.weightKg,
+        goalWeightKg: inputs.goalWeightKg,
+        activityLevel: inputs.activityLevel,
+        goal: inputs.goal,
+        rateLevel: inputs.rateLevel,
+        preferences: {
+          measurementUnitPref: form.measurementUnitPref,
+          weightUnitPref: form.weightUnitPref
+        }
+      },
+      calculated: {
+        bmr,
+        tdee,
+        weightGoal
+      },
+      nutrition: {
+        targets: {
+          calories: macros.calories,
+          protein: macros.protein,
+          carbs: macros.carbs,
+          fats: macros.fat
+        }
+      }
+    };
+
+    dispatch(persistUserProfileRequested(apiPayload));
   };
 
   return (

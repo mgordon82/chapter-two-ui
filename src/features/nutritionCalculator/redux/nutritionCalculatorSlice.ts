@@ -1,6 +1,40 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../../../app/store';
 import type { MacroResult } from '../calculations/dailyMacros';
+import type { UserProfileResponse } from '../helpers/fetchUserProfile';
+
+export type UserProfileUpsertPayload = {
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    gender: string | null;
+    age: number | null;
+    heightCm: number | null;
+    weightKg: number | null;
+    goalWeightKg: number | null;
+    activityLevel: string | null;
+    goal: string | null;
+    rateLevel: string | null;
+    preferences: {
+      measurementUnitPref: string;
+      weightUnitPref: string;
+    };
+  };
+  calculated: {
+    bmr: number | null;
+    tdee: number | null;
+    weightGoal: unknown;
+  };
+  nutrition: {
+    targets: {
+      calories: number | null;
+      protein: number | null;
+      carbs: number | null;
+      fats: number | null;
+    };
+  };
+};
 
 // If you already have proper types for these, replace the `unknown`/`Record` types.
 export type NutritionCalculatorSavePayload = {
@@ -25,11 +59,23 @@ export type SavedNutritionProfile = NutritionCalculatorSavePayload & {
 type NutritionCalculatorState = {
   lastSubmitted: SavedNutritionProfile | null;
   history: SavedNutritionProfile[];
+  isSavingRemote: boolean;
+  remoteError: string | null;
+  remoteSavedAt: string | null;
+  isLoadingProfile: boolean;
+  loadProfileError: string | null;
+  loadedProfile: UserProfileResponse | null;
 };
 
 const initialState: NutritionCalculatorState = {
   lastSubmitted: null,
-  history: []
+  history: [],
+  isSavingRemote: false,
+  remoteError: null,
+  remoteSavedAt: null,
+  isLoadingProfile: false,
+  loadProfileError: null,
+  loadedProfile: null
 };
 
 const makeId = () =>
@@ -61,6 +107,42 @@ const nutritionCalculatorSlice = createSlice({
 
     clearLastSubmitted(state) {
       state.lastSubmitted = null;
+    },
+    persistUserProfileRequested(
+      state,
+      _action: PayloadAction<UserProfileUpsertPayload>
+    ) {
+      state.isSavingRemote = true;
+      state.remoteError = null;
+    },
+
+    persistUserProfileSucceeded(state) {
+      state.isSavingRemote = false;
+      state.remoteError = null;
+      state.remoteSavedAt = new Date().toISOString();
+    },
+
+    persistUserProfileFailed(state, action: PayloadAction<string>) {
+      state.isSavingRemote = false;
+      state.remoteError = action.payload;
+    },
+    loadUserProfileRequested(state) {
+      state.isLoadingProfile = true;
+      state.loadProfileError = null;
+    },
+
+    loadUserProfileSucceeded(
+      state,
+      action: PayloadAction<UserProfileResponse>
+    ) {
+      state.isLoadingProfile = false;
+      state.loadProfileError = null;
+      state.loadedProfile = action.payload;
+    },
+
+    loadUserProfileFailed(state, action: PayloadAction<string>) {
+      state.isLoadingProfile = false;
+      state.loadProfileError = action.payload;
     }
   }
 });
@@ -68,7 +150,13 @@ const nutritionCalculatorSlice = createSlice({
 export const {
   saveNutritionProfile,
   clearNutritionHistory,
-  clearLastSubmitted
+  clearLastSubmitted,
+  persistUserProfileRequested,
+  persistUserProfileSucceeded,
+  persistUserProfileFailed,
+  loadUserProfileRequested,
+  loadUserProfileSucceeded,
+  loadUserProfileFailed
 } = nutritionCalculatorSlice.actions;
 
 export default nutritionCalculatorSlice.reducer;

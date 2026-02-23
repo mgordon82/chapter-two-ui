@@ -16,7 +16,6 @@ import {
   detailsUpdated
 } from '../planSlice';
 import { insightsCleared } from '../../insights/insightsSlice';
-import type { MacroResult } from '../../nutritionCalculator/calculations/dailyMacros';
 
 type MacroField = 'calories' | 'protein' | 'carbs' | 'fat';
 
@@ -32,15 +31,18 @@ const PlanInput: React.FC = () => {
     error
   } = useAppSelector((state) => state.plan);
 
-  const savedMacros = useAppSelector(
+  const serverTargets = useAppSelector(
+    (state) =>
+      state.nutritionCalculator.loadedProfile?.nutrition?.targets ?? null
+  );
+
+  const localMacros = useAppSelector(
     (state) => state.nutritionCalculator.lastSubmitted?.macros ?? null
   );
 
   const [openMoreDetails, setOpenMoreDetails] = React.useState(false);
 
   React.useEffect(() => {
-    if (!savedMacros) return;
-
     const planEmpty =
       planMacros.calories === '' &&
       planMacros.protein === '' &&
@@ -49,29 +51,54 @@ const PlanInput: React.FC = () => {
 
     if (!planEmpty) return;
 
-    dispatch(
-      macroFieldUpdated({
-        field: 'calories',
-        value: toStr(savedMacros.calories)
-      })
-    );
-    dispatch(
-      macroFieldUpdated({ field: 'protein', value: toStr(savedMacros.protein) })
-    );
-    dispatch(
-      macroFieldUpdated({ field: 'carbs', value: toStr(savedMacros.carbs) })
-    );
-    dispatch(
-      macroFieldUpdated({
-        field: 'fat',
-        value: toStr(
-          (savedMacros as MacroResult).fat ?? (savedMacros as MacroResult).fat
-        )
-      })
-    );
+    // Prefer server targets
+    if (serverTargets) {
+      dispatch(
+        macroFieldUpdated({
+          field: 'calories',
+          value: toStr(serverTargets.calories)
+        })
+      );
+      dispatch(
+        macroFieldUpdated({
+          field: 'protein',
+          value: toStr(serverTargets.protein)
+        })
+      );
+      dispatch(
+        macroFieldUpdated({ field: 'carbs', value: toStr(serverTargets.carbs) })
+      );
+      dispatch(
+        macroFieldUpdated({ field: 'fat', value: toStr(serverTargets.fats) })
+      );
+      return;
+    }
+
+    // Fallback to lastSubmitted macros (local)
+    if (localMacros) {
+      dispatch(
+        macroFieldUpdated({
+          field: 'calories',
+          value: toStr(localMacros.calories)
+        })
+      );
+      dispatch(
+        macroFieldUpdated({
+          field: 'protein',
+          value: toStr(localMacros.protein)
+        })
+      );
+      dispatch(
+        macroFieldUpdated({ field: 'carbs', value: toStr(localMacros.carbs) })
+      );
+      dispatch(
+        macroFieldUpdated({ field: 'fat', value: toStr(localMacros.fat) })
+      );
+    }
   }, [
     dispatch,
-    savedMacros,
+    serverTargets,
+    localMacros,
     planMacros.calories,
     planMacros.protein,
     planMacros.carbs,
