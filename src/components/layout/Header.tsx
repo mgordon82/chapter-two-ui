@@ -88,13 +88,17 @@ const Header: React.FC = () => {
           </Button>
 
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant='subtitle1' fontWeight={700} noWrap>
-              {user?.displayName ?? 'Welcome'}
-            </Typography>
-
-            <Typography variant='body2' color='text.secondary' noWrap>
-              {user?.email ?? ''}
-            </Typography>
+            <Button
+              variant='text'
+              onClick={() => {
+                navigate('/app/nutrition-profile');
+                closeMobileDrawer();
+              }}
+            >
+              <Typography variant='subtitle1' fontWeight={700} noWrap>
+                {user?.displayName ?? 'Welcome'}
+              </Typography>
+            </Button>
           </Box>
         </Stack>
       </Box>

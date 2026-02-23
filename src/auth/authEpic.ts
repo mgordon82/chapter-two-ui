@@ -15,6 +15,7 @@ import {
 import { completeNewPassword, isAuthenticated, login, logout } from './index';
 import { fetchCurrentUser } from './helpers/fetchCurrentUser';
 import { activateCurrentUser } from './helpers/activateCurrentUser';
+import { appReset } from '../app/appActions';
 
 type AppAction = { type: string; payload?: unknown };
 
@@ -32,11 +33,16 @@ export const authEpic: Epic = (action$) =>
     mergeMap((action) => {
       const a = action as AppAction;
 
+      // INIT
       if (a.type === authInitRequested.type) {
         return from(isAuthenticated()).pipe(
           mergeMap((authenticated) => {
             if (!authenticated) {
-              return of(currentUserSet(null), authStepSet('SIGNED_OUT'));
+              return of(
+                appReset(),
+                currentUserSet(null),
+                authStepSet('SIGNED_OUT')
+              );
             }
 
             // If already authenticated, bootstrap the Mongo user
@@ -45,11 +51,13 @@ export const authEpic: Epic = (action$) =>
                 of(currentUserSet(user), authStepSet('SIGNED_IN'))
               ),
               catchError(() =>
-                of(currentUserSet(null), authStepSet('SIGNED_OUT'))
+                of(appReset(), currentUserSet(null), authStepSet('SIGNED_OUT'))
               )
             );
           }),
-          catchError(() => of(currentUserSet(null), authStepSet('SIGNED_OUT')))
+          catchError(() =>
+            of(appReset(), currentUserSet(null), authStepSet('SIGNED_OUT'))
+          )
         );
       }
 
@@ -83,6 +91,7 @@ export const authEpic: Epic = (action$) =>
                 return from(logout()).pipe(
                   mergeMap(() =>
                     of(
+                      appReset(),
                       currentUserSet(null),
                       authErrorSet(msg),
                       authStepSet('SIGNED_OUT')
@@ -90,6 +99,7 @@ export const authEpic: Epic = (action$) =>
                   ),
                   catchError(() =>
                     of(
+                      appReset(),
                       currentUserSet(null),
                       authErrorSet(msg),
                       authStepSet('SIGNED_OUT')
@@ -102,6 +112,7 @@ export const authEpic: Epic = (action$) =>
           catchError((err: unknown) => {
             const msg = err instanceof Error ? err.message : 'Login failed';
             return of(
+              appReset(),
               currentUserSet(null),
               authErrorSet(msg),
               authStepSet('SIGNED_OUT')
@@ -122,7 +133,6 @@ export const authEpic: Epic = (action$) =>
                   err instanceof Error
                     ? err.message
                     : 'Failed to set new password';
-
                 return of(
                   authErrorSet(msg),
                   authStepSet('NEW_PASSWORD_REQUIRED')
@@ -140,6 +150,7 @@ export const authEpic: Epic = (action$) =>
                 return from(logout()).pipe(
                   mergeMap(() =>
                     of(
+                      appReset(),
                       currentUserSet(null),
                       authErrorSet(
                         `Password updated, but activation failed. Please sign in again. (${msg})`
@@ -149,6 +160,7 @@ export const authEpic: Epic = (action$) =>
                   ),
                   catchError(() =>
                     of(
+                      appReset(),
                       currentUserSet(null),
                       authErrorSet(
                         `Password updated, but activation failed. Please sign in again. (${msg})`
@@ -177,6 +189,7 @@ export const authEpic: Epic = (action$) =>
                 return from(logout()).pipe(
                   mergeMap(() =>
                     of(
+                      appReset(),
                       currentUserSet(null),
                       authErrorSet(msg),
                       authStepSet('SIGNED_OUT')
@@ -184,6 +197,7 @@ export const authEpic: Epic = (action$) =>
                   ),
                   catchError(() =>
                     of(
+                      appReset(),
                       currentUserSet(null),
                       authErrorSet(msg),
                       authStepSet('SIGNED_OUT')
@@ -199,10 +213,13 @@ export const authEpic: Epic = (action$) =>
       // LOGOUT
       return of(authStepSet('SIGNING_OUT')).pipe(
         mergeMap(() => from(logout())),
-        mergeMap(() => of(currentUserSet(null), authStepSet('SIGNED_OUT'))),
+        mergeMap(() =>
+          of(appReset(), currentUserSet(null), authStepSet('SIGNED_OUT'))
+        ),
         catchError((err: unknown) => {
           const msg = err instanceof Error ? err.message : 'Logout failed';
           return of(
+            appReset(),
             currentUserSet(null),
             authErrorSet(msg),
             authStepSet('SIGNED_OUT')
