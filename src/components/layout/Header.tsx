@@ -43,19 +43,18 @@ const Header: React.FC = () => {
     (state) => state.nutritionCalculator.lastSubmitted?.macros
   );
 
-  const nutritionProfile = useAppSelector(
-    (s) => s.nutritionCalculator.loadedProfile?.profile
-  );
-
   const currentUser = useAppSelector((s) => s.auth.currentUser);
   const role = currentUser?.role;
 
   const canInvite = role === 'admin' || role === 'staff' || role === 'coach';
 
-  const firstName = nutritionProfile?.firstName?.trim() ?? '';
-  const lastName = nutritionProfile?.lastName?.trim() ?? '';
+  const currentUserDisplayName = currentUser?.displayName?.trim() ?? '';
 
-  const displayName = [firstName, lastName].filter(Boolean).join(' ');
+  const email = currentUser?.email?.trim() ?? '';
+
+  // ✅ full email fallback
+  const displayName = currentUserDisplayName || email;
+
   const greeting = displayName || 'Welcome';
 
   const toggleMobileDrawer = () => setMobileOpen((v) => !v);
@@ -93,7 +92,7 @@ const Header: React.FC = () => {
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
-        <Stack direction='row' alignItems='center' spacing={1.5}>
+        <Stack direction='row' alignItems='center'>
           <Button
             onClick={() => {
               navigate('/app/nutrition-profile');
@@ -113,7 +112,7 @@ const Header: React.FC = () => {
                 closeMobileDrawer();
               }}
             >
-              <Typography variant='subtitle1' fontWeight={700} noWrap>
+              <Typography fontSize='0.75rem' fontWeight={700} noWrap>
                 {greeting}
               </Typography>
             </Button>
@@ -123,7 +122,6 @@ const Header: React.FC = () => {
 
       <Divider />
 
-      {/* Nav */}
       <List sx={{ px: 1, pt: 1 }}>
         {navItems.map((item) => {
           const selected = location.pathname.startsWith(item.path);
@@ -163,7 +161,6 @@ const Header: React.FC = () => {
 
       <Divider />
 
-      {/* Logout */}
       <List sx={{ px: 1, py: 1 }}>
         <ListItemButton
           onClick={() => {
@@ -204,7 +201,6 @@ const Header: React.FC = () => {
             flexGrow={1}
           >
             <Stack direction='row' alignItems='flex-end' gap={2}>
-              {/* Nav trigger (only visible on mobile/tablet) */}
               {!isDesktop && (
                 <IconButton
                   onClick={toggleMobileDrawer}
@@ -218,10 +214,7 @@ const Header: React.FC = () => {
               <Typography
                 variant='h5'
                 fontWeight={700}
-                sx={{
-                  letterSpacing: 0.5,
-                  textTransform: 'uppercase'
-                }}
+                sx={{ letterSpacing: 0.5, textTransform: 'uppercase' }}
               >
                 <Link
                   component={RouterLink}
@@ -229,10 +222,7 @@ const Header: React.FC = () => {
                   underline='none'
                   color='inherit'
                   sx={{
-                    '&:hover': {
-                      color: 'inherit',
-                      textDecoration: 'none'
-                    }
+                    '&:hover': { color: 'inherit', textDecoration: 'none' }
                   }}
                 >
                   Chapter Two
@@ -272,7 +262,6 @@ const Header: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Drawer */}
       <Drawer
         variant='temporary'
         open={mobileOpen}
@@ -286,16 +275,12 @@ const Header: React.FC = () => {
         {drawerContent}
       </Drawer>
 
-      {/* Desktop Drawer (open by default) */}
       <Drawer
         variant='persistent'
         open={isDesktop}
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box'
-          }
+          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
         }}
       >
         {drawerContent}
