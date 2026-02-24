@@ -1,5 +1,5 @@
 import { type Epic } from 'redux-observable';
-import { from, of } from 'rxjs';
+import { from, of, EMPTY } from 'rxjs';
 import { catchError, filter, mergeMap } from 'rxjs/operators';
 
 import {
@@ -19,7 +19,53 @@ import { appReset } from '../app/appActions';
 
 type AppAction = { type: string; payload?: unknown };
 
-export const authEpic: Epic = (action$) =>
+// Helpful union for “actions we emit” in this epic
+type AuthAction =
+  | ReturnType<typeof authErrorSet>
+  | ReturnType<typeof authInitRequested>
+  | ReturnType<typeof authStepSet>
+  | ReturnType<typeof loginRequested>
+  | ReturnType<typeof logoutRequested>
+  | ReturnType<typeof newPasswordSubmitted>
+  | ReturnType<typeof currentUserSet>
+  | ReturnType<typeof appReset>;
+
+type CognitoishError = {
+  __type?: string;
+  message?: string;
+};
+
+const asCognitoishError = (err: unknown): CognitoishError | null => {
+  if (!err || typeof err !== 'object') return null;
+
+  const e = err as Record<string, unknown>;
+  return {
+    __type: typeof e.__type === 'string' ? e.__type : undefined,
+    message: typeof e.message === 'string' ? e.message : undefined
+  };
+};
+
+const isSessionExpiredError = (err: unknown) => {
+  const e = asCognitoishError(err);
+  const type = e?.__type ?? '';
+  const msg = (e?.message ?? '').toLowerCase();
+
+  return (
+    type.includes('NotAuthorizedException') &&
+    msg.includes('session is expired')
+  );
+};
+
+type SetPasswordOutcome =
+  | { ok: true }
+  | {
+      ok: false;
+      actions: Array<
+        ReturnType<typeof authErrorSet> | ReturnType<typeof authStepSet>
+      >;
+    };
+
+export const authEpic: Epic<AuthAction, AuthAction> = (action$) =>
   action$.pipe(
     filter((action) => {
       const a = action as AppAction;
@@ -30,6 +76,7 @@ export const authEpic: Epic = (action$) =>
         a.type === logoutRequested.type
       );
     }),
+
     mergeMap((action) => {
       const a = action as AppAction;
 
@@ -45,7 +92,6 @@ export const authEpic: Epic = (action$) =>
               );
             }
 
-            // If already authenticated, bootstrap the Mongo user
             return from(fetchCurrentUser()).pipe(
               mergeMap((user) =>
                 of(currentUserSet(user), authStepSet('SIGNED_IN'))
@@ -75,7 +121,6 @@ export const authEpic: Epic = (action$) =>
               return of(authStepSet('NEW_PASSWORD_REQUIRED'));
             }
 
-            // Bootstrap app user from Mongo
             return from(fetchCurrentUser()).pipe(
               mergeMap((user) =>
                 of(currentUserSet(user), authStepSet('SIGNED_IN'))
@@ -123,26 +168,59 @@ export const authEpic: Epic = (action$) =>
 
       // NEW PASSWORD
       if (a.type === newPasswordSubmitted.type) {
-        const { newPassword } = a.payload as { newPassword: string };
+        const { newPassword, email, password } = a.payload as {
+          newPassword: string;
+          email: string;
+          password: string;
+        };
+
+        const setPasswordFlow$ = from(completeNewPassword(newPassword)).pipe(
+          mergeMap(() => of<SetPasswordOutcome>({ ok: true })),
+          catchError((err: unknown) => {
+            if (isSessionExpiredError(err)) {
+              return from(login(email, password)).pipe(
+                mergeMap((result) => {
+                  if (result.ok) return of<SetPasswordOutcome>({ ok: true });
+
+                  return from(completeNewPassword(newPassword)).pipe(
+                    mergeMap(() => of<SetPasswordOutcome>({ ok: true }))
+                  );
+                }),
+                catchError((err2: unknown) => {
+                  const msg =
+                    err2 instanceof Error
+                      ? err2.message
+                      : 'Failed to set new password (session expired).';
+
+                  return of<SetPasswordOutcome>({
+                    ok: false,
+                    actions: [
+                      authErrorSet(msg),
+                      authStepSet('NEW_PASSWORD_REQUIRED')
+                    ]
+                  });
+                })
+              );
+            }
+
+            const msg =
+              err instanceof Error ? err.message : 'Failed to set new password';
+
+            return of<SetPasswordOutcome>({
+              ok: false,
+              actions: [authErrorSet(msg), authStepSet('NEW_PASSWORD_REQUIRED')]
+            });
+          })
+        );
 
         return of(authStepSet('SIGNING_IN')).pipe(
-          mergeMap(() =>
-            from(completeNewPassword(newPassword)).pipe(
-              catchError((err: unknown) => {
-                const msg =
-                  err instanceof Error
-                    ? err.message
-                    : 'Failed to set new password';
-                return of(
-                  authErrorSet(msg),
-                  authStepSet('NEW_PASSWORD_REQUIRED')
-                );
-              })
-            )
-          ),
+          mergeMap(() => setPasswordFlow$),
 
-          mergeMap(() =>
-            from(activateCurrentUser()).pipe(
+          mergeMap((outcome) => {
+            if (!outcome.ok) return of(...outcome.actions);
+
+            return from(activateCurrentUser()).pipe(
+              mergeMap(() => of({ ok: true as const })),
               catchError((err: unknown) => {
                 const msg =
                   err instanceof Error ? err.message : 'Activation failed';
@@ -170,11 +248,16 @@ export const authEpic: Epic = (action$) =>
                   )
                 );
               })
-            )
-          ),
+            );
+          }),
 
-          mergeMap(() =>
-            from(fetchCurrentUser()).pipe(
+          mergeMap((maybeOk) => {
+            // if activation failed, we already emitted actions and should stop
+            if (!maybeOk || typeof maybeOk !== 'object' || !('ok' in maybeOk)) {
+              return EMPTY;
+            }
+
+            return from(fetchCurrentUser()).pipe(
               mergeMap((user) =>
                 of(currentUserSet(user), authStepSet('SIGNED_IN'))
               ),
@@ -205,8 +288,8 @@ export const authEpic: Epic = (action$) =>
                   )
                 );
               })
-            )
-          )
+            );
+          })
         );
       }
 

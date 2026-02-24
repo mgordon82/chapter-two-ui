@@ -40,7 +40,11 @@ const authSlice = createSlice({
 
     newPasswordSubmitted: (
       state,
-      _action: PayloadAction<{ newPassword: string }>
+      _action: PayloadAction<{
+        email: string;
+        password: string;
+        newPassword: string;
+      }>
     ) => {
       state.step = 'SIGNING_IN';
       state.error = null;
