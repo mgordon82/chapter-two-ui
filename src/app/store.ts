@@ -1,5 +1,6 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { createEpicMiddleware } from 'redux-observable';
+import type { AnyAction } from '@reduxjs/toolkit';
 
 import authReducer from '../auth/authSlice';
 import planReducer from '../features/plan/planSlice';
@@ -10,8 +11,7 @@ import inviteUserReducer from '../features/users/redux/inviteUserSlice';
 import { rootEpic } from './rootEpic';
 import { appReset } from './appActions';
 
-const epicMiddleware = createEpicMiddleware();
-
+// Build app reducer first
 const appReducer = combineReducers({
   plan: planReducer,
   insights: insightsReducer,
@@ -19,6 +19,12 @@ const appReducer = combineReducers({
   auth: authReducer,
   inviteUser: inviteUserReducer
 });
+
+// ✅ RootState should come from appReducer (not rootReducer) to avoid circular typing issues
+export type RootState = ReturnType<typeof appReducer>;
+
+// ✅ Type epic middleware so it doesn't default to unknown/void
+const epicMiddleware = createEpicMiddleware<AnyAction, AnyAction, RootState>();
 
 const rootReducer: typeof appReducer = (state, action) => {
   if (action.type === appReset.type) {
@@ -36,7 +42,7 @@ export const store = configureStore({
     }).concat(epicMiddleware)
 });
 
+// ✅ rootEpic is typed, and middleware is typed — these now match
 epicMiddleware.run(rootEpic);
 
-export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

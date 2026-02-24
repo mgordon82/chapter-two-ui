@@ -17,6 +17,9 @@ import { fetchCurrentUser } from './helpers/fetchCurrentUser';
 import { activateCurrentUser } from './helpers/activateCurrentUser';
 import { appReset } from '../app/appActions';
 
+import type { AnyAction } from '@reduxjs/toolkit';
+import type { RootState } from '../app/store';
+
 type AppAction = { type: string; payload?: unknown };
 
 type CognitoishError = {
@@ -54,7 +57,7 @@ type SetPasswordOutcome =
       >;
     };
 
-export const authEpic: Epic = (action$) =>
+export const authEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
   action$.pipe(
     filter((action) => {
       const a = action as AppAction;

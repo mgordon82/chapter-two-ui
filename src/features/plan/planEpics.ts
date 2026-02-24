@@ -1,12 +1,16 @@
 import { type Epic, ofType } from 'redux-observable';
 import { from, of } from 'rxjs';
 import { mergeMap, catchError } from 'rxjs/operators';
+
+import type { AnyAction } from '@reduxjs/toolkit';
+import type { RootState } from '../../app/store';
+
 import {
   planAnalysisRequested,
   planAnalysisSucceeded,
-  planAnalysisFailed,
-  type PlanState
+  planAnalysisFailed
 } from './planSlice';
+
 import { insightsSet } from '../insights/insightsSlice';
 import { getAccessToken } from '../../auth/helpers/getAccessToken';
 
@@ -21,8 +25,6 @@ type ApiAnalysisResponse = {
   metadata: unknown;
 };
 
-type RootState = { plan: PlanState };
-
 const parseRequiredNumber = (value: string): number | null => {
   const trimmed = value.trim();
   if (trimmed === '') return null;
@@ -36,12 +38,14 @@ const parseRequiredNumber = (value: string): number | null => {
 
 const toInt = (n: number) => Math.round(n);
 
-export const analyzePlanEpic: Epic = (action$, state$) =>
+export const analyzePlanEpic: Epic<AnyAction, AnyAction, RootState> = (
+  action$,
+  state$
+) =>
   action$.pipe(
     ofType(planAnalysisRequested.type),
     mergeMap(() => {
-      const root = state$.value as unknown as RootState;
-      const { macros, details } = root.plan;
+      const { macros, details } = state$.value.plan;
 
       const caloriesN = parseRequiredNumber(macros.calories);
       const proteinN = parseRequiredNumber(macros.protein);
@@ -95,7 +99,7 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
         })()
       ).pipe(
         mergeMap((data) => of(insightsSet(data), planAnalysisSucceeded())),
-        catchError((err) =>
+        catchError((err: unknown) =>
           of(
             planAnalysisFailed(
               err instanceof Error
@@ -108,4 +112,6 @@ export const analyzePlanEpic: Epic = (action$, state$) =>
     })
   );
 
-export const planEpics: Epic[] = [analyzePlanEpic];
+export const planEpics: Epic<AnyAction, AnyAction, RootState>[] = [
+  analyzePlanEpic
+];

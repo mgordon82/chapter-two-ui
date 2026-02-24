@@ -2,6 +2,9 @@ import { ofType, type Epic } from 'redux-observable';
 import { from, of } from 'rxjs';
 import { catchError, mergeMap } from 'rxjs/operators';
 
+import type { AnyAction, PayloadAction } from '@reduxjs/toolkit';
+import type { RootState } from '../../../app/store';
+
 import {
   inviteUserRequested,
   inviteUserSucceeded,
@@ -10,10 +13,11 @@ import {
   type InviteUserResponse
 } from './inviteUserSlice';
 
-import type { PayloadAction } from '@reduxjs/toolkit';
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
 
-export const inviteUserEpic: Epic = (action$) =>
+export const inviteUserEpic: Epic<AnyAction, AnyAction, RootState> = (
+  action$
+) =>
   action$.pipe(
     ofType(inviteUserRequested.type),
     mergeMap((action) => {
