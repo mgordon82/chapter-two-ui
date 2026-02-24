@@ -1,17 +1,17 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export type RoleField = 'coach' | 'client' | 'admin';
+export type RoleField = 'client' | 'coach' | 'admin' | 'staff';
 
 export type InviteUserRequest = {
   email: string;
-  role?: 'client' | 'coach';
+  role: RoleField; // make required since the UI always picks one
   displayName?: string;
 };
 
 export type InviteUserResponse = {
   id: string | null;
   email: string;
-  role: string;
+  role: RoleField | string; // keep flexible if backend returns broader values
   status: string;
   cognitoSub: string;
 };

@@ -57,7 +57,7 @@ export const inviteUserEpic: Epic<AnyAction, AnyAction, RootState> = (
             err instanceof Error && err.message === 'USER_EXISTS'
               ? 'That user already exists.'
               : err instanceof Error && err.message === 'FORBIDDEN'
-              ? 'Coach access required.'
+              ? 'You do not have permission to invite users.'
               : err instanceof Error && err.message === 'NOT_SIGNED_IN'
               ? 'You must be signed in.'
               : err instanceof Error

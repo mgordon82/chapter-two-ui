@@ -1,15 +1,25 @@
 import React from 'react';
-import { Box, Button, TextField, Typography, Alert } from '@mui/material';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Alert,
+  ToggleButton,
+  ToggleButtonGroup
+} from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import {
   inviteUserCleared,
-  inviteUserRequested
+  inviteUserRequested,
+  type RoleField
 } from './redux/inviteUserSlice';
 
 const InviteUser: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const [email, setEmail] = React.useState('');
+  const [role, setRole] = React.useState<RoleField>('client');
 
   const { isInviting, error, hasInvited, lastResult } = useAppSelector(
     (s) => s.inviteUser
@@ -26,7 +36,7 @@ const InviteUser: React.FC = () => {
     dispatch(
       inviteUserRequested({
         email: emailTrim,
-        role: 'client'
+        role
       })
     );
   };
@@ -56,6 +66,34 @@ const InviteUser: React.FC = () => {
             Invite sent to <strong>{lastResult.email}</strong>
           </Alert>
         )}
+
+        <Box sx={{ mt: 2 }}>
+          <Typography variant='body2' sx={{ mb: 1 }}>
+            Role
+          </Typography>
+
+          <ToggleButtonGroup
+            value={role}
+            exclusive
+            onChange={(_, nextRole: RoleField | null) => {
+              // prevent "unselect" which would set null
+              if (nextRole) setRole(nextRole);
+            }}
+            fullWidth
+            disabled={isInviting}
+            sx={{
+              '& .MuiToggleButton-root': {
+                textTransform: 'none',
+                py: 1.2
+              }
+            }}
+          >
+            <ToggleButton value='client'>Client</ToggleButton>
+            <ToggleButton value='coach'>Coach</ToggleButton>
+            <ToggleButton value='admin'>Admin</ToggleButton>
+            <ToggleButton value='staff'>Staff</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
         <TextField
           label='Enter Email'
