@@ -1,4 +1,8 @@
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
+
+import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
+import type { WeightUnit } from '../../../components/units/WeightUnit';
+
 import type { ActivityLevel } from '../types/activityLevel';
 import type { Gender } from '../types/gender';
 import type { Goal } from '../types/goal';
@@ -19,10 +23,10 @@ export type UserProfileResponse = {
     goal: Goal | null;
     rateLevel: RateLevel | null;
 
-    preferences: {
-      measurementUnitPref: 'ft' | 'cm';
-      weightUnitPref: 'lbs' | 'kg';
-    };
+    preferences?: {
+      measurementUnitPref?: MeasurementUnit | null;
+      weightUnitPref?: WeightUnit | null;
+    } | null;
   };
   calculated: {
     bmr: number | null;

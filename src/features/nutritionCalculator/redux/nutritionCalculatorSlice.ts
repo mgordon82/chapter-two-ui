@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../../../app/store';
+
+import { appReset } from '../../../app/appActions';
+
 import type { MacroResult } from '../calculations/dailyMacros';
 import type { UserProfileResponse } from '../helpers/fetchUserProfile';
+
+import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
+import type { WeightUnit } from '../../../components/units/WeightUnit';
 
 export type UserProfileUpsertPayload = {
   profile: {
@@ -17,8 +23,8 @@ export type UserProfileUpsertPayload = {
     goal: string | null;
     rateLevel: string | null;
     preferences: {
-      measurementUnitPref: string;
-      weightUnitPref: string;
+      measurementUnitPref: MeasurementUnit;
+      weightUnitPref: WeightUnit;
     };
   };
   calculated: {
@@ -36,32 +42,38 @@ export type UserProfileUpsertPayload = {
   };
 };
 
-// If you already have proper types for these, replace the `unknown`/`Record` types.
+export type PersistUserPreferencesPayload = {
+  measurementUnitPref: MeasurementUnit;
+  weightUnitPref: WeightUnit;
+};
+
 export type NutritionCalculatorSavePayload = {
-  inputs: unknown; // ideally: NutritionInputs
+  inputs: unknown;
   calculated: {
     bmr: number | null;
     tdee: number | null;
-    weightGoal: unknown; // ideally: WeightGoal (or a string union)
+    weightGoal: unknown;
   };
   macros: MacroResult | null;
   preferences: {
-    measurementUnitPref: string; // tighten later (e.g., 'imperial' | 'metric')
-    weightUnitPref: string; // tighten later (e.g., 'lb' | 'kg')
+    measurementUnitPref: MeasurementUnit;
+    weightUnitPref: WeightUnit;
   };
 };
 
 export type SavedNutritionProfile = NutritionCalculatorSavePayload & {
   id: string;
-  savedAt: string; // ISO string so it's serializable
+  savedAt: string;
 };
 
 type NutritionCalculatorState = {
   lastSubmitted: SavedNutritionProfile | null;
   history: SavedNutritionProfile[];
+
   isSavingRemote: boolean;
   remoteError: string | null;
   remoteSavedAt: string | null;
+
   isLoadingProfile: boolean;
   loadProfileError: string | null;
   loadedProfile: UserProfileResponse | null;
@@ -82,6 +94,24 @@ const makeId = () =>
   globalThis.crypto?.randomUUID?.() ??
   `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const normalizeUserProfile = (
+  payload: UserProfileResponse
+): UserProfileResponse => {
+  const prefs = payload.profile.preferences ?? null;
+
+  return {
+    ...payload,
+    profile: {
+      ...payload.profile,
+      preferences: {
+        measurementUnitPref: (prefs?.measurementUnitPref ??
+          'cm') as MeasurementUnit,
+        weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit
+      }
+    }
+  };
+};
+
 const nutritionCalculatorSlice = createSlice({
   name: 'nutritionCalculator',
   initialState,
@@ -97,20 +127,56 @@ const nutritionCalculatorSlice = createSlice({
       };
 
       state.lastSubmitted = saved;
-      state.history.unshift(saved); // newest first
+      state.history.unshift(saved);
     },
 
     clearNutritionHistory(state) {
       state.history = [];
-      // keep lastSubmitted as-is (handy), but you can null it too if you want
     },
 
     clearLastSubmitted(state) {
       state.lastSubmitted = null;
     },
+
+    /**
+     * ✅ Optimistic, local-only update of prefs.
+     * Keeps loadedProfile in sync with what the user selected.
+     */
+    userPreferencesUpdated(
+      state,
+      action: PayloadAction<PersistUserPreferencesPayload>
+    ) {
+      if (!state.loadedProfile) return;
+
+      state.loadedProfile = {
+        ...state.loadedProfile,
+        profile: {
+          ...state.loadedProfile.profile,
+          preferences: {
+            measurementUnitPref: action.payload.measurementUnitPref,
+            weightUnitPref: action.payload.weightUnitPref
+          }
+        }
+      };
+    },
+
+    /**
+     * Existing full profile save (e.g., Save button)
+     */
     persistUserProfileRequested(
       state,
       _action: PayloadAction<UserProfileUpsertPayload>
+    ) {
+      state.isSavingRemote = true;
+      state.remoteError = null;
+    },
+
+    /**
+     * ✅ New: preferences-only save (e.g., unit toggles)
+     */
+    persistUserPreferencesRequested(
+      state,
+      _action: PayloadAction<PersistUserPreferencesPayload>
     ) {
       state.isSavingRemote = true;
       state.remoteError = null;
@@ -126,6 +192,7 @@ const nutritionCalculatorSlice = createSlice({
       state.isSavingRemote = false;
       state.remoteError = action.payload;
     },
+
     loadUserProfileRequested(state) {
       state.isLoadingProfile = true;
       state.loadProfileError = null;
@@ -137,13 +204,16 @@ const nutritionCalculatorSlice = createSlice({
     ) {
       state.isLoadingProfile = false;
       state.loadProfileError = null;
-      state.loadedProfile = action.payload;
+      state.loadedProfile = normalizeUserProfile(action.payload);
     },
 
     loadUserProfileFailed(state, action: PayloadAction<string>) {
       state.isLoadingProfile = false;
       state.loadProfileError = action.payload;
     }
+  },
+  extraReducers: (builder) => {
+    builder.addCase(appReset, () => initialState);
   }
 });
 
@@ -151,7 +221,9 @@ export const {
   saveNutritionProfile,
   clearNutritionHistory,
   clearLastSubmitted,
+  userPreferencesUpdated,
   persistUserProfileRequested,
+  persistUserPreferencesRequested,
   persistUserProfileSucceeded,
   persistUserProfileFailed,
   loadUserProfileRequested,
@@ -167,3 +239,16 @@ export const selectLastSubmittedNutrition = (state: RootState) =>
 
 export const selectNutritionHistory = (state: RootState) =>
   state.nutritionCalculator.history;
+
+export const selectLoadedUserProfile = (state: RootState) =>
+  state.nutritionCalculator.loadedProfile;
+
+export const selectUserUnitPrefs = (state: RootState) => {
+  const prefs = state.nutritionCalculator.loadedProfile?.profile.preferences;
+
+  return {
+    measurementUnitPref: (prefs?.measurementUnitPref ??
+      'cm') as MeasurementUnit,
+    weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit
+  };
+};

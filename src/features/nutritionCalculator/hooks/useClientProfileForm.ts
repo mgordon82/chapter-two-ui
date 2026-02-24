@@ -11,7 +11,20 @@ import {
 import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
 import type { WeightUnit } from '../../../components/units/WeightUnit';
 
-export const useClientProfileForm = () => {
+type Prefs = {
+  measurementUnitPref: MeasurementUnit;
+  weightUnitPref: WeightUnit;
+};
+
+type UseClientProfileFormOptions = {
+  /**
+   * Optional hook callback for persisting user preferences.
+   * Called whenever measurementUnitPref or weightUnitPref changes.
+   */
+  onPrefsChange?: (prefs: Prefs) => void;
+};
+
+export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
   const [form, setForm] = useState<FormState>(initialFormState);
 
   const setField = <K extends keyof FormState>(
@@ -71,8 +84,10 @@ export const useClientProfileForm = () => {
 
   const handleMeasurementUnitPrefChange = (unit: MeasurementUnit) => {
     if (unit === form.measurementUnitPref) return;
+
     setForm((prev) => {
       const next: FormState = { ...prev, measurementUnitPref: unit };
+
       if (unit === 'ft') {
         const cm = toNumberOrNaN(prev.heightCm);
         if (!Number.isNaN(cm) && cm > 0) {
@@ -81,6 +96,7 @@ export const useClientProfileForm = () => {
           next.heightInches = String(inches);
         }
       }
+
       if (unit === 'cm') {
         const ft = toNumberOrNaN(prev.heightFeet);
         const inch = toNumberOrNaN(prev.heightInches);
@@ -88,12 +104,20 @@ export const useClientProfileForm = () => {
           next.heightCm = String(round(feetInchesToCm(ft, inch), 2));
         }
       }
+
+      // Notify caller (persist prefs) using the *new* prefs snapshot
+      options?.onPrefsChange?.({
+        measurementUnitPref: unit,
+        weightUnitPref: prev.weightUnitPref
+      });
+
       return next;
     });
   };
 
   const handleWeightUnitPrefChange = (unit: WeightUnit) => {
     if (unit === form.weightUnitPref) return;
+
     setForm((prev) => {
       const next: FormState = { ...prev, weightUnitPref: unit };
 
@@ -112,6 +136,12 @@ export const useClientProfileForm = () => {
             ? String(round(kgToLbs(goalKg), 2))
             : String(round(goalKg, 2));
       }
+
+      // Notify caller (persist prefs) using the *new* prefs snapshot
+      options?.onPrefsChange?.({
+        measurementUnitPref: prev.measurementUnitPref,
+        weightUnitPref: unit
+      });
 
       return next;
     });

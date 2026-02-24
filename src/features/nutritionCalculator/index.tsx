@@ -14,19 +14,51 @@ import { useDispatch } from 'react-redux';
 import {
   loadUserProfileRequested,
   persistUserProfileRequested,
+  persistUserPreferencesRequested,
   saveNutritionProfile,
-  type UserProfileUpsertPayload
+  type UserProfileUpsertPayload,
+  selectLoadedUserProfile,
+  selectUserUnitPrefs,
+  userPreferencesUpdated
 } from './redux/nutritionCalculatorSlice';
 import { calculateMacros, type MacroResult } from './calculations/dailyMacros';
 import { calculateDailyCalorieTarget } from './calculations/dailyCalorieTarget';
 import { useAppSelector } from '../../app/hooks';
+import type { MeasurementUnit } from '../../components/units/MeasurementUnit';
+import type { WeightUnit } from '../../components/units/WeightUnit';
+
+const KG_TO_LBS = 2.2046226218;
+const CM_PER_INCH = 2.54;
+
+const PREFS_DEBOUNCE_MS = 500;
 
 const ClientNutritionCalculator = () => {
   const dispatch = useDispatch();
+
+  // Track whether we've hydrated for the *current* loadedProfile instance
   const hydratedRef = useRef(false);
-  const loadedProfile = useAppSelector(
-    (s) => s.nutritionCalculator.loadedProfile
-  );
+  const prevProfileRef = useRef<ReturnType<
+    typeof selectLoadedUserProfile
+  > | null>(null);
+
+  // Avoid persisting prefs during initial hydration
+  const suppressPrefsPersistRef = useRef(false);
+
+  // Debounce timer for prefs persistence
+  const prefsTimerRef = useRef<number | null>(null);
+  const latestPrefsRef = useRef<{
+    measurementUnitPref: MeasurementUnit;
+    weightUnitPref: WeightUnit;
+  } | null>(null);
+
+  const loadedProfile = useAppSelector(selectLoadedUserProfile);
+  const unitPrefs = useAppSelector(selectUserUnitPrefs);
+
+  // Keep a ref to latest loadedProfile for guard checks
+  const loadedProfileRef = useRef<typeof loadedProfile>(loadedProfile);
+  useEffect(() => {
+    loadedProfileRef.current = loadedProfile;
+  }, [loadedProfile]);
 
   useEffect(() => {
     dispatch(loadUserProfileRequested());
@@ -43,17 +75,68 @@ const ClientNutritionCalculator = () => {
     handleHeightInchesChange,
     handleMeasurementUnitPrefChange,
     handleWeightUnitPrefChange
-  } = useClientProfileForm();
+  } = useClientProfileForm({
+    onPrefsChange: (prefs) => {
+      if (suppressPrefsPersistRef.current) return;
+      if (!loadedProfileRef.current) return;
+
+      // ✅ optimistic Redux sync
+      dispatch(userPreferencesUpdated(prefs));
+
+      latestPrefsRef.current = prefs;
+
+      if (prefsTimerRef.current) {
+        window.clearTimeout(prefsTimerRef.current);
+      }
+
+      prefsTimerRef.current = window.setTimeout(() => {
+        const latest = latestPrefsRef.current;
+        if (!latest) return;
+
+        // ✅ Preferences-only action (epic builds the full payload)
+        dispatch(persistUserPreferencesRequested(latest));
+      }, PREFS_DEBOUNCE_MS);
+    }
+  });
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (prefsTimerRef.current) {
+        window.clearTimeout(prefsTimerRef.current);
+      }
+    };
+  }, []);
+
+  /**
+   * Reset hydration flag when loadedProfile changes (logout/login or user switch)
+   */
+  useEffect(() => {
+    const prev = prevProfileRef.current;
+
+    if (loadedProfile === null) {
+      hydratedRef.current = false;
+      prevProfileRef.current = null;
+      return;
+    }
+
+    if (prev !== loadedProfile) {
+      hydratedRef.current = false;
+      prevProfileRef.current = loadedProfile;
+    }
+  }, [loadedProfile]);
 
   useEffect(() => {
     if (!loadedProfile) return;
     if (hydratedRef.current) return;
-    hydratedRef.current = true;
+
+    suppressPrefsPersistRef.current = true;
 
     const p = loadedProfile.profile;
+    const { measurementUnitPref, weightUnitPref } = unitPrefs;
 
-    handleMeasurementUnitPrefChange(p.preferences.measurementUnitPref);
-    handleWeightUnitPrefChange(p.preferences.weightUnitPref);
+    handleMeasurementUnitPrefChange(measurementUnitPref);
+    handleWeightUnitPrefChange(weightUnitPref);
 
     setField('firstName', p.firstName ?? '');
     setField('lastName', p.lastName ?? '');
@@ -64,8 +147,8 @@ const ClientNutritionCalculator = () => {
     setField('age', p.age != null ? String(p.age) : '');
 
     if (p.weightKg != null) {
-      if (p.preferences.weightUnitPref === 'lbs') {
-        const lbs = p.weightKg * 2.2046226218;
+      if (weightUnitPref === 'lbs') {
+        const lbs = p.weightKg * KG_TO_LBS;
         handleWeightDisplayChange(String(Math.round(lbs)));
       } else {
         handleWeightDisplayChange(String(p.weightKg));
@@ -73,8 +156,8 @@ const ClientNutritionCalculator = () => {
     }
 
     if (p.goalWeightKg != null) {
-      if (p.preferences.weightUnitPref === 'lbs') {
-        const lbs = p.goalWeightKg * 2.2046226218;
+      if (weightUnitPref === 'lbs') {
+        const lbs = p.goalWeightKg * KG_TO_LBS;
         handleGoalWeightDisplayChange(String(Math.round(lbs)));
       } else {
         handleGoalWeightDisplayChange(String(p.goalWeightKg));
@@ -82,8 +165,8 @@ const ClientNutritionCalculator = () => {
     }
 
     if (p.heightCm != null) {
-      if (p.preferences.measurementUnitPref === 'ft') {
-        const totalIn = p.heightCm / 2.54;
+      if (measurementUnitPref === 'ft') {
+        const totalIn = p.heightCm / CM_PER_INCH;
         const feet = Math.floor(totalIn / 12);
         const inches = Math.round(totalIn - feet * 12);
 
@@ -94,7 +177,6 @@ const ClientNutritionCalculator = () => {
       }
     }
 
-    // 4) CRITICAL: stamp canonical metric fields LAST so calculations + save work
     setField('heightCm', p.heightCm != null ? String(p.heightCm) : '');
     setField('weightKg', p.weightKg != null ? String(p.weightKg) : '');
     setField(
@@ -102,8 +184,11 @@ const ClientNutritionCalculator = () => {
       p.goalWeightKg != null ? String(p.goalWeightKg) : ''
     );
 
+    hydratedRef.current = true;
+    suppressPrefsPersistRef.current = false;
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedProfile]);
+  }, [loadedProfile, unitPrefs]);
 
   const inputs = useMemo(() => {
     return {
@@ -203,14 +288,12 @@ const ClientNutritionCalculator = () => {
         Client Nutrition Profile
       </Typography>
 
-      {/* Main layout: column on mobile, row on desktop */}
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         alignItems='stretch'
         justifyContent='space-between'
         gap={{ xs: 2, md: 3 }}
       >
-        {/* Left: form */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <ProfileDetails
             form={form}
@@ -227,7 +310,6 @@ const ClientNutritionCalculator = () => {
             }}
           />
 
-          {/* Buttons: stacked full-width on mobile, inline on desktop */}
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
@@ -237,9 +319,7 @@ const ClientNutritionCalculator = () => {
             <Button
               variant='outlined'
               onClick={clear}
-              sx={{
-                width: { xs: '100%', sm: 'auto' }
-              }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Clear
             </Button>
@@ -247,22 +327,14 @@ const ClientNutritionCalculator = () => {
             <Button
               variant='contained'
               onClick={handleSave}
-              sx={{
-                width: { xs: '100%', sm: 'auto' }
-              }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Save
             </Button>
           </Stack>
         </Box>
 
-        {/* Right: results panel */}
-        <Box
-          sx={{
-            width: { xs: '100%', md: 380 },
-            flexShrink: 0
-          }}
-        >
+        <Box sx={{ width: { xs: '100%', md: 380 }, flexShrink: 0 }}>
           <CoachCalculatedValuesPanel
             weightGoalLabel={weightGoal.label}
             bmr={bmr}
