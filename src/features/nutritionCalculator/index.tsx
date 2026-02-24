@@ -26,6 +26,8 @@ import { calculateDailyCalorieTarget } from './calculations/dailyCalorieTarget';
 import { useAppSelector } from '../../app/hooks';
 import type { MeasurementUnit } from '../../components/units/MeasurementUnit';
 import type { WeightUnit } from '../../components/units/WeightUnit';
+import CheckInsPanel from '../checkIns/components/CheckInsPanel';
+import { createCheckInRequested } from '../checkIns/redux/checkInsSlice';
 
 const KG_TO_LBS = 2.2046226218;
 const CM_PER_INCH = 2.54;
@@ -53,6 +55,7 @@ const ClientNutritionCalculator = () => {
 
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
+  const checkInsCount = useAppSelector((s) => s.checkIns.items.length);
 
   // Keep a ref to latest loadedProfile for guard checks
   const loadedProfileRef = useRef<typeof loadedProfile>(loadedProfile);
@@ -280,6 +283,16 @@ const ClientNutritionCalculator = () => {
     };
 
     dispatch(persistUserProfileRequested(apiPayload));
+    // Seed the first check-in only once (starting weight baseline)
+    if (checkInsCount === 0 && inputs.weightKg != null) {
+      dispatch(
+        createCheckInRequested({
+          recordedAt: new Date().toISOString(),
+          weightKg: Number(inputs.weightKg.toFixed(2)),
+          notes: 'Starting weight'
+        })
+      );
+    }
   };
 
   return (
@@ -293,6 +306,7 @@ const ClientNutritionCalculator = () => {
         alignItems='stretch'
         justifyContent='space-between'
         gap={{ xs: 2, md: 3 }}
+        mb={3}
       >
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <ProfileDetails
@@ -343,6 +357,7 @@ const ClientNutritionCalculator = () => {
           />
         </Box>
       </Stack>
+      <CheckInsPanel />
     </Box>
   );
 };

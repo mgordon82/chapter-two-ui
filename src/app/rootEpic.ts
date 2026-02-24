@@ -8,11 +8,13 @@ import { planEpics } from '../features/plan/planEpics';
 import { insightsEpics } from '../features/insights/insightsEpics';
 import { inviteUserEpic } from '../features/users/redux/inviteUserEpic';
 import { nutritionCalculatorEpics } from '../features/nutritionCalculator/redux/nutritionCalculatorEpics';
+import { checkInsEpics } from '../features/checkIns/redux/checkInsEpics';
 
 export const rootEpic: Epic<AnyAction, AnyAction, RootState> = combineEpics(
   authEpic,
   ...planEpics,
   ...insightsEpics,
   inviteUserEpic,
-  ...nutritionCalculatorEpics
+  ...nutritionCalculatorEpics,
+  ...checkInsEpics
 );
