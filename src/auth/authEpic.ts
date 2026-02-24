@@ -19,17 +19,6 @@ import { appReset } from '../app/appActions';
 
 type AppAction = { type: string; payload?: unknown };
 
-// Helpful union for “actions we emit” in this epic
-type AuthAction =
-  | ReturnType<typeof authErrorSet>
-  | ReturnType<typeof authInitRequested>
-  | ReturnType<typeof authStepSet>
-  | ReturnType<typeof loginRequested>
-  | ReturnType<typeof logoutRequested>
-  | ReturnType<typeof newPasswordSubmitted>
-  | ReturnType<typeof currentUserSet>
-  | ReturnType<typeof appReset>;
-
 type CognitoishError = {
   __type?: string;
   message?: string;
@@ -65,7 +54,7 @@ type SetPasswordOutcome =
       >;
     };
 
-export const authEpic: Epic<AuthAction, AuthAction> = (action$) =>
+export const authEpic: Epic = (action$) =>
   action$.pipe(
     filter((action) => {
       const a = action as AppAction;
