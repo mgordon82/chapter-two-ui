@@ -43,12 +43,17 @@ const Header: React.FC = () => {
     (state) => state.nutritionCalculator.lastSubmitted?.macros
   );
 
-  const profile = useAppSelector(
+  const nutritionProfile = useAppSelector(
     (s) => s.nutritionCalculator.loadedProfile?.profile
   );
 
-  const firstName = profile?.firstName?.trim() ?? '';
-  const lastName = profile?.lastName?.trim() ?? '';
+  const currentUser = useAppSelector((s) => s.auth.currentUser);
+  const role = currentUser?.role;
+
+  const canInvite = role === 'admin' || role === 'staff' || role === 'coach';
+
+  const firstName = nutritionProfile?.firstName?.trim() ?? '';
+  const lastName = nutritionProfile?.lastName?.trim() ?? '';
 
   const displayName = [firstName, lastName].filter(Boolean).join(' ');
   const greeting = displayName || 'Welcome';
@@ -66,11 +71,15 @@ const Header: React.FC = () => {
       path: '/app/meal-generator',
       icon: <RestaurantMenuIcon />
     },
-    {
-      label: 'Invite User',
-      path: '/app/users/invite',
-      icon: <PersonAddIcon />
-    }
+    ...(canInvite
+      ? [
+          {
+            label: 'Invite User',
+            path: '/app/users/invite',
+            icon: <PersonAddIcon />
+          }
+        ]
+      : [])
   ];
 
   const initials = (name?: string | null) => {

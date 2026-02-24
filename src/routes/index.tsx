@@ -11,6 +11,35 @@ import AppLayout from '../components/layout/AppLayout';
 import ClientNutritionCalculator from '../pages/app/ClientNutritionCalculator';
 import Login from '../pages/public/Login';
 import InviteUser from '../features/users/InviteUser';
+import { useAppSelector } from '../app/hooks';
+
+type AppRole = 'client' | 'coach' | 'admin' | 'staff';
+
+const isAppRole = (value: unknown): value is AppRole => {
+  return (
+    value === 'client' ||
+    value === 'coach' ||
+    value === 'admin' ||
+    value === 'staff'
+  );
+};
+
+const RequireRole: React.FC<{
+  allowed: AppRole[];
+  children: React.ReactElement;
+}> = ({ allowed, children }) => {
+  const roleRaw = useAppSelector((s) => s.auth.currentUser?.role);
+
+  if (!isAppRole(roleRaw)) {
+    return <Navigate to='/app/meal-generator' replace />;
+  }
+
+  if (!allowed.includes(roleRaw)) {
+    return <Navigate to='/app/meal-generator' replace />;
+  }
+
+  return children;
+};
 
 const AppRoutes: React.FC = () => {
   return (
@@ -28,7 +57,15 @@ const AppRoutes: React.FC = () => {
               element={<ClientNutritionCalculator />}
             />
             <Route path='/app/meal-generator' element={<MealGenerator />} />
-            <Route path='/app/users/invite' element={<InviteUser />} />
+
+            <Route
+              path='/app/users/invite'
+              element={
+                <RequireRole allowed={['admin', 'staff', 'coach']}>
+                  <InviteUser />
+                </RequireRole>
+              }
+            />
           </Route>
         </Route>
 
