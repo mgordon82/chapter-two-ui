@@ -12,8 +12,11 @@ import {
   TextField,
   Typography,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  IconButton
 } from '@mui/material';
+
+import InsightsIcon from '@mui/icons-material/Insights';
 
 import {
   LineChart,
@@ -232,6 +235,9 @@ const CheckInsPanel = () => {
           </Stack>
 
           <Stack direction='row' alignItems='center' gap={1}>
+            <IconButton aria-label='insights'>
+              <InsightsIcon />
+            </IconButton>
             <ToggleButtonGroup
               size='small'
               value={view}
@@ -243,7 +249,7 @@ const CheckInsPanel = () => {
             </ToggleButtonGroup>
 
             <Button
-              size='small'
+              //   size='small'
               variant='outlined'
               onClick={openDialog}
               disabled={loading}
