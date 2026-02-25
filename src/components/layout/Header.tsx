@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   AppBar,
   Link,
@@ -16,19 +16,26 @@ import { useAppSelector } from '../../app/hooks';
 import { Link as RouterLink } from 'react-router-dom';
 
 import NavDrawer from '../sections/navDrawer';
-
+import { useDispatch } from 'react-redux';
+import { loadUserProfileRequested } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 const drawerWidth = 240;
 
 const Header: React.FC = () => {
+  const dispatch = useDispatch();
   const isDesktop = useMediaQuery('(min-width:900px)');
 
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const macros = useAppSelector(
-    (state) => state.nutritionCalculator.lastSubmitted?.macros
+    (state) =>
+      state.nutritionCalculator?.loadedProfile?.nutrition?.targets ?? null
   );
 
   const toggleMobileDrawer = () => setMobileOpen((v) => !v);
+
+  useEffect(() => {
+    dispatch(loadUserProfileRequested());
+  }, [dispatch]);
 
   return (
     <>
@@ -66,7 +73,7 @@ const Header: React.FC = () => {
               >
                 <Link
                   component={RouterLink}
-                  to='/'
+                  to='/app'
                   underline='none'
                   color='inherit'
                   sx={{
@@ -100,7 +107,7 @@ const Header: React.FC = () => {
                 />
                 <MacroItem
                   name='Fat'
-                  value={macros.fat || 0}
+                  value={macros.fats || 0}
                   unit='g'
                   color='#DC2626'
                 />

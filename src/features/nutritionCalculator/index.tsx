@@ -12,7 +12,7 @@ import { CoachCalculatedValuesPanel } from './components/CoachCalculatedValuesPa
 import { useClientProfileForm } from './hooks/useClientProfileForm';
 import { useDispatch } from 'react-redux';
 import {
-  loadUserProfileRequested,
+  // loadUserProfileRequested,
   persistUserProfileRequested,
   persistUserPreferencesRequested,
   saveNutritionProfile,
@@ -37,16 +37,13 @@ const PREFS_DEBOUNCE_MS = 500;
 const ClientNutritionCalculator = () => {
   const dispatch = useDispatch();
 
-  // Track whether we've hydrated for the *current* loadedProfile instance
   const hydratedRef = useRef(false);
   const prevProfileRef = useRef<ReturnType<
     typeof selectLoadedUserProfile
   > | null>(null);
 
-  // Avoid persisting prefs during initial hydration
   const suppressPrefsPersistRef = useRef(false);
 
-  // Debounce timer for prefs persistence
   const prefsTimerRef = useRef<number | null>(null);
   const latestPrefsRef = useRef<{
     measurementUnitPref: MeasurementUnit;
@@ -57,15 +54,14 @@ const ClientNutritionCalculator = () => {
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
   const checkInsCount = useAppSelector((s) => s.checkIns.items.length);
 
-  // Keep a ref to latest loadedProfile for guard checks
   const loadedProfileRef = useRef<typeof loadedProfile>(loadedProfile);
   useEffect(() => {
     loadedProfileRef.current = loadedProfile;
   }, [loadedProfile]);
 
-  useEffect(() => {
-    dispatch(loadUserProfileRequested());
-  }, [dispatch]);
+  // useEffect(() => {
+  //   dispatch(loadUserProfileRequested());
+  // }, [dispatch]);
 
   const {
     form,
@@ -83,7 +79,6 @@ const ClientNutritionCalculator = () => {
       if (suppressPrefsPersistRef.current) return;
       if (!loadedProfileRef.current) return;
 
-      // ✅ optimistic Redux sync
       dispatch(userPreferencesUpdated(prefs));
 
       latestPrefsRef.current = prefs;
@@ -96,13 +91,11 @@ const ClientNutritionCalculator = () => {
         const latest = latestPrefsRef.current;
         if (!latest) return;
 
-        // ✅ Preferences-only action (epic builds the full payload)
         dispatch(persistUserPreferencesRequested(latest));
       }, PREFS_DEBOUNCE_MS);
     }
   });
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
       if (prefsTimerRef.current) {
@@ -111,9 +104,6 @@ const ClientNutritionCalculator = () => {
     };
   }, []);
 
-  /**
-   * Reset hydration flag when loadedProfile changes (logout/login or user switch)
-   */
   useEffect(() => {
     const prev = prevProfileRef.current;
 
