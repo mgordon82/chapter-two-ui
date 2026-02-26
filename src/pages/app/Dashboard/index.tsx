@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Stack,
@@ -15,6 +15,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import InsightsIcon from '@mui/icons-material/Insights';
+
 import { useAppSelector } from '../../../app/hooks';
 import { kgToLbs } from '../../../utils/conversions/weight';
 import CheckInsPanel from '../../../features/checkIns/components/CheckInsPanel';
@@ -66,11 +67,27 @@ const StatCard = ({
       elevation={0}
       sx={{
         ...toneStyles,
-        borderRadius: 3
+        borderRadius: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%'
       }}
     >
-      <CardContent sx={{ p: 2.25 }}>
-        <Stack direction='row' spacing={1.5} alignItems='flex-start'>
+      <CardContent
+        sx={{
+          p: 2.25,
+          flex: 1,
+          display: 'flex',
+          width: '100%'
+        }}
+      >
+        <Stack
+          direction='row'
+          spacing={1.5}
+          alignItems='flex-start'
+          sx={{ width: '100%' }}
+        >
           <Box
             sx={{
               width: 40,
@@ -80,13 +97,14 @@ const StatCard = ({
               placeItems: 'center',
               backgroundColor: 'rgba(255,255,255,0.6)',
               border: '1px solid',
-              borderColor: 'divider'
+              borderColor: 'divider',
+              flexShrink: 0
             }}
           >
             {icon}
           </Box>
 
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant='overline' sx={{ letterSpacing: 0.8 }}>
               {title}
             </Typography>
@@ -158,7 +176,7 @@ const PlaceholderChart = () => {
 };
 
 const Dashboard = () => {
-  const [showAnalyze, setShowAnalyze] = React.useState(false);
+  const [showAnalyze, setShowAnalyze] = useState(false);
 
   const profileData = useAppSelector(
     (state) => state.nutritionCalculator?.loadedProfile?.profile ?? null
@@ -173,7 +191,7 @@ const Dashboard = () => {
 
   const displayUnitLabel = unitPref === 'lbs' ? 'lb' : 'kg';
 
-  const nonDeleted = React.useMemo(
+  const nonDeleted = useMemo(
     () =>
       checkIns.filter(
         (c) => !c.isDeleted && typeof c.metrics?.weightKg === 'number'
@@ -181,7 +199,7 @@ const Dashboard = () => {
     [checkIns]
   );
 
-  const sorted = React.useMemo(() => {
+  const sorted = useMemo(() => {
     return [...nonDeleted].sort(
       (a, b) =>
         new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
@@ -203,50 +221,72 @@ const Dashboard = () => {
     ? new Date(latest.recordedAt).toLocaleDateString()
     : 'No check-ins yet';
 
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
+  // ---------------------------
+  // Avg Change / Week (trainer spec):
+  // Compare average weight in LAST 7 days vs PREVIOUS 7 days
+  // ---------------------------
 
-  React.useEffect(() => {
-    setNowMs(Date.now());
-  }, []);
+  const { avgChangePerWeekKg, avgHelperLabel, hasAvgChange } = useMemo(() => {
+    if (!sorted.length) {
+      return {
+        avgChangePerWeekKg: null,
+        avgHelperLabel: 'Need check-ins',
+        hasAvgChange: false
+      };
+    }
 
-  const windowDays = 28;
-  const windowStartMs =
-    nowMs == null ? null : nowMs - windowDays * 24 * 60 * 60 * 1000;
+    const latestLocal = sorted[sorted.length - 1]; // ✅ derive from sorted
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const windowDays = 7;
 
-  const windowed = React.useMemo(() => {
-    if (windowStartMs == null) return sorted;
+    const endMs = new Date(latestLocal.recordedAt).getTime();
+    const startRecentMs = endMs - windowDays * msPerDay;
+    const startPrevMs = endMs - windowDays * 2 * msPerDay;
 
-    const within = sorted.filter(
-      (c) => new Date(c.recordedAt).getTime() >= windowStartMs
-    );
+    const recentWeek = sorted.filter((c) => {
+      const t = new Date(c.recordedAt).getTime();
+      return t > startRecentMs && t <= endMs;
+    });
 
-    return within.length >= 2 ? within : sorted;
-  }, [sorted, windowStartMs]);
+    const prevWeek = sorted.filter((c) => {
+      const t = new Date(c.recordedAt).getTime();
+      return t > startPrevMs && t <= startRecentMs;
+    });
 
-  const firstInWindow = windowed.length ? windowed[0] : null;
-  const lastInWindow = windowed.length ? windowed[windowed.length - 1] : null;
+    const avg = (arr: typeof sorted) => {
+      if (!arr.length) return null;
+      const sum = arr.reduce((acc, c) => acc + c.metrics.weightKg, 0);
+      return sum / arr.length;
+    };
 
-  const avgChangePerWeekKg = React.useMemo(() => {
-    if (!firstInWindow || !lastInWindow) return 0;
+    const recentAvgKg = avg(recentWeek);
+    const prevAvgKg = avg(prevWeek);
 
-    const t0 = new Date(firstInWindow.recordedAt).getTime();
-    const t1 = new Date(lastInWindow.recordedAt).getTime();
-    const weeks = (t1 - t0) / (7 * 24 * 60 * 60 * 1000);
+    if (recentAvgKg == null || prevAvgKg == null) {
+      return {
+        avgChangePerWeekKg: null,
+        avgHelperLabel: `Need check-ins in both weeks (last 7d: ${recentWeek.length}, prev 7d: ${prevWeek.length})`,
+        hasAvgChange: false
+      };
+    }
 
-    if (weeks <= 0) return 0;
+    return {
+      avgChangePerWeekKg: recentAvgKg - prevAvgKg,
+      avgHelperLabel: `Avg(last 7d) − Avg(prev 7d) • ${recentWeek.length} vs ${prevWeek.length} check-ins`,
+      hasAvgChange: true
+    };
+  }, [sorted]);
 
-    const deltaKg =
-      lastInWindow.metrics.weightKg - firstInWindow.metrics.weightKg;
-    return deltaKg / weeks;
-  }, [firstInWindow, lastInWindow]);
+  const avgChangePerWeek =
+    avgChangePerWeekKg == null ? null : toDisplayWeight(avgChangePerWeekKg);
 
-  const avgChangePerWeek = toDisplayWeight(avgChangePerWeekKg);
-
+  // ---- Progress (unchanged) ----
   const startWeightKg =
-    firstInWindow?.metrics.weightKg ?? profileWeightKg ?? currentWeightKg;
+    sorted.length > 0
+      ? sorted[0].metrics.weightKg
+      : profileWeightKg ?? currentWeightKg;
 
   const progressLostKg = startWeightKg - currentWeightKg;
-
   const totalToLoseKg = hasGoal ? startWeightKg - goalWeightKg : 0;
 
   const progressLost = toDisplayWeight(progressLostKg);
@@ -337,9 +377,9 @@ const Dashboard = () => {
 
                   <Typography variant='body2' color='text.secondary'>
                     Your last few check-ins suggest a small downward trend. If
-                    progress stalls for 10-14 days, we'll ask a few questions
-                    (adherence, steps, workouts, sleep) and recommend a small
-                    7-10 day experiment (macro tweak or activity bump).
+                    progress stalls for 10-14 days, we&apos;ll ask a few
+                    questions (adherence, steps, workouts, sleep) and recommend
+                    a small 7-10 day experiment (macro tweak or activity bump).
                   </Typography>
 
                   <Box
@@ -355,8 +395,8 @@ const Dashboard = () => {
                       Next step (example)
                     </Typography>
                     <Typography variant='body2' color='text.secondary'>
-                      Keep protein steady. If needed, reduce carbs by
-                      ~25–35g/day for 10 days OR add +2,000 steps/day average.
+                      Keep protein steady. If needed, reduce carbs by ~25–35g/
+                      day for 10 days OR add +2,000 steps/day average.
                     </Typography>
                   </Box>
                 </Stack>
@@ -368,9 +408,10 @@ const Dashboard = () => {
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={2}
+          alignItems='stretch'
           sx={{ width: '100%' }}
         >
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, display: 'flex' }}>
             <StatCard
               title='Current Weight'
               value={`${currentWeight} ${displayUnitLabel}`}
@@ -380,7 +421,7 @@ const Dashboard = () => {
             />
           </Box>
 
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, display: 'flex' }}>
             <StatCard
               title='Goal Weight'
               value={hasGoal ? `${goalWeight} ${displayUnitLabel}` : '—'}
@@ -392,15 +433,25 @@ const Dashboard = () => {
             />
           </Box>
 
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, display: 'flex' }}>
             <StatCard
               title='Avg Change / Week'
-              value={`${
-                avgChangePerWeek > 0 ? '+' : ''
-              }${avgChangePerWeek.toFixed(1)} ${displayUnitLabel}/week`}
-              helper='Based on last 4 weeks'
+              value={
+                avgChangePerWeek == null
+                  ? '—'
+                  : `${
+                      avgChangePerWeek > 0 ? '+' : ''
+                    }${avgChangePerWeek.toFixed(1)} ${displayUnitLabel}/week`
+              }
+              helper={avgHelperLabel}
               icon={<TimelineIcon fontSize='small' />}
-              tone={avgChangePerWeek <= 0 ? 'good' : 'bad'}
+              tone={
+                hasAvgChange &&
+                avgChangePerWeek != null &&
+                avgChangePerWeek <= 0
+                  ? 'good'
+                  : 'bad'
+              }
             />
           </Box>
         </Stack>
@@ -501,20 +552,29 @@ const Dashboard = () => {
                 </Typography>
 
                 {hasGoal ? (
-                  <Typography
-                    variant='body2'
-                    color='text.secondary'
-                    sx={{ mt: 0.5 }}
-                  >
-                    At {Math.abs(avgChangePerWeek).toFixed(1)}{' '}
-                    {displayUnitLabel}
-                    /week, estimate ~
-                    {Math.ceil(
-                      (currentWeight - goalWeight) /
-                        Math.max(0.1, Math.abs(avgChangePerWeek))
-                    )}{' '}
-                    weeks
-                  </Typography>
+                  avgChangePerWeek != null && avgChangePerWeek !== 0 ? (
+                    <Typography
+                      variant='body2'
+                      color='text.secondary'
+                      sx={{ mt: 0.5 }}
+                    >
+                      At {Math.abs(avgChangePerWeek).toFixed(1)}{' '}
+                      {displayUnitLabel}/week, estimate ~
+                      {Math.ceil(
+                        (currentWeight - goalWeight) /
+                          Math.max(0.1, Math.abs(avgChangePerWeek))
+                      )}{' '}
+                      weeks
+                    </Typography>
+                  ) : (
+                    <Typography
+                      variant='body2'
+                      color='text.secondary'
+                      sx={{ mt: 0.5 }}
+                    >
+                      Add more check-ins to estimate time to goal.
+                    </Typography>
+                  )
                 ) : (
                   <Typography
                     variant='body2'
