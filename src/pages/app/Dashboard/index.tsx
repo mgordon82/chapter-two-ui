@@ -10,13 +10,14 @@ import {
   Divider
 } from '@mui/material';
 
-// If you're already using MUI icons, these help the visual language a lot.
-// Safe to remove if you don't want icons yet.
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import InsightsIcon from '@mui/icons-material/Insights';
+import { useAppSelector } from '../../../app/hooks';
+import { kgToLbs } from '../../../utils/conversions/weight';
+import CheckInsPanel from '../../../features/checkIns/components/CheckInsPanel';
 
 const StatCard = ({
   title,
@@ -111,7 +112,6 @@ const StatCard = ({
 };
 
 const PlaceholderChart = () => {
-  // Static placeholder (no chart lib yet).
   return (
     <Card
       elevation={0}
@@ -153,59 +153,7 @@ const PlaceholderChart = () => {
             </Box>
           </Stack>
 
-          <Box
-            sx={{
-              mt: 1,
-              height: 280,
-              borderRadius: 3,
-              border: '1px dashed',
-              borderColor: 'divider',
-              backgroundColor: 'rgba(255,255,255,0.55)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-          >
-            {/* Simple “fake chart” strokes */}
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                opacity: 0.9,
-                background:
-                  'radial-gradient(circle at 20% 30%, rgba(2,136,209,0.20), transparent 60%), radial-gradient(circle at 70% 70%, rgba(46,125,50,0.18), transparent 55%)'
-              }}
-            />
-            <Stack
-              sx={{ height: '100%', p: 2.5, position: 'relative' }}
-              justifyContent='space-between'
-            >
-              <Typography variant='caption' color='text.secondary'>
-                180
-              </Typography>
-              <Typography variant='caption' color='text.secondary'>
-                170
-              </Typography>
-              <Typography variant='caption' color='text.secondary'>
-                160
-              </Typography>
-              <Typography variant='caption' color='text.secondary'>
-                150
-              </Typography>
-            </Stack>
-
-            <Box
-              sx={{
-                position: 'absolute',
-                left: 18,
-                right: 18,
-                top: 24,
-                bottom: 24,
-                borderRadius: 2,
-                background:
-                  'linear-gradient(180deg, rgba(2,136,209,0.10), rgba(2,136,209,0))'
-              }}
-            />
-          </Box>
+          <CheckInsPanel />
         </Stack>
       </CardContent>
     </Card>
@@ -215,22 +163,110 @@ const PlaceholderChart = () => {
 const Dashboard = () => {
   const [showAnalyze, setShowAnalyze] = React.useState(false);
 
-  // Static demo values
-  const currentWeight = 168.4;
-  const goalWeight = 140.0;
-  const avgChangePerWeek = -0.6;
+  const profileData = useAppSelector(
+    (state) => state.nutritionCalculator?.loadedProfile?.profile ?? null
+  );
 
-  const progressLost = 170 - currentWeight; // example starting point
-  const totalToLose = 170 - goalWeight;
+  const checkIns = useAppSelector((state) => state.checkIns.items);
+
+  const unitPref = profileData?.preferences?.weightUnitPref ?? 'kg';
+
+  const toDisplayWeight = (kg: number): number =>
+    unitPref === 'lbs' ? kgToLbs(kg) : kg;
+
+  const displayUnitLabel = unitPref === 'lbs' ? 'lb' : 'kg';
+
+  const nonDeleted = React.useMemo(
+    () =>
+      checkIns.filter(
+        (c) => !c.isDeleted && typeof c.metrics?.weightKg === 'number'
+      ),
+    [checkIns]
+  );
+
+  const sorted = React.useMemo(() => {
+    return [...nonDeleted].sort(
+      (a, b) =>
+        new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
+    );
+  }, [nonDeleted]);
+
+  const latest = sorted.length ? sorted[sorted.length - 1] : null;
+
+  const profileWeightKg = profileData?.weightKg ?? null;
+  const goalWeightKg = profileData?.goalWeightKg ?? null;
+  const hasGoal = goalWeightKg != null && goalWeightKg > 0;
+
+  const currentWeightKg = latest?.metrics.weightKg ?? profileWeightKg ?? 0;
+
+  const currentWeight = toDisplayWeight(currentWeightKg);
+  const goalWeight = hasGoal ? toDisplayWeight(goalWeightKg) : 0;
+
+  const lastCheckInLabel = latest
+    ? new Date(latest.recordedAt).toLocaleDateString()
+    : 'No check-ins yet';
+
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setNowMs(Date.now());
+  }, []);
+
+  const windowDays = 28;
+  const windowStartMs =
+    nowMs == null ? null : nowMs - windowDays * 24 * 60 * 60 * 1000;
+
+  const windowed = React.useMemo(() => {
+    if (windowStartMs == null) return sorted;
+
+    const within = sorted.filter(
+      (c) => new Date(c.recordedAt).getTime() >= windowStartMs
+    );
+
+    return within.length >= 2 ? within : sorted;
+  }, [sorted, windowStartMs]);
+
+  const firstInWindow = windowed.length ? windowed[0] : null;
+  const lastInWindow = windowed.length ? windowed[windowed.length - 1] : null;
+
+  const avgChangePerWeekKg = React.useMemo(() => {
+    if (!firstInWindow || !lastInWindow) return 0;
+
+    const t0 = new Date(firstInWindow.recordedAt).getTime();
+    const t1 = new Date(lastInWindow.recordedAt).getTime();
+    const weeks = (t1 - t0) / (7 * 24 * 60 * 60 * 1000);
+
+    if (weeks <= 0) return 0;
+
+    const deltaKg =
+      lastInWindow.metrics.weightKg - firstInWindow.metrics.weightKg;
+    return deltaKg / weeks;
+  }, [firstInWindow, lastInWindow]);
+
+  const avgChangePerWeek = toDisplayWeight(avgChangePerWeekKg);
+
+  const startWeightKg =
+    firstInWindow?.metrics.weightKg ?? profileWeightKg ?? currentWeightKg;
+
+  const progressLostKg = startWeightKg - currentWeightKg;
+
+  const totalToLoseKg = hasGoal ? startWeightKg - goalWeightKg : 0;
+
+  const progressLost = toDisplayWeight(progressLostKg);
+  const totalToLose = toDisplayWeight(totalToLoseKg);
+
   const progressPct =
-    totalToLose > 0
-      ? Math.min(100, Math.max(0, (progressLost / totalToLose) * 100))
+    hasGoal && totalToLoseKg > 0
+      ? Math.min(100, Math.max(0, (progressLostKg / totalToLoseKg) * 100))
       : 0;
+
+  const remainingToGoal = hasGoal
+    ? toDisplayWeight(currentWeightKg - goalWeightKg)
+    : 0;
 
   return (
     <Box sx={{ width: '100%' }}>
       <Stack spacing={2.25} sx={{ width: '100%' }}>
-        {/* Collapsible Analyze section */}
         <Card
           elevation={0}
           sx={{
@@ -332,7 +368,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Row 1: 3 cards */}
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={2}
@@ -341,8 +376,8 @@ const Dashboard = () => {
           <Box sx={{ flex: 1 }}>
             <StatCard
               title='Current Weight'
-              value={`${currentWeight.toFixed(1)} lb`}
-              helper='Last check-in: Feb 24'
+              value={`${currentWeight} ${displayUnitLabel}`}
+              helper={`Last check-in: ${lastCheckInLabel}`}
               icon={<TrendingDownIcon fontSize='small' />}
               tone='neutral'
             />
@@ -351,7 +386,7 @@ const Dashboard = () => {
           <Box sx={{ flex: 1 }}>
             <StatCard
               title='Goal Weight'
-              value={`${goalWeight.toFixed(1)} lb`}
+              value={hasGoal ? `${goalWeight} ${displayUnitLabel}` : '—'}
               helper='Target: 140 by June'
               icon={<FlagIcon fontSize='small' />}
               tone='goal'
@@ -363,7 +398,7 @@ const Dashboard = () => {
               title='Avg Change / Week'
               value={`${
                 avgChangePerWeek > 0 ? '+' : ''
-              }${avgChangePerWeek.toFixed(1)} lb`}
+              }${avgChangePerWeek.toFixed(1)} ${displayUnitLabel}/week`}
               helper='Based on last 4 weeks'
               icon={<TimelineIcon fontSize='small' />}
               tone={avgChangePerWeek <= 0 ? 'good' : 'bad'}
@@ -371,17 +406,14 @@ const Dashboard = () => {
           </Box>
         </Stack>
 
-        {/* Row 2: full width chart */}
         <PlaceholderChart />
 
-        {/* Row 3: progress cards (two cards for now) */}
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={2}
           alignItems='stretch'
           sx={{ width: '100%' }}
         >
-          {/* CHANGE 1: wrapper Box uses display:flex so child card can stretch */}
           <Box sx={{ flex: 1, display: 'flex' }}>
             <Card
               elevation={0}
@@ -391,11 +423,9 @@ const Dashboard = () => {
                 borderRadius: 3,
                 background:
                   'linear-gradient(135deg, rgba(46,125,50,0.10), rgba(46,125,50,0.02))',
-                // CHANGE 2: make card fill wrapper height
                 width: '100%'
               }}
             >
-              {/* CHANGE 3: make CardContent flex column so we can push bar to bottom */}
               <CardContent
                 sx={{
                   p: 2.25,
@@ -415,11 +445,10 @@ const Dashboard = () => {
                   color='text.secondary'
                   sx={{ mt: 0.5 }}
                 >
-                  Example: {progressLost.toFixed(1)} lb lost of{' '}
-                  {totalToLose.toFixed(1)} lb
+                  Example: {progressLost.toFixed(1)} {displayUnitLabel} lost of{' '}
+                  {totalToLose.toFixed(1)} {displayUnitLabel}
                 </Typography>
 
-                {/* spacer pushes progress bar to bottom so both cards balance */}
                 <Box sx={{ flex: 1 }} />
 
                 <Box
@@ -445,7 +474,6 @@ const Dashboard = () => {
             </Card>
           </Box>
 
-          {/* CHANGE 1: wrapper Box uses display:flex so child card can stretch */}
           <Box sx={{ flex: 1, display: 'flex' }}>
             <Card
               elevation={0}
@@ -455,11 +483,9 @@ const Dashboard = () => {
                 borderRadius: 3,
                 background:
                   'linear-gradient(135deg, rgba(2,136,209,0.10), rgba(2,136,209,0.02))',
-                // CHANGE 2: make card fill wrapper height
                 width: '100%'
               }}
             >
-              {/* CHANGE 3: make CardContent flex column so tip can sit at bottom */}
               <CardContent
                 sx={{
                   p: 2.25,
@@ -472,22 +498,34 @@ const Dashboard = () => {
                   Remaining to Goal
                 </Typography>
                 <Typography variant='h4' sx={{ mt: 0.25, fontWeight: 700 }}>
-                  {(currentWeight - goalWeight).toFixed(1)} lb
-                </Typography>
-                <Typography
-                  variant='body2'
-                  color='text.secondary'
-                  sx={{ mt: 0.5 }}
-                >
-                  At {Math.abs(avgChangePerWeek).toFixed(1)} lb/week, estimate ~
-                  {Math.ceil(
-                    (currentWeight - goalWeight) /
-                      Math.max(0.1, Math.abs(avgChangePerWeek))
-                  )}{' '}
-                  weeks
+                  {remainingToGoal.toFixed(1)} {displayUnitLabel}
                 </Typography>
 
-                {/* spacer pushes tip box to bottom to match left card */}
+                {hasGoal ? (
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{ mt: 0.5 }}
+                  >
+                    At {Math.abs(avgChangePerWeek).toFixed(1)}{' '}
+                    {displayUnitLabel}
+                    /week, estimate ~
+                    {Math.ceil(
+                      (currentWeight - goalWeight) /
+                        Math.max(0.1, Math.abs(avgChangePerWeek))
+                    )}{' '}
+                    weeks
+                  </Typography>
+                ) : (
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{ mt: 0.5 }}
+                  >
+                    Set a goal weight to estimate time to goal.
+                  </Typography>
+                )}
+
                 <Box sx={{ flex: 1 }} />
 
                 <Box

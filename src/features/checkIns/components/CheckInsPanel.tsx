@@ -136,7 +136,13 @@ const CheckInsPanel = () => {
     dispatch(fetchCheckInsRequested());
   }, [dispatch]);
 
-  const latest = items?.[0];
+  const latest = useMemo(() => {
+    if (!items?.length) return null;
+    return [...items].sort(
+      (a, b) =>
+        new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    )[0];
+  }, [items]);
 
   // ----- dialog state -----
   const [open, setOpen] = useState(false);
