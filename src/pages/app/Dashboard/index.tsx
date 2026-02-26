@@ -147,9 +147,6 @@ const PlaceholderChart = () => {
               >
                 Weight Over Time
               </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                Static placeholder (chart comes next)
-              </Typography>
             </Box>
           </Stack>
 
@@ -340,9 +337,9 @@ const Dashboard = () => {
 
                   <Typography variant='body2' color='text.secondary'>
                     Your last few check-ins suggest a small downward trend. If
-                    progress stalls for 10–14 days, we’ll ask a few questions
+                    progress stalls for 10-14 days, we'll ask a few questions
                     (adherence, steps, workouts, sleep) and recommend a small
-                    7–10 day experiment (macro tweak or activity bump).
+                    7-10 day experiment (macro tweak or activity bump).
                   </Typography>
 
                   <Box
@@ -387,7 +384,9 @@ const Dashboard = () => {
             <StatCard
               title='Goal Weight'
               value={hasGoal ? `${goalWeight} ${displayUnitLabel}` : '—'}
-              helper='Target: 140 by June'
+              helper={
+                hasGoal ? 'Goal set in profile' : 'Set a goal weight in profile'
+              }
               icon={<FlagIcon fontSize='small' />}
               tone='goal'
             />
