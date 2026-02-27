@@ -59,10 +59,6 @@ const ClientNutritionCalculator = () => {
     loadedProfileRef.current = loadedProfile;
   }, [loadedProfile]);
 
-  // useEffect(() => {
-  //   dispatch(loadUserProfileRequested());
-  // }, [dispatch]);
-
   const {
     form,
     setField,

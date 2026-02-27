@@ -45,6 +45,7 @@ import {
 } from '../../../utils/conversions/weight';
 
 type ViewMode = 'chart' | 'list';
+type RangeKey = '1W' | '1M' | '3M' | '6M' | '12M';
 
 function formatWeight(weightKg: number, unit: 'kg' | 'lbs') {
   if (!Number.isFinite(weightKg)) return '';
@@ -63,6 +64,39 @@ function toIsoDateInputValue(d: Date) {
 
 function formatDateLabel(iso: string) {
   return new Date(iso).toLocaleDateString();
+}
+
+function formatDateTimeLabel(iso: string) {
+  return new Date(iso).toLocaleString([], {
+    month: 'numeric',
+    day: 'numeric',
+    year: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function startDateForRange(range: RangeKey, end: Date) {
+  const d = new Date(end);
+  switch (range) {
+    case '1W':
+      d.setDate(d.getDate() - 7);
+      return d;
+    case '1M':
+      d.setMonth(d.getMonth() - 1);
+      return d;
+    case '3M':
+      d.setMonth(d.getMonth() - 3);
+      return d;
+    case '6M':
+      d.setMonth(d.getMonth() - 6);
+      return d;
+    case '12M':
+      d.setFullYear(d.getFullYear() - 1);
+      return d;
+    default:
+      return d;
+  }
 }
 
 type CheckInTooltipProps = {
@@ -84,7 +118,8 @@ const CheckInTooltip = ({
   const n =
     typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
 
-  const dateLabel = typeof label === 'string' ? label : '';
+  // label is the X value (recordedAt ISO string)
+  const dateLabel = typeof label === 'string' ? formatDateTimeLabel(label) : '';
 
   return (
     <Box
@@ -96,7 +131,7 @@ const CheckInTooltip = ({
         border: '1px solid rgba(255,255,255,0.12)',
         backdropFilter: 'blur(6px)',
         boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
-        minWidth: 140
+        minWidth: 160
       }}
     >
       <Typography
@@ -131,6 +166,9 @@ const CheckInsPanel = () => {
 
   // Default to chart view
   const [view, setView] = useState<ViewMode>('chart');
+
+  // Range filter for chart
+  const [range, setRange] = useState<RangeKey>('3M');
 
   useEffect(() => {
     dispatch(fetchCheckInsRequested());
@@ -184,12 +222,33 @@ const CheckInsPanel = () => {
   const chartData = useMemo(() => {
     // items is newest-first; chart wants oldest-first
     const chronological = [...items].reverse();
+
     return chronological.map((ci) => ({
       id: ci._id,
-      dateLabel: formatDateLabel(ci.recordedAt),
+      recordedAt: ci.recordedAt, // ✅ unique x-value
       weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref)
     }));
   }, [items, weightUnitPref]);
+
+  const filteredChartData = useMemo(() => {
+    if (chartData.length === 0) return chartData;
+
+    // end at latest point we have (not necessarily "today")
+    const end = new Date(chartData[chartData.length - 1].recordedAt);
+    const start = startDateForRange(range, end).getTime();
+
+    return chartData.filter((d) => new Date(d.recordedAt).getTime() >= start);
+  }, [chartData, range]);
+
+  const filteredItems = useMemo(() => {
+    if (!items.length) return items;
+
+    // items is newest-first
+    const end = new Date(items[0].recordedAt);
+    const start = startDateForRange(range, end).getTime();
+
+    return items.filter((ci) => new Date(ci.recordedAt).getTime() >= start);
+  }, [items, range]);
 
   const goalWeightDisplay = useMemo(() => {
     const kg = loadedProfile?.profile?.goalWeightKg ?? null;
@@ -199,9 +258,9 @@ const CheckInsPanel = () => {
   }, [loadedProfile, weightUnitPref]);
 
   const yDomain = useMemo(() => {
-    if (chartData.length === 0) return ['auto', 'auto'] as const;
+    if (filteredChartData.length === 0) return ['auto', 'auto'] as const;
 
-    const values = chartData.map((d) => d.weight);
+    const values = filteredChartData.map((d) => d.weight);
     if (goalWeightDisplay != null) values.push(goalWeightDisplay);
 
     const min = Math.min(...values);
@@ -210,7 +269,7 @@ const CheckInsPanel = () => {
     const padding = (max - min) * 0.2 || 1;
 
     return [Math.floor(min - padding), Math.ceil(max + padding)] as const;
-  }, [chartData, goalWeightDisplay]);
+  }, [filteredChartData, goalWeightDisplay]);
 
   const handleViewChange = (_: unknown, next: ViewMode | null) => {
     if (!next) return;
@@ -231,11 +290,16 @@ const CheckInsPanel = () => {
       >
         {/* Header */}
         <Stack
-          direction='row'
-          justifyContent='space-between'
-          alignItems='center'
+          direction={{ xs: 'column', md: 'row' }}
+          justifyContent={{ xs: 'normal', md: 'space-between' }}
+          alignItems={{ xs: 'left', md: 'center' }}
         >
-          <Stack direction='row' alignItems='center' gap={2}>
+          <Stack
+            direction='row'
+            justifyContent='left'
+            alignItems='center'
+            gap={2}
+          >
             <Typography variant='h6'>Check-ins</Typography>
             {loading ? <CircularProgress size={18} /> : null}
           </Stack>
@@ -244,6 +308,24 @@ const CheckInsPanel = () => {
             <IconButton aria-label='insights'>
               <InsightsIcon />
             </IconButton>
+
+            {/* Range filter (only relevant for chart view, but harmless always) */}
+            <ToggleButtonGroup
+              size='small'
+              value={range}
+              exclusive
+              onChange={(_, next: RangeKey | null) => {
+                if (!next) return;
+                setRange(next);
+              }}
+            >
+              <ToggleButton value='1W'>1W</ToggleButton>
+              <ToggleButton value='1M'>1M</ToggleButton>
+              <ToggleButton value='3M'>3M</ToggleButton>
+              <ToggleButton value='6M'>6M</ToggleButton>
+              <ToggleButton value='12M'>12M</ToggleButton>
+            </ToggleButtonGroup>
+
             <ToggleButtonGroup
               size='small'
               value={view}
@@ -254,12 +336,7 @@ const CheckInsPanel = () => {
               <ToggleButton value='list'>List</ToggleButton>
             </ToggleButtonGroup>
 
-            <Button
-              //   size='small'
-              variant='outlined'
-              onClick={openDialog}
-              disabled={loading}
-            >
+            <Button variant='outlined' onClick={openDialog} disabled={loading}>
               Add
             </Button>
           </Stack>
@@ -293,10 +370,15 @@ const CheckInsPanel = () => {
               <Box sx={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                   <LineChart
-                    data={chartData}
+                    data={filteredChartData}
                     margin={{ top: 12, right: 20, left: 0, bottom: 0 }}
                   >
-                    <XAxis dataKey='dateLabel' tick={{ fontSize: 12 }} />
+                    <XAxis
+                      dataKey='recordedAt'
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(iso) => formatDateLabel(String(iso))}
+                      minTickGap={20}
+                    />
                     <YAxis
                       tick={{ fontSize: 12 }}
                       width={52}
@@ -305,6 +387,7 @@ const CheckInsPanel = () => {
                     <Tooltip
                       content={<CheckInTooltip unit={weightUnitPref} />}
                       cursor={{ strokeDasharray: '4 4' }}
+                      labelFormatter={(iso) => formatDateTimeLabel(String(iso))}
                     />
 
                     {goalWeightDisplay != null ? (
@@ -326,21 +409,29 @@ const CheckInsPanel = () => {
               </Box>
             ) : (
               <Stack spacing={0.5}>
-                {items.slice(0, 10).map((ci) => (
-                  <Stack
-                    key={ci._id}
-                    direction='row'
-                    justifyContent='space-between'
-                  >
-                    <Typography variant='body2'>
-                      {new Date(ci.recordedAt).toLocaleDateString()}
-                    </Typography>
-                    <Typography variant='body2'>
-                      {formatWeight(ci.metrics.weightKg, weightUnitPref)}{' '}
-                      {weightUnitPref}
-                    </Typography>
+                {filteredItems.length === 0 ? (
+                  <Typography variant='body2' color='text.secondary'>
+                    No check-ins in this range.
+                  </Typography>
+                ) : (
+                  <Stack spacing={0.5}>
+                    {filteredItems.slice(0, 10).map((ci) => (
+                      <Stack
+                        key={ci._id}
+                        direction='row'
+                        justifyContent='space-between'
+                      >
+                        <Typography variant='body2'>
+                          {new Date(ci.recordedAt).toLocaleDateString()}
+                        </Typography>
+                        <Typography variant='body2'>
+                          {formatWeight(ci.metrics.weightKg, weightUnitPref)}{' '}
+                          {weightUnitPref}
+                        </Typography>
+                      </Stack>
+                    ))}
                   </Stack>
-                ))}
+                )}
               </Stack>
             )}
           </Box>
