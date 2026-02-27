@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Line,
   LineChart,
@@ -21,10 +21,32 @@ import {
 import type { CheckIn } from '../redux/checkInsSlice';
 
 type ChartTypes = {
-  items: CheckIn[];
+  filteredItems: CheckIn[];
   weightUnitPref: UnitPrefType;
   range: RangeKey;
 };
+
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const el = ref.current;
+
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (!cr) return;
+      setSize({ width: cr.width, height: cr.height });
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return { ref, size };
+}
 
 const CheckInTooltip = ({
   active,
@@ -74,18 +96,22 @@ const CheckInTooltip = ({
   );
 };
 
-const CheckInsChart = ({ items, weightUnitPref, range }: ChartTypes) => {
+const CheckInsChart = ({
+  filteredItems,
+  weightUnitPref,
+  range
+}: ChartTypes) => {
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
 
   const chartData = useMemo(() => {
-    const chronological = [...items].reverse();
+    const chronological = [...filteredItems].reverse();
 
     return chronological.map((ci) => ({
       id: ci._id,
       recordedAt: ci.recordedAt,
       weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref)
     }));
-  }, [items, weightUnitPref]);
+  }, [filteredItems, weightUnitPref]);
 
   const filteredChartData = useMemo(() => {
     if (chartData.length === 0) return chartData;
@@ -116,40 +142,46 @@ const CheckInsChart = ({ items, weightUnitPref, range }: ChartTypes) => {
 
     return [Math.floor(min - padding), Math.ceil(max + padding)] as const;
   }, [filteredChartData, goalWeightDisplay]);
+  const { ref, size } = useElementSize<HTMLDivElement>();
 
   return (
-    <Box sx={{ width: '100%', height: 200 }}>
-      <ResponsiveContainer width='100%' height='100%'>
-        <LineChart
-          data={filteredChartData}
-          margin={{ top: 12, right: 20, left: 0, bottom: 0 }}
-        >
-          <XAxis
-            dataKey='recordedAt'
-            tick={{ fontSize: 12 }}
-            tickFormatter={(iso) => formatDateLabel(String(iso))}
-            minTickGap={20}
-          />
-          <YAxis tick={{ fontSize: 12 }} width={52} domain={yDomain} />
-          <Tooltip
-            content={<CheckInTooltip unit={weightUnitPref} />}
-            cursor={{ strokeDasharray: '4 4' }}
-            labelFormatter={(iso) => formatDateTimeLabel(String(iso))}
-          />
+    <Box
+      ref={ref}
+      sx={{ width: '100%', height: 200, minWidth: 0, minHeight: 0 }}
+    >
+      {size.width > 0 && size.height > 0 ? (
+        <ResponsiveContainer width='100%' height='100%'>
+          <LineChart
+            data={filteredChartData}
+            margin={{ top: 12, right: 20, left: 0, bottom: 0 }}
+          >
+            <XAxis
+              dataKey='recordedAt'
+              tick={{ fontSize: 12 }}
+              tickFormatter={(iso) => formatDateLabel(String(iso))}
+              minTickGap={20}
+            />
+            <YAxis tick={{ fontSize: 12 }} width={52} domain={yDomain} />
+            <Tooltip
+              content={<CheckInTooltip unit={weightUnitPref} />}
+              cursor={{ strokeDasharray: '4 4' }}
+              labelFormatter={(iso) => formatDateTimeLabel(String(iso))}
+            />
 
-          {goalWeightDisplay != null ? (
-            <ReferenceLine y={goalWeightDisplay} strokeDasharray='4 4' />
-          ) : null}
+            {goalWeightDisplay != null ? (
+              <ReferenceLine y={goalWeightDisplay} strokeDasharray='4 4' />
+            ) : null}
 
-          <Line
-            type='monotone'
-            dataKey='weight'
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+            <Line
+              type='monotone'
+              dataKey='weight'
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : null}
     </Box>
   );
 };

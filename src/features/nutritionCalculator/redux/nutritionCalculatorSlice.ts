@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import {
+  createSelector,
+  createSlice,
+  type PayloadAction
+} from '@reduxjs/toolkit';
 import type { RootState } from '../../../app/store';
 
 import { appReset } from '../../../app/appActions';
@@ -243,12 +247,14 @@ export const selectNutritionHistory = (state: RootState) =>
 export const selectLoadedUserProfile = (state: RootState) =>
   state.nutritionCalculator.loadedProfile;
 
-export const selectUserUnitPrefs = (state: RootState) => {
-  const prefs = state.nutritionCalculator.loadedProfile?.profile.preferences;
-
-  return {
+export const selectUserUnitPrefs = createSelector(
+  [
+    (state: RootState) =>
+      state.nutritionCalculator.loadedProfile?.profile.preferences
+  ],
+  (prefs) => ({
     measurementUnitPref: (prefs?.measurementUnitPref ??
       'cm') as MeasurementUnit,
     weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit
-  };
-};
+  })
+);

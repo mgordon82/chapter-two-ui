@@ -116,7 +116,8 @@ const CheckInsPanel = () => {
           mb: 2,
           borderRadius: 1,
           backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(4px)'
+          backdropFilter: 'blur(4px)',
+          minWidth: 0
         }}
       >
         <Stack
@@ -134,7 +135,12 @@ const CheckInsPanel = () => {
             {loading ? <CircularProgress size={18} /> : null}
           </Stack>
 
-          <Stack direction='row' alignItems='center' gap={1}>
+          <Stack
+            direction='row'
+            alignItems='center'
+            gap={1}
+            sx={{ minWidth: 0, flexWrap: 'wrap' }}
+          >
             <IconButton aria-label='insights'>
               <InsightsIcon />
             </IconButton>
@@ -192,10 +198,10 @@ const CheckInsPanel = () => {
         ) : null}
 
         {!loading && items.length > 0 ? (
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ mt: 1, minWidth: 0, minHeight: 0 }}>
             {view === 'chart' ? (
               <CheckInsChart
-                items={items}
+                filteredItems={filteredItems}
                 weightUnitPref={weightUnitPref}
                 range={range}
               />

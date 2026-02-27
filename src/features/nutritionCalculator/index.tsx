@@ -12,7 +12,6 @@ import { CoachCalculatedValuesPanel } from './components/CoachCalculatedValuesPa
 import { useClientProfileForm } from './hooks/useClientProfileForm';
 import { useDispatch } from 'react-redux';
 import {
-  // loadUserProfileRequested,
   persistUserProfileRequested,
   persistUserPreferencesRequested,
   saveNutritionProfile,
