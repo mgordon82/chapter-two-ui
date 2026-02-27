@@ -18,7 +18,7 @@ import InsightsIcon from '@mui/icons-material/Insights';
 
 import { useAppSelector } from '../../../app/hooks';
 import { kgToLbs } from '../../../utils/conversions/weight';
-import CheckInsPanel from '../../../features/checkIns/components/CheckInsPanel';
+import CheckInsPanel from '../../../features/checkIns';
 
 const StatCard = ({
   title,

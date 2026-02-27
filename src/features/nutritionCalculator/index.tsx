@@ -26,7 +26,7 @@ import { calculateDailyCalorieTarget } from './calculations/dailyCalorieTarget';
 import { useAppSelector } from '../../app/hooks';
 import type { MeasurementUnit } from '../../components/units/MeasurementUnit';
 import type { WeightUnit } from '../../components/units/WeightUnit';
-import CheckInsPanel from '../checkIns/components/CheckInsPanel';
+import CheckInsPanel from '../checkIns';
 import { createCheckInRequested } from '../checkIns/redux/checkInsSlice';
 
 const KG_TO_LBS = 2.2046226218;

@@ -14,7 +14,7 @@ export type CheckIn = {
 };
 
 export type CreateCheckInInput = {
-  recordedAt?: string; // optional; server defaults to now
+  recordedAt?: string;
   weightKg: number;
   notes?: string;
 };
@@ -37,7 +37,6 @@ const checkInsSlice = createSlice({
   name: 'checkIns',
   initialState,
   reducers: {
-    // --- GET current-user ---
     fetchCheckInsRequested(state) {
       state.loading = true;
       state.error = null;
@@ -51,7 +50,6 @@ const checkInsSlice = createSlice({
       state.error = action.payload;
     },
 
-    // --- POST current-user ---
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     createCheckInRequested(state, _action: PayloadAction<CreateCheckInInput>) {
       state.creating = true;
@@ -59,14 +57,12 @@ const checkInsSlice = createSlice({
     },
     createCheckInSucceeded(state) {
       state.creating = false;
-      // We’ll re-fetch after create in the epic (next step)
     },
     createCheckInFailed(state, action: PayloadAction<string>) {
       state.creating = false;
       state.error = action.payload;
     },
 
-    // optional helper
     clearCheckInsError(state) {
       state.error = null;
     }
