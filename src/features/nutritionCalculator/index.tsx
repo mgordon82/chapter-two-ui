@@ -219,8 +219,14 @@ const ClientNutritionCalculator = () => {
 
   let macros: MacroResult | null = null;
 
-  if (dailyCalorieTarget != null && inputs.weightKg != null) {
-    macros = calculateMacros(dailyCalorieTarget, inputs.weightKg);
+  if (
+    dailyCalorieTarget != null &&
+    inputs.weightKg != null &&
+    inputs.gender != null
+  ) {
+    const gender: 'male' | 'female' =
+      inputs.gender.toLowerCase() === 'male' ? 'male' : 'female';
+    macros = calculateMacros(dailyCalorieTarget, inputs.weightKg, gender);
   }
 
   const handleSave = () => {
