@@ -15,6 +15,7 @@ import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useAppSelector } from '../../app/hooks';
 import { useDispatch } from 'react-redux';
 import { logoutRequested } from '../../auth/authSlice';
@@ -46,6 +47,11 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
   };
 
   const navItems = [
+    {
+      label: 'Dashboard',
+      path: '/app',
+      icon: <DashboardIcon />
+    },
     {
       label: 'Meal Generator',
       path: '/app/meal-generator',
