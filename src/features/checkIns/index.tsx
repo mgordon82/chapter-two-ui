@@ -206,10 +206,12 @@ const CheckInsPanel = () => {
                 range={range}
               />
             ) : (
-              <CheckInList
-                filteredItems={filteredItems}
-                weightUnitPref={weightUnitPref}
-              />
+              <Box sx={{ maxHeight: 200, overflowY: 'auto', pr: 0.5 }}>
+                <CheckInList
+                  filteredItems={filteredItems}
+                  weightUnitPref={weightUnitPref}
+                />
+              </Box>
             )}
           </Box>
         ) : null}
