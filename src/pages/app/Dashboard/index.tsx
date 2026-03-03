@@ -258,12 +258,17 @@ const Dashboard = () => {
           <CardContent sx={{ p: 2 }}>
             <Stack spacing={1.5}>
               <Stack
-                direction='row'
-                alignItems='center'
+                direction={{ xs: 'column', sm: 'row' }}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
                 justifyContent='space-between'
-                spacing={2}
+                spacing={1.5}
               >
-                <Stack direction='row' spacing={1.25} alignItems='center'>
+                <Stack
+                  direction='row'
+                  spacing={1.25}
+                  alignItems='center'
+                  sx={{ minWidth: 0 }}
+                >
                   <Box
                     sx={{
                       width: 40,
@@ -273,20 +278,31 @@ const Dashboard = () => {
                       placeItems: 'center',
                       backgroundColor: 'rgba(255,255,255,0.6)',
                       border: '1px solid',
-                      borderColor: 'divider'
+                      borderColor: 'divider',
+                      flexShrink: 0
                     }}
                   >
                     <AutoAwesomeIcon fontSize='small' />
                   </Box>
 
-                  <Box>
+                  <Box sx={{ minWidth: 0 }}>
                     <Typography
                       variant='subtitle1'
                       sx={{ fontWeight: 700, lineHeight: 1.1 }}
                     >
                       Trend Analysis
                     </Typography>
-                    <Typography variant='body2' color='text.secondary'>
+
+                    <Typography
+                      variant='body2'
+                      color='text.secondary'
+                      sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: { xs: 2, sm: 'unset' },
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
                       Analyze your recent check-ins and get next-step
                       recommendations.
                     </Typography>
@@ -299,13 +315,31 @@ const Dashboard = () => {
                     if (showAnalyze) closeAnalyzePanel();
                     else openAnalyzePanel();
                   }}
+                  fullWidth={false}
                   sx={{
                     borderRadius: 2,
                     textTransform: 'none',
-                    fontWeight: 700
+                    fontWeight: 700,
+                    alignSelf: { xs: 'stretch', sm: 'center' },
+                    width: { xs: '100%', sm: 'auto' },
+                    minWidth: { sm: 160 },
+                    whiteSpace: 'nowrap',
+                    py: { xs: 1.1, sm: 0.8 }
                   }}
                 >
-                  {showAnalyze ? 'Hide analysis' : 'Analyze trend'}
+                  <Box
+                    component='span'
+                    sx={{ display: { xs: 'inline', sm: 'none' } }}
+                  >
+                    {showAnalyze ? 'Hide' : 'Analyze'}
+                  </Box>
+
+                  <Box
+                    component='span'
+                    sx={{ display: { xs: 'none', sm: 'inline' } }}
+                  >
+                    {showAnalyze ? 'Hide analysis' : 'Analyze trend'}
+                  </Box>
                 </Button>
               </Stack>
 
