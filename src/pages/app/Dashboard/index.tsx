@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Stack,
@@ -734,7 +735,22 @@ const Dashboard = () => {
               title='Goal Weight'
               value={hasGoal ? `${goalWeight} ${displayUnitLabel}` : '—'}
               helper={
-                hasGoal ? 'Goal set in profile' : 'Set a goal weight in profile'
+                <>
+                  {hasGoal ? 'Goal set in ' : 'Set a goal weight in '}
+                  <Typography
+                    component={RouterLink}
+                    to='/app/nutrition-profile'
+                    sx={{
+                      display: 'inline',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      color: 'primary.main',
+                      '&:hover': { textDecoration: 'underline' }
+                    }}
+                  >
+                    profile
+                  </Typography>
+                </>
               }
               icon={<FlagIcon fontSize='small' />}
               tone='goal'

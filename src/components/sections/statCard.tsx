@@ -10,7 +10,7 @@ const StatCard = ({
 }: {
   title: string;
   value: string;
-  helper?: string;
+  helper?: React.ReactNode;
   icon?: React.ReactNode;
   chipLabel?: string;
   tone?: 'good' | 'bad' | 'neutral' | 'goal' | 'warn' | 'primary';
