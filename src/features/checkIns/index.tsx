@@ -35,12 +35,14 @@ import {
   startDateForRange,
   toIsoDateInputValue
 } from './helpers';
+import { trendAnalyzeRequested } from '../trend/redux/trendSlice';
 
 const CheckInsPanel = () => {
   const dispatch = useAppDispatch();
   const { items, loading, creating, error } = useAppSelector((s) => s.checkIns);
 
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
+  const trend = useAppSelector((s) => s.trend);
 
   const weightUnitPref = unitPrefs?.weightUnitPref === 'lbs' ? 'lbs' : 'kg';
   const today = useMemo(() => toIsoDateInputValue(new Date()), []);
@@ -141,7 +143,11 @@ const CheckInsPanel = () => {
             gap={1}
             sx={{ minWidth: 0, flexWrap: 'wrap' }}
           >
-            <IconButton aria-label='insights'>
+            <IconButton
+              aria-label='insights'
+              onClick={() => dispatch(trendAnalyzeRequested({ range }))}
+              disabled={trend.status === 'loading'}
+            >
               <InsightsIcon />
             </IconButton>
 
@@ -176,19 +182,16 @@ const CheckInsPanel = () => {
             </Button>
           </Stack>
         </Stack>
-
         {error ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='error'>
             {error}
           </Typography>
         ) : null}
-
         {!loading && !error && items.length === 0 ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
             No check-ins yet.
           </Typography>
         ) : null}
-
         {!loading && items.length > 0 && latest ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
             Latest: {new Date(latest.recordedAt).toLocaleDateString()} —{' '}
@@ -196,7 +199,49 @@ const CheckInsPanel = () => {
             {weightUnitPref}
           </Typography>
         ) : null}
+        {trend.status === 'loading' ? (
+          <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
+            Analyzing trend…
+          </Typography>
+        ) : null}
+        {trend.status === 'failed' ? (
+          <Typography variant='body2' sx={{ mt: 1 }} color='error'>
+            {trend.error}
+          </Typography>
+        ) : null}
+        {trend.status === 'succeeded' && trend.data?.metrics ? (
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mt: 1 }}>
+            <Typography variant='body2' color='text.secondary'>
+              Avg (last 7d):{' '}
+              {trend.data.metrics.avgLast7dKg != null
+                ? `${formatWeight(
+                    trend.data.metrics.avgLast7dKg,
+                    weightUnitPref
+                  )} ${weightUnitPref}`
+                : '--'}
+            </Typography>
 
+            <Typography variant='body2' color='text.secondary'>
+              Avg (prev 7d):{' '}
+              {trend.data.metrics.avgPrev7dKg != null
+                ? `${formatWeight(
+                    trend.data.metrics.avgPrev7dKg,
+                    weightUnitPref
+                  )} ${weightUnitPref}`
+                : '--'}
+            </Typography>
+
+            <Typography variant='body2' color='text.secondary'>
+              Avg change/wk:{' '}
+              {trend.data.metrics.avgChangePerWeekKg != null
+                ? `${formatWeight(
+                    trend.data.metrics.avgChangePerWeekKg,
+                    weightUnitPref
+                  )} ${weightUnitPref}`
+                : '--'}
+            </Typography>
+          </Stack>
+        ) : null}
         {!loading && items.length > 0 ? (
           <Box sx={{ mt: 1, minWidth: 0, minHeight: 0 }}>
             {view === 'chart' ? (

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Box,
   Stack,
@@ -7,6 +7,7 @@ import {
   Typography,
   Button,
   Collapse,
+  CircularProgress,
   Divider
 } from '@mui/material';
 
@@ -14,120 +15,12 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import InsightsIcon from '@mui/icons-material/Insights';
 
-import { useAppSelector } from '../../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { kgToLbs } from '../../../utils/conversions/weight';
 import CheckInsPanel from '../../../features/checkIns';
-
-const StatCard = ({
-  title,
-  value,
-  helper,
-  icon,
-  tone = 'neutral'
-}: {
-  title: string;
-  value: string;
-  helper?: string;
-  icon?: React.ReactNode;
-  tone?: 'good' | 'bad' | 'neutral' | 'goal';
-}) => {
-  const toneStyles =
-    tone === 'good'
-      ? {
-          border: '1px solid',
-          borderColor: 'success.light',
-          background:
-            'linear-gradient(135deg, rgba(46,125,50,0.12), rgba(46,125,50,0.02))'
-        }
-      : tone === 'bad'
-      ? {
-          border: '1px solid',
-          borderColor: 'error.light',
-          background:
-            'linear-gradient(135deg, rgba(211,47,47,0.12), rgba(211,47,47,0.02))'
-        }
-      : tone === 'goal'
-      ? {
-          border: '1px solid',
-          borderColor: 'info.light',
-          background:
-            'linear-gradient(135deg, rgba(2,136,209,0.12), rgba(2,136,209,0.02))'
-        }
-      : {
-          border: '1px solid',
-          borderColor: 'divider',
-          background:
-            'linear-gradient(135deg, rgba(99,102,241,0.10), rgba(99,102,241,0.02))'
-        };
-
-  return (
-    <Card
-      elevation={0}
-      sx={{
-        ...toneStyles,
-        borderRadius: 3,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        width: '100%'
-      }}
-    >
-      <CardContent
-        sx={{
-          p: 2.25,
-          flex: 1,
-          display: 'flex',
-          width: '100%'
-        }}
-      >
-        <Stack
-          direction='row'
-          spacing={1.5}
-          alignItems='flex-start'
-          sx={{ width: '100%' }}
-        >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              display: 'grid',
-              placeItems: 'center',
-              backgroundColor: 'rgba(255,255,255,0.6)',
-              border: '1px solid',
-              borderColor: 'divider',
-              flexShrink: 0
-            }}
-          >
-            {icon}
-          </Box>
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant='overline' sx={{ letterSpacing: 0.8 }}>
-              {title}
-            </Typography>
-
-            <Typography variant='h4' sx={{ mt: 0.25, fontWeight: 700 }}>
-              {value}
-            </Typography>
-
-            {helper ? (
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ mt: 0.5 }}
-              >
-                {helper}
-              </Typography>
-            ) : null}
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-};
+import StatCard from '../../../components/sections/statCard';
+import { trendAnalyzeRequested } from '../../../features/trend/redux/trendSlice';
 
 const PlaceholderChart = () => {
   return (
@@ -175,8 +68,21 @@ const PlaceholderChart = () => {
   );
 };
 
+const clamp = (lines: number) => ({
+  display: '-webkit-box',
+  WebkitLineClamp: lines,
+  WebkitBoxOrient: 'vertical' as const,
+  overflow: 'hidden'
+});
+
 const Dashboard = () => {
+  const dispatch = useAppDispatch();
+  const trend = useAppSelector((s) => s.trend);
+
   const [showAnalyze, setShowAnalyze] = useState(false);
+  const [showTrendDetails, setShowTrendDetails] = useState(false);
+  const [showFullQuickRead, setShowFullQuickRead] = useState(false);
+  const [showFullRationale, setShowFullRationale] = useState(false);
 
   const profileData = useAppSelector(
     (state) => state.nutritionCalculator?.loadedProfile?.profile ?? null
@@ -221,66 +127,36 @@ const Dashboard = () => {
     ? new Date(latest.recordedAt).toLocaleDateString()
     : 'No check-ins yet';
 
-  // ---------------------------
-  // Avg Change / Week (trainer spec):
-  // Compare average weight in LAST 7 days vs PREVIOUS 7 days
-  // ---------------------------
+  const serverAvgChangeKg = trend.data?.metrics.avgChangePerWeekKg ?? null;
+  const serverAvgChange =
+    serverAvgChangeKg == null ? null : toDisplayWeight(serverAvgChangeKg);
 
-  const { avgChangePerWeekKg, avgHelperLabel, hasAvgChange } = useMemo(() => {
-    if (!sorted.length) {
-      return {
-        avgChangePerWeekKg: null,
-        avgHelperLabel: 'Need check-ins',
-        hasAvgChange: false
-      };
-    }
+  const serverConfidence = trend.data?.confidence ?? 'low';
+  const last7n = trend.data?.windows?.last7?.n ?? 0;
+  const prev7n = trend.data?.windows?.prev7?.n ?? 0;
 
-    const latestLocal = sorted[sorted.length - 1]; // ✅ derive from sorted
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const windowDays = 7;
+  const avgTone =
+    serverAvgChange == null ||
+    serverConfidence === 'low' ||
+    trend.data?.status === 'insufficient_data'
+      ? 'warn'
+      : serverAvgChange <= 0
+      ? 'good'
+      : 'bad';
 
-    const endMs = new Date(latestLocal.recordedAt).getTime();
-    const startRecentMs = endMs - windowDays * msPerDay;
-    const startPrevMs = endMs - windowDays * 2 * msPerDay;
+  const avgChip =
+    serverConfidence === 'high'
+      ? 'High confidence'
+      : serverConfidence === 'medium'
+      ? 'Med confidence'
+      : 'Low confidence';
 
-    const recentWeek = sorted.filter((c) => {
-      const t = new Date(c.recordedAt).getTime();
-      return t > startRecentMs && t <= endMs;
-    });
+  const avgHelper = !trend.data
+    ? 'Run “Analyze trend” to calculate'
+    : trend.data.status === 'insufficient_data'
+    ? `Need check-ins in both weeks • ${last7n} vs ${prev7n}`
+    : `Avg(last 7d) − Avg(prev 7d) • ${last7n} vs ${prev7n} check-ins`;
 
-    const prevWeek = sorted.filter((c) => {
-      const t = new Date(c.recordedAt).getTime();
-      return t > startPrevMs && t <= startRecentMs;
-    });
-
-    const avg = (arr: typeof sorted) => {
-      if (!arr.length) return null;
-      const sum = arr.reduce((acc, c) => acc + c.metrics.weightKg, 0);
-      return sum / arr.length;
-    };
-
-    const recentAvgKg = avg(recentWeek);
-    const prevAvgKg = avg(prevWeek);
-
-    if (recentAvgKg == null || prevAvgKg == null) {
-      return {
-        avgChangePerWeekKg: null,
-        avgHelperLabel: `Need check-ins in both weeks (last 7d: ${recentWeek.length}, prev 7d: ${prevWeek.length})`,
-        hasAvgChange: false
-      };
-    }
-
-    return {
-      avgChangePerWeekKg: recentAvgKg - prevAvgKg,
-      avgHelperLabel: `Avg(last 7d) − Avg(prev 7d) • ${recentWeek.length} vs ${prevWeek.length} check-ins`,
-      hasAvgChange: true
-    };
-  }, [sorted]);
-
-  const avgChangePerWeek =
-    avgChangePerWeekKg == null ? null : toDisplayWeight(avgChangePerWeekKg);
-
-  // ---- Progress (unchanged) ----
   const startWeightKg =
     sorted.length > 0
       ? sorted[0].metrics.weightKg
@@ -300,6 +176,70 @@ const Dashboard = () => {
   const remainingToGoal = hasGoal
     ? toDisplayWeight(currentWeightKg - goalWeightKg)
     : 0;
+
+  const trendDeltaKg = trend.data?.metrics.avgChangePerWeekKg ?? null;
+  const trendDelta =
+    trendDeltaKg == null ? null : toDisplayWeight(trendDeltaKg);
+
+  const headlineTone =
+    trendDelta == null ? 'neutral' : trendDelta <= 0 ? 'down' : 'up';
+
+  const confidenceLabel =
+    trend.data?.confidence === 'high'
+      ? 'High confidence'
+      : trend.data?.confidence === 'medium'
+      ? 'Medium confidence'
+      : 'Low confidence';
+
+  const minWeeklyN =
+    trend.data?.windows?.last7?.n != null &&
+    trend.data?.windows?.prev7?.n != null
+      ? Math.min(trend.data.windows.last7.n, trend.data.windows.prev7.n)
+      : null;
+
+  const confidenceLine =
+    minWeeklyN != null
+      ? `${confidenceLabel} • ${minWeeklyN} weigh-ins/week (last 2 weeks)`
+      : confidenceLabel;
+
+  const lowConfidenceHint =
+    trend.data?.confidence === 'low'
+      ? 'Tip: aim for 4–7 weigh-ins/week for a clearer trend.'
+      : null;
+
+  const ANALYZE_RANGE = '3M' as const;
+
+  const openAnalyzePanel = () => {
+    setShowAnalyze(true);
+    setShowTrendDetails(false);
+    setShowFullQuickRead(false);
+    setShowFullRationale(false);
+
+    if (!trend.data && trend.status !== 'loading') {
+      dispatch(trendAnalyzeRequested({ range: ANALYZE_RANGE }));
+    }
+  };
+
+  const closeAnalyzePanel = () => {
+    setShowAnalyze(false);
+  };
+
+  const rerunAnalysis = () => {
+    setShowTrendDetails(false);
+    dispatch(trendAnalyzeRequested({ range: ANALYZE_RANGE, force: true }));
+  };
+
+  const cachedAtLabel = trend.cachedAt
+    ? `Cached: ${new Date(trend.cachedAt).toLocaleString()}`
+    : null;
+
+  const firstRec = trend.data?.ai?.recommended?.[0] ?? null;
+
+  const quickReadText = trend.data?.ai?.quickRead ?? '';
+  const rationaleText = firstRec?.rationale ?? '';
+
+  const showQuickReadToggle = quickReadText.length > 140;
+  const showRationaleToggle = rationaleText.length > 200;
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -346,14 +286,18 @@ const Dashboard = () => {
                       Trend Analysis
                     </Typography>
                     <Typography variant='body2' color='text.secondary'>
-                      This will trigger AI later — for now it’s static.
+                      Analyze your recent check-ins and get next-step
+                      recommendations.
                     </Typography>
                   </Box>
                 </Stack>
 
                 <Button
                   variant={showAnalyze ? 'outlined' : 'contained'}
-                  onClick={() => setShowAnalyze((v) => !v)}
+                  onClick={() => {
+                    if (showAnalyze) closeAnalyzePanel();
+                    else openAnalyzePanel();
+                  }}
                   sx={{
                     borderRadius: 2,
                     textTransform: 'none',
@@ -365,41 +309,405 @@ const Dashboard = () => {
               </Stack>
 
               <Collapse in={showAnalyze} timeout={200} unmountOnExit>
-                <Divider sx={{ my: 1.5 }} />
+                <Box sx={{ mt: 1.5 }}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    justifyContent='space-between'
+                    sx={{ mb: 1 }}
+                  >
+                    <Stack direction='row' spacing={1} alignItems='center'>
+                      <Button
+                        size='small'
+                        variant='outlined'
+                        onClick={rerunAnalysis}
+                        disabled={trend.status === 'loading'}
+                        sx={{
+                          textTransform: 'none',
+                          borderRadius: 999,
+                          px: 1.25,
+                          py: 0.25
+                        }}
+                      >
+                        {trend.data ? 'Re-run analysis' : 'Run analysis'}
+                      </Button>
 
-                <Stack spacing={1.25}>
-                  <Stack direction='row' spacing={1} alignItems='center'>
-                    <InsightsIcon fontSize='small' />
-                    <Typography variant='subtitle2' sx={{ fontWeight: 700 }}>
-                      Quick read (static)
-                    </Typography>
+                      {trend.data ? (
+                        <Typography variant='caption' color='text.secondary'>
+                          Cached until you re-run.
+                        </Typography>
+                      ) : null}
+                    </Stack>
+
+                    {cachedAtLabel ? (
+                      <Typography
+                        variant='caption'
+                        color='text.secondary'
+                        sx={{ textAlign: { xs: 'left', sm: 'right' } }}
+                      >
+                        {cachedAtLabel}
+                      </Typography>
+                    ) : null}
                   </Stack>
 
-                  <Typography variant='body2' color='text.secondary'>
-                    Your last few check-ins suggest a small downward trend. If
-                    progress stalls for 10-14 days, we&apos;ll ask a few
-                    questions (adherence, steps, workouts, sleep) and recommend
-                    a small 7-10 day experiment (macro tweak or activity bump).
-                  </Typography>
+                  {trend.status === 'loading' ? (
+                    <Stack direction='row' spacing={1} alignItems='center'>
+                      <CircularProgress size={18} />
+                      <Typography variant='body2' color='text.secondary'>
+                        Analyzing trend…
+                      </Typography>
+                    </Stack>
+                  ) : trend.status === 'failed' ? (
+                    <Typography variant='body2' color='error'>
+                      {trend.error ?? 'Failed to analyze trend.'}
+                    </Typography>
+                  ) : trend.data ? (
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        backgroundColor: 'rgba(0,0,0,0.35)',
+                        backdropFilter: 'blur(8px)'
+                      }}
+                    >
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1}
+                        alignItems={{ xs: 'flex-start', sm: 'center' }}
+                        justifyContent='space-between'
+                      >
+                        <Stack direction='row' spacing={1} alignItems='center'>
+                          <Box
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 2,
+                              display: 'grid',
+                              placeItems: 'center',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              backgroundColor: 'rgba(255,255,255,0.08)'
+                            }}
+                          >
+                            <AutoAwesomeIcon fontSize='small' />
+                          </Box>
 
-                  <Box
-                    sx={{
-                      p: 1.25,
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      backgroundColor: 'rgba(255,255,255,0.55)'
-                    }}
-                  >
-                    <Typography variant='body2' sx={{ fontWeight: 700 }}>
-                      Next step (example)
-                    </Typography>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography
+                              variant='subtitle2'
+                              sx={{ fontWeight: 800 }}
+                            >
+                              Quick read
+                            </Typography>
+                            <Typography
+                              variant='caption'
+                              color='text.secondary'
+                            >
+                              {trend.data.ai?.context ??
+                                'Based on your recent check-ins'}
+                            </Typography>
+                          </Box>
+                        </Stack>
+
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 999,
+                            fontSize: 12,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            backgroundColor: 'rgba(255,255,255,0.06)',
+                            color: 'text.secondary'
+                          }}
+                          title={confidenceLine}
+                        >
+                          {confidenceLine}
+                        </Box>
+                      </Stack>
+
+                      <Box sx={{ mt: 1.25 }}>
+                        <Typography
+                          variant='h6'
+                          sx={{
+                            fontWeight: 900,
+                            lineHeight: 1.15,
+                            color:
+                              headlineTone === 'down'
+                                ? 'success.light'
+                                : headlineTone === 'up'
+                                ? 'warning.light'
+                                : 'text.primary',
+                            textShadow:
+                              headlineTone === 'down'
+                                ? '0 0 12px rgba(46,125,50,0.35)'
+                                : headlineTone === 'up'
+                                ? '0 0 12px rgba(245,124,0,0.35)'
+                                : 'none',
+                            ...(showFullQuickRead ? {} : clamp(3))
+                          }}
+                        >
+                          {quickReadText ||
+                            (trendDelta == null
+                              ? 'Not enough data yet'
+                              : trendDelta <= 0
+                              ? `Momentum is trending downward at ~${Math.abs(
+                                  trendDelta
+                                ).toFixed(1)} ${displayUnitLabel}/week`
+                              : `Momentum is trending upward at ~${Math.abs(
+                                  trendDelta
+                                ).toFixed(1)} ${displayUnitLabel}/week`)}
+                        </Typography>
+
+                        <Typography
+                          variant='body2'
+                          color='text.secondary'
+                          sx={{
+                            mt: 0.5,
+                            ...(showFullQuickRead ? {} : clamp(2))
+                          }}
+                        >
+                          {trend.data.status === 'insufficient_data'
+                            ? 'Log a few more weigh-ins this week to sharpen the signal and unlock stronger recommendations.'
+                            : 'Small week-to-week swings are normal — we’re looking for consistent direction over 10–14 days.'}
+                        </Typography>
+
+                        {lowConfidenceHint ? (
+                          <Typography
+                            variant='body2'
+                            color='text.secondary'
+                            sx={{
+                              mt: 0.5,
+                              ...(showFullQuickRead ? {} : clamp(2))
+                            }}
+                          >
+                            {lowConfidenceHint}
+                          </Typography>
+                        ) : null}
+
+                        {showQuickReadToggle ? (
+                          <Button
+                            size='small'
+                            onClick={() => setShowFullQuickRead((v) => !v)}
+                            sx={{
+                              mt: 0.75,
+                              textTransform: 'none',
+                              borderRadius: 999,
+                              px: 1.25,
+                              py: 0.25
+                            }}
+                          >
+                            {showFullQuickRead ? 'Show less' : 'Read more'}
+                          </Button>
+                        ) : null}
+                      </Box>
+
+                      {(firstRec || trend.data.options?.length) && (
+                        <Box sx={{ mt: 1.25 }}>
+                          <Divider sx={{ mb: 1.25, opacity: 0.5 }} />
+
+                          {firstRec ? (
+                            <Stack spacing={1}>
+                              <Box
+                                sx={{
+                                  p: 1.25,
+                                  borderRadius: 2,
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  backgroundColor: 'rgba(255,255,255,0.04)'
+                                }}
+                              >
+                                <Typography
+                                  variant='overline'
+                                  color='text.secondary'
+                                  sx={{ letterSpacing: 0.8 }}
+                                >
+                                  Next step
+                                </Typography>
+                                <Typography
+                                  variant='body1'
+                                  sx={{ fontWeight: 800, lineHeight: 1.25 }}
+                                >
+                                  {firstRec.title}
+                                </Typography>
+                                {firstRec.summary ? (
+                                  <Typography
+                                    variant='body2'
+                                    color='text.secondary'
+                                    sx={{ mt: 0.25, ...clamp(3) }}
+                                  >
+                                    {firstRec.summary}
+                                  </Typography>
+                                ) : null}
+                              </Box>
+
+                              {firstRec.rationale ? (
+                                <Box
+                                  sx={{
+                                    p: 1.25,
+                                    borderRadius: 2,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    backgroundColor: 'rgba(255,255,255,0.03)'
+                                  }}
+                                >
+                                  <Stack
+                                    direction='row'
+                                    alignItems='center'
+                                    justifyContent='space-between'
+                                    spacing={1}
+                                  >
+                                    <Typography
+                                      variant='overline'
+                                      color='text.secondary'
+                                      sx={{ letterSpacing: 0.8 }}
+                                    >
+                                      Why
+                                    </Typography>
+
+                                    {showRationaleToggle ? (
+                                      <Button
+                                        size='small'
+                                        onClick={() =>
+                                          setShowFullRationale((v) => !v)
+                                        }
+                                        sx={{
+                                          textTransform: 'none',
+                                          borderRadius: 999,
+                                          px: 1.0,
+                                          py: 0.0,
+                                          minWidth: 'auto'
+                                        }}
+                                      >
+                                        {showFullRationale
+                                          ? 'Show less'
+                                          : 'Read more'}
+                                      </Button>
+                                    ) : null}
+                                  </Stack>
+
+                                  <Typography
+                                    variant='body2'
+                                    color='text.secondary'
+                                    sx={{
+                                      mt: 0.25,
+                                      lineHeight: 1.5,
+                                      ...(showFullRationale ? {} : clamp(4))
+                                    }}
+                                  >
+                                    {rationaleText}
+                                  </Typography>
+                                </Box>
+                              ) : null}
+                            </Stack>
+                          ) : (
+                            <Box
+                              sx={{
+                                p: 1.25,
+                                borderRadius: 2,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                backgroundColor: 'rgba(255,255,255,0.04)'
+                              }}
+                            >
+                              <Typography
+                                variant='overline'
+                                color='text.secondary'
+                                sx={{ letterSpacing: 0.8 }}
+                              >
+                                Next step
+                              </Typography>
+                              <Typography
+                                variant='body2'
+                                sx={{ fontWeight: 700 }}
+                              >
+                                {trend.data.options[0].title}
+                              </Typography>
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ mt: 0.25 }}
+                              >
+                                {trend.data.options[0].summary}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+
+                      <Box sx={{ mt: 1.25 }}>
+                        <Button
+                          size='small'
+                          onClick={() => setShowTrendDetails((v) => !v)}
+                          sx={{
+                            textTransform: 'none',
+                            borderRadius: 999,
+                            px: 1.25,
+                            py: 0.25
+                          }}
+                        >
+                          {showTrendDetails ? 'Hide details' : 'Details'}
+                        </Button>
+
+                        <Collapse
+                          in={showTrendDetails}
+                          timeout={150}
+                          unmountOnExit
+                        >
+                          <Stack spacing={0.5} sx={{ mt: 1 }}>
+                            <Typography variant='body2' color='text.secondary'>
+                              Avg(last 7d):{' '}
+                              {trend.data.metrics.avgLast7dKg == null
+                                ? '—'
+                                : `${toDisplayWeight(
+                                    trend.data.metrics.avgLast7dKg
+                                  ).toFixed(1)} ${displayUnitLabel}`}
+                            </Typography>
+
+                            <Typography variant='body2' color='text.secondary'>
+                              Avg(prev 7d):{' '}
+                              {trend.data.metrics.avgPrev7dKg == null
+                                ? '—'
+                                : `${toDisplayWeight(
+                                    trend.data.metrics.avgPrev7dKg
+                                  ).toFixed(1)} ${displayUnitLabel}`}
+                            </Typography>
+
+                            <Typography variant='body2' color='text.secondary'>
+                              Change/week:{' '}
+                              {trend.data.metrics.avgChangePerWeekKg == null
+                                ? '—'
+                                : `${toDisplayWeight(
+                                    trend.data.metrics.avgChangePerWeekKg
+                                  ).toFixed(2)} ${displayUnitLabel}/wk`}
+                              {trend.data.metrics.avgChangePerWeekPct != null
+                                ? ` (${trend.data.metrics.avgChangePerWeekPct.toFixed(
+                                    2
+                                  )}%)`
+                                : ''}
+                            </Typography>
+
+                            {trend.data.ai?.disclaimer ? (
+                              <Typography
+                                variant='caption'
+                                color='text.secondary'
+                              >
+                                {trend.data.ai.disclaimer}
+                              </Typography>
+                            ) : null}
+                          </Stack>
+                        </Collapse>
+                      </Box>
+                    </Box>
+                  ) : (
                     <Typography variant='body2' color='text.secondary'>
-                      Keep protein steady. If needed, reduce carbs by ~25–35g/
-                      day for 10 days OR add +2,000 steps/day average.
+                      Click “Run analysis” to run analysis.
                     </Typography>
-                  </Box>
-                </Stack>
+                  )}
+                </Box>
               </Collapse>
             </Stack>
           </CardContent>
@@ -417,7 +725,7 @@ const Dashboard = () => {
               value={`${currentWeight} ${displayUnitLabel}`}
               helper={`Last check-in: ${lastCheckInLabel}`}
               icon={<TrendingDownIcon fontSize='small' />}
-              tone='neutral'
+              tone='primary'
             />
           </Box>
 
@@ -437,21 +745,16 @@ const Dashboard = () => {
             <StatCard
               title='Avg Change / Week'
               value={
-                avgChangePerWeek == null
+                serverAvgChange == null
                   ? '—'
-                  : `${
-                      avgChangePerWeek > 0 ? '+' : ''
-                    }${avgChangePerWeek.toFixed(1)} ${displayUnitLabel}/week`
+                  : `${serverAvgChange > 0 ? '+' : ''}${serverAvgChange.toFixed(
+                      1
+                    )} ${displayUnitLabel}/week`
               }
-              helper={avgHelperLabel}
+              helper={avgHelper}
+              chipLabel={avgChip}
               icon={<TimelineIcon fontSize='small' />}
-              tone={
-                hasAvgChange &&
-                avgChangePerWeek != null &&
-                avgChangePerWeek <= 0
-                  ? 'good'
-                  : 'bad'
-              }
+              tone={avgTone}
             />
           </Box>
         </Stack>
@@ -552,17 +855,17 @@ const Dashboard = () => {
                 </Typography>
 
                 {hasGoal ? (
-                  avgChangePerWeek != null && avgChangePerWeek !== 0 ? (
+                  serverAvgChange != null && serverAvgChange !== 0 ? (
                     <Typography
                       variant='body2'
                       color='text.secondary'
                       sx={{ mt: 0.5 }}
                     >
-                      At {Math.abs(avgChangePerWeek).toFixed(1)}{' '}
+                      At {Math.abs(serverAvgChange).toFixed(1)}{' '}
                       {displayUnitLabel}/week, estimate ~
                       {Math.ceil(
                         (currentWeight - goalWeight) /
-                          Math.max(0.1, Math.abs(avgChangePerWeek))
+                          Math.max(0.1, Math.abs(serverAvgChange))
                       )}{' '}
                       weeks
                     </Typography>
@@ -572,7 +875,7 @@ const Dashboard = () => {
                       color='text.secondary'
                       sx={{ mt: 0.5 }}
                     >
-                      Add more check-ins to estimate time to goal.
+                      Run trend analysis to estimate time to goal.
                     </Typography>
                   )
                 ) : (

@@ -19,7 +19,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useAppSelector } from '../../app/hooks';
 import { useDispatch } from 'react-redux';
 import { logoutRequested } from '../../auth/authSlice';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, matchPath } from 'react-router-dom';
 
 type NavDrawerProps = {
   setMobileOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -111,7 +111,10 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
 
       <List sx={{ px: 1, pt: 1 }}>
         {navItems.map((item) => {
-          const selected = location.pathname.startsWith(item.path);
+          const selected =
+            item.path === '/app'
+              ? !!matchPath({ path: '/app', end: true }, location.pathname) // exact
+              : !!matchPath({ path: item.path, end: false }, location.pathname); // allow subroutes if you ever add them
 
           return (
             <ListItemButton

@@ -52,3 +52,10 @@ export const formatWeight = (weightKg: number, unit: 'kg' | 'lbs') => {
 export const toIsoDateInputValue = (d: Date) => {
   return d.toISOString().slice(0, 10);
 };
+
+export const confidenceLabel = (c?: string | null) => {
+  if (c === 'high') return 'high confidence';
+  if (c === 'medium') return 'medium confidence';
+  if (c === 'low') return 'low confidence';
+  return null;
+};
