@@ -258,3 +258,6 @@ export const selectUserUnitPrefs = createSelector(
     weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit
   })
 );
+
+export const selectUserUnitPrefsMaybe = (state: RootState) =>
+  state.nutritionCalculator.loadedProfile?.profile.preferences ?? null;

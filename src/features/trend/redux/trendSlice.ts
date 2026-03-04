@@ -42,21 +42,16 @@ export type TrendAnalyzeResponse = {
 
 export type TrendAnalyzeRequest = {
   range: TrendRange;
-  /** bypass cache and re-run analysis */
   force?: boolean;
 };
 
-type TrendState = {
+export type TrendState = {
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
   data: TrendAnalyzeResponse | null;
-
-  // currently-selected range
   range: TrendRange;
-
-  // cache metadata
-  cachedAt: string | null; // ISO timestamp when data was last fetched
-  cacheTtlMs: number; // how long cached data is valid
+  cachedAt: string | null;
+  cacheTtlMs: number;
 };
 
 const initialState: TrendState = {
@@ -90,8 +85,6 @@ const trendSlice = createSlice({
       state.range = range;
       state.error = null;
 
-      // If we already have a valid cached result for this range and we're not forcing,
-      // keep status as succeeded to avoid UI flicker. Epic will also skip network.
       if (!force && isCacheValid(state, range)) {
         state.status = 'succeeded';
         return;
@@ -104,11 +97,7 @@ const trendSlice = createSlice({
       state.status = 'succeeded';
       state.data = action.payload;
       state.error = null;
-
-      // cache timestamp
       state.cachedAt = new Date().toISOString();
-
-      // keep range in sync with response
       state.range = action.payload.range;
     },
 
@@ -122,16 +111,13 @@ const trendSlice = createSlice({
       state.error = null;
       state.data = null;
       state.cachedAt = null;
-      // keep range as-is
     },
 
-    // Optional: allow you to change TTL later if you want
     trendCacheTtlUpdated(state, action: PayloadAction<number>) {
       const ttl = action.payload;
       if (Number.isFinite(ttl) && ttl >= 0) state.cacheTtlMs = ttl;
     },
 
-    // Optional: allow manual cache clear without resetting range
     trendCacheCleared(state) {
       state.data = null;
       state.cachedAt = null;
@@ -151,7 +137,6 @@ export const {
 
 export default trendSlice.reducer;
 
-// Export helper for epic (and anywhere else)
 export const trendCache = {
   isCacheValid
 };

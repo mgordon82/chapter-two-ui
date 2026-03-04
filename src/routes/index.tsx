@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 import PublicLayout from '../components/layout/PublicLayout';
 import PrivateLayout from '../components/layout/PrivateLayout';
@@ -40,10 +40,6 @@ const RequireRole: React.FC<{
   return children;
 };
 
-const AppIndexRedirect: React.FC = () => {
-  return <Dashboard />;
-};
-
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -54,24 +50,22 @@ const AppRoutes: React.FC = () => {
         </Route>
 
         <Route element={<RequireAuth />}>
-          <Route element={<PrivateLayout />}>
-            <Route path='/app' element={<Outlet />}>
-              <Route index element={<AppIndexRedirect />} />
-              <Route
-                path='nutrition-profile'
-                element={<ClientNutritionCalculator />}
-              />
-              <Route path='meal-generator' element={<MealGenerator />} />
-              <Route
-                path='users/invite'
-                element={
-                  <RequireRole allowed={['admin', 'staff', 'coach']}>
-                    <InviteUser />
-                  </RequireRole>
-                }
-              />
-              <Route path='*' element={<Navigate to='/app' replace />} />
-            </Route>
+          <Route path='/app' element={<PrivateLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route
+              path='nutrition-profile'
+              element={<ClientNutritionCalculator />}
+            />
+            <Route path='meal-generator' element={<MealGenerator />} />
+            <Route
+              path='users/invite'
+              element={
+                <RequireRole allowed={['admin', 'staff', 'coach']}>
+                  <InviteUser />
+                </RequireRole>
+              }
+            />
+            <Route path='*' element={<Navigate to='/app' replace />} />
           </Route>
         </Route>
 
