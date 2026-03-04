@@ -7,11 +7,11 @@ import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
 import { useAppSelector } from '../../../app/hooks';
-import { kgToLbs } from '../../../utils/conversions/weight';
 import StatCard from '../../../components/sections/statCard';
 import TrendAnalysisCard from '../../../features/trend';
 import WeightOverTimeChartCard from '../../../components/sections/weightOverTimeCard';
 import type { WeightUnitPref } from '../../../types/units';
+import { toDisplayWeight } from '../../../features/checkIns/helpers';
 
 const Dashboard = () => {
   const trend = useAppSelector((s) => s.trend);
@@ -54,9 +54,6 @@ const Dashboard = () => {
   const unitPref = unitReady ? unitPrefRaw : 'kg';
   const displayUnitLabel = unitPref === 'lbs' ? 'lb' : 'kg';
 
-  const toDisplayWeight = (kg: number): number =>
-    unitPref === 'lbs' ? kgToLbs(kg) : kg;
-
   const nonDeleted = useMemo(
     () =>
       checkIns.filter(
@@ -80,8 +77,8 @@ const Dashboard = () => {
 
   const currentWeightKg = latest?.metrics.weightKg ?? profileWeightKg ?? 0;
 
-  const currentWeight = toDisplayWeight(currentWeightKg);
-  const goalWeight = hasGoal ? toDisplayWeight(goalWeightKg) : 0;
+  const currentWeight = toDisplayWeight(currentWeightKg, unitPref);
+  const goalWeight = hasGoal ? toDisplayWeight(goalWeightKg, unitPref) : 0;
 
   const lastCheckInLabel = latest
     ? new Date(latest.recordedAt).toLocaleDateString()
@@ -89,7 +86,9 @@ const Dashboard = () => {
 
   const serverAvgChangeKg = trend.data?.metrics.avgChangePerWeekKg ?? null;
   const serverAvgChange =
-    serverAvgChangeKg == null ? null : toDisplayWeight(serverAvgChangeKg);
+    serverAvgChangeKg == null
+      ? null
+      : toDisplayWeight(serverAvgChangeKg, unitPref);
 
   const serverConfidence = trend.data?.confidence ?? 'low';
   const last7n = trend.data?.windows?.last7?.n ?? 0;
@@ -125,8 +124,8 @@ const Dashboard = () => {
   const progressLostKg = startWeightKg - currentWeightKg;
   const totalToLoseKg = hasGoal ? startWeightKg - goalWeightKg : 0;
 
-  const progressLost = toDisplayWeight(progressLostKg);
-  const totalToLose = toDisplayWeight(totalToLoseKg);
+  const progressLost = toDisplayWeight(progressLostKg, unitPref);
+  const totalToLose = toDisplayWeight(totalToLoseKg, unitPref);
 
   const progressPct =
     hasGoal && totalToLoseKg > 0
@@ -134,7 +133,7 @@ const Dashboard = () => {
       : 0;
 
   const remainingToGoal = hasGoal
-    ? toDisplayWeight(currentWeightKg - goalWeightKg)
+    ? toDisplayWeight(currentWeightKg - goalWeightKg, unitPref)
     : 0;
 
   return (

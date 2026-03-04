@@ -13,7 +13,8 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useState } from 'react';
 import { useAppDispatch } from '../../app/hooks';
 import { trendAnalyzeRequested, type TrendState } from './redux/trendSlice';
-import { kgToLbs } from '../../utils/conversions/weight';
+import type { WeightUnitPref } from '../../types/units';
+import { toDisplayWeight } from '../checkIns/helpers';
 
 const clamp = (lines: number) => ({
   display: '-webkit-box',
@@ -21,8 +22,6 @@ const clamp = (lines: number) => ({
   WebkitBoxOrient: 'vertical' as const,
   overflow: 'hidden'
 });
-
-type WeightUnitPref = 'kg' | 'lbs';
 
 type TrendAnalysisCardProps = {
   trend: TrendState;
@@ -42,12 +41,9 @@ const TrendAnalysisCard = ({
   const [showFullQuickRead, setShowFullQuickRead] = useState(false);
   const [showFullRationale, setShowFullRationale] = useState(false);
 
-  const toDisplayWeight = (kg: number): number =>
-    unitPref === 'lbs' ? kgToLbs(kg) : kg;
-
   const trendDeltaKg = trend.data?.metrics.avgChangePerWeekKg ?? null;
   const trendDelta =
-    trendDeltaKg == null ? null : toDisplayWeight(trendDeltaKg);
+    trendDeltaKg == null ? null : toDisplayWeight(trendDeltaKg, unitPref);
 
   const headlineTone =
     trendDelta == null ? 'neutral' : trendDelta <= 0 ? 'down' : 'up';
@@ -553,7 +549,8 @@ const TrendAnalysisCard = ({
                           {trend.data.metrics.avgLast7dKg == null
                             ? '—'
                             : `${toDisplayWeight(
-                                trend.data.metrics.avgLast7dKg
+                                trend.data.metrics.avgLast7dKg,
+                                unitPref
                               ).toFixed(1)} ${displayUnitLabel}`}
                         </Typography>
 
@@ -562,7 +559,8 @@ const TrendAnalysisCard = ({
                           {trend.data.metrics.avgPrev7dKg == null
                             ? '—'
                             : `${toDisplayWeight(
-                                trend.data.metrics.avgPrev7dKg
+                                trend.data.metrics.avgPrev7dKg,
+                                unitPref
                               ).toFixed(1)} ${displayUnitLabel}`}
                         </Typography>
 
@@ -571,7 +569,8 @@ const TrendAnalysisCard = ({
                           {trend.data.metrics.avgChangePerWeekKg == null
                             ? '—'
                             : `${toDisplayWeight(
-                                trend.data.metrics.avgChangePerWeekKg
+                                trend.data.metrics.avgChangePerWeekKg,
+                                unitPref
                               ).toFixed(2)} ${displayUnitLabel}/wk`}
                           {trend.data.metrics.avgChangePerWeekPct != null
                             ? ` (${trend.data.metrics.avgChangePerWeekPct.toFixed(
