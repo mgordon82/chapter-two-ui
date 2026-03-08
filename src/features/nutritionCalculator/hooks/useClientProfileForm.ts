@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormState } from '../types/formState';
 import { initialFormState } from '../types/formState';
 
@@ -17,15 +17,13 @@ type Prefs = {
 };
 
 type UseClientProfileFormOptions = {
-  /**
-   * Optional hook callback for persisting user preferences.
-   * Called whenever measurementUnitPref or weightUnitPref changes.
-   */
   onPrefsChange?: (prefs: Prefs) => void;
 };
 
 export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
+  const onPrefsChange = options?.onPrefsChange;
   const [form, setForm] = useState<FormState>(initialFormState);
+  const didMountRef = useRef(false);
 
   const setField = <K extends keyof FormState>(
     field: K,
@@ -105,12 +103,6 @@ export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
         }
       }
 
-      // Notify caller (persist prefs) using the *new* prefs snapshot
-      options?.onPrefsChange?.({
-        measurementUnitPref: unit,
-        weightUnitPref: prev.weightUnitPref
-      });
-
       return next;
     });
   };
@@ -137,15 +129,23 @@ export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
             : String(round(goalKg, 2));
       }
 
-      // Notify caller (persist prefs) using the *new* prefs snapshot
-      options?.onPrefsChange?.({
-        measurementUnitPref: prev.measurementUnitPref,
-        weightUnitPref: unit
-      });
-
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!onPrefsChange) return;
+
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    onPrefsChange({
+      measurementUnitPref: form.measurementUnitPref,
+      weightUnitPref: form.weightUnitPref
+    });
+  }, [form.measurementUnitPref, form.weightUnitPref, onPrefsChange]);
 
   return {
     form,

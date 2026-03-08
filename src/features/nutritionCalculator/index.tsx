@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
-
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { calcWeightGoal } from './calculations/weightGoal';
 import { calcBmr } from './calculations/bmr';
 import { calcTdee } from './calculations/tdee';
@@ -58,19 +57,11 @@ const ClientNutritionCalculator = () => {
     loadedProfileRef.current = loadedProfile;
   }, [loadedProfile]);
 
-  const {
-    form,
-    setField,
-    clear,
-    handleWeightDisplayChange,
-    handleGoalWeightDisplayChange,
-    handleHeightCmChange,
-    handleHeightFeetChange,
-    handleHeightInchesChange,
-    handleMeasurementUnitPrefChange,
-    handleWeightUnitPrefChange
-  } = useClientProfileForm({
-    onPrefsChange: (prefs) => {
+  const handlePrefsChange = useCallback(
+    (prefs: {
+      measurementUnitPref: MeasurementUnit;
+      weightUnitPref: WeightUnit;
+    }) => {
       if (suppressPrefsPersistRef.current) return;
       if (!loadedProfileRef.current) return;
 
@@ -88,7 +79,23 @@ const ClientNutritionCalculator = () => {
 
         dispatch(persistUserPreferencesRequested(latest));
       }, PREFS_DEBOUNCE_MS);
-    }
+    },
+    [dispatch]
+  );
+
+  const {
+    form,
+    setField,
+    clear,
+    handleWeightDisplayChange,
+    handleGoalWeightDisplayChange,
+    handleHeightCmChange,
+    handleHeightFeetChange,
+    handleHeightInchesChange,
+    handleMeasurementUnitPrefChange,
+    handleWeightUnitPrefChange
+  } = useClientProfileForm({
+    onPrefsChange: handlePrefsChange
   });
 
   useEffect(() => {
@@ -210,7 +217,9 @@ const ClientNutritionCalculator = () => {
   }, [bmr, inputs.activityLevel]);
 
   const dailyCalorieTarget =
-    tdee && inputs.goal && calculateDailyCalorieTarget(tdee, inputs.goal);
+    tdee != null && inputs.goal
+      ? calculateDailyCalorieTarget(tdee, inputs.goal)
+      : null;
 
   let macros: MacroResult | null = null;
 
