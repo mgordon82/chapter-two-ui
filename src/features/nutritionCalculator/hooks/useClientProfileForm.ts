@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { FormState } from '../types/formState';
 import { initialFormState } from '../types/formState';
 
@@ -11,25 +11,18 @@ import {
 import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
 import type { WeightUnit } from '../../../components/units/WeightUnit';
 
-type Prefs = {
-  measurementUnitPref: MeasurementUnit;
-  weightUnitPref: WeightUnit;
-};
-
-type UseClientProfileFormOptions = {
-  onPrefsChange?: (prefs: Prefs) => void;
-};
-
-export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
-  const onPrefsChange = options?.onPrefsChange;
+export const useClientProfileForm = () => {
   const [form, setForm] = useState<FormState>(initialFormState);
-  const didMountRef = useRef(false);
 
   const setField = <K extends keyof FormState>(
     field: K,
     value: FormState[K]
   ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const replaceForm = (nextForm: FormState) => {
+    setForm(nextForm);
   };
 
   const clear = () => setForm(initialFormState);
@@ -62,28 +55,46 @@ export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
     });
   };
 
-  const handleHeightCmChange = (value: string) => setField('heightCm', value);
+  const handleHeightCmChange = (value: string) => {
+    setForm((prev) => ({ ...prev, heightCm: value }));
+  };
 
   const handleHeightFeetChange = (value: string) => {
-    setField('heightFeet', value);
-    const ft = toNumberOrNaN(value);
-    const inch = toNumberOrNaN(form.heightInches);
-    if (Number.isNaN(ft) || Number.isNaN(inch)) return setField('heightCm', '');
-    setField('heightCm', String(round(feetInchesToCm(ft, inch), 2)));
+    setForm((prev) => {
+      const next: FormState = { ...prev, heightFeet: value };
+      const ft = toNumberOrNaN(value);
+      const inch = toNumberOrNaN(prev.heightInches);
+
+      if (Number.isNaN(ft) || Number.isNaN(inch)) {
+        next.heightCm = '';
+        return next;
+      }
+
+      next.heightCm = String(round(feetInchesToCm(ft, inch), 2));
+      return next;
+    });
   };
 
   const handleHeightInchesChange = (value: string) => {
-    setField('heightInches', value);
-    const ft = toNumberOrNaN(form.heightFeet);
-    const inch = toNumberOrNaN(value);
-    if (Number.isNaN(ft) || Number.isNaN(inch)) return setField('heightCm', '');
-    setField('heightCm', String(round(feetInchesToCm(ft, inch), 2)));
+    setForm((prev) => {
+      const next: FormState = { ...prev, heightInches: value };
+      const ft = toNumberOrNaN(prev.heightFeet);
+      const inch = toNumberOrNaN(value);
+
+      if (Number.isNaN(ft) || Number.isNaN(inch)) {
+        next.heightCm = '';
+        return next;
+      }
+
+      next.heightCm = String(round(feetInchesToCm(ft, inch), 2));
+      return next;
+    });
   };
 
   const handleMeasurementUnitPrefChange = (unit: MeasurementUnit) => {
-    if (unit === form.measurementUnitPref) return;
-
     setForm((prev) => {
+      if (unit === prev.measurementUnitPref) return prev;
+
       const next: FormState = { ...prev, measurementUnitPref: unit };
 
       if (unit === 'ft') {
@@ -108,9 +119,9 @@ export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
   };
 
   const handleWeightUnitPrefChange = (unit: WeightUnit) => {
-    if (unit === form.weightUnitPref) return;
-
     setForm((prev) => {
+      if (unit === prev.weightUnitPref) return prev;
+
       const next: FormState = { ...prev, weightUnitPref: unit };
 
       const currentKg = toNumberOrNaN(prev.weightKg);
@@ -133,23 +144,10 @@ export const useClientProfileForm = (options?: UseClientProfileFormOptions) => {
     });
   };
 
-  useEffect(() => {
-    if (!onPrefsChange) return;
-
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-
-    onPrefsChange({
-      measurementUnitPref: form.measurementUnitPref,
-      weightUnitPref: form.weightUnitPref
-    });
-  }, [form.measurementUnitPref, form.weightUnitPref, onPrefsChange]);
-
   return {
     form,
     setField,
+    replaceForm,
     clear,
     handleWeightDisplayChange,
     handleGoalWeightDisplayChange,

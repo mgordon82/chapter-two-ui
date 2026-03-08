@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+
 import { calcWeightGoal } from './calculations/weightGoal';
 import { calcBmr } from './calculations/bmr';
 import { calcTdee } from './calculations/tdee';
@@ -12,80 +13,89 @@ import { useClientProfileForm } from './hooks/useClientProfileForm';
 import { useDispatch } from 'react-redux';
 import {
   persistUserProfileRequested,
-  persistUserPreferencesRequested,
   saveNutritionProfile,
   type UserProfileUpsertPayload,
   selectLoadedUserProfile,
-  selectUserUnitPrefs,
-  userPreferencesUpdated
+  selectUserUnitPrefs
 } from './redux/nutritionCalculatorSlice';
 import { calculateMacros, type MacroResult } from './calculations/dailyMacros';
 import { calculateDailyCalorieTarget } from './calculations/dailyCalorieTarget';
 import { useAppSelector } from '../../app/hooks';
-import type { MeasurementUnit } from '../../components/units/MeasurementUnit';
-import type { WeightUnit } from '../../components/units/WeightUnit';
 import CheckInsPanel from '../checkIns';
 import { createCheckInRequested } from '../checkIns/redux/checkInsSlice';
+import type { FormState } from './types/formState';
 
 const KG_TO_LBS = 2.2046226218;
 const CM_PER_INCH = 2.54;
 
-const PREFS_DEBOUNCE_MS = 500;
+const buildHydratedForm = (
+  loadedProfile: NonNullable<ReturnType<typeof selectLoadedUserProfile>>,
+  unitPrefs: ReturnType<typeof selectUserUnitPrefs>
+): FormState => {
+  const p = loadedProfile.profile;
+  const { measurementUnitPref, weightUnitPref } = unitPrefs;
+
+  let weight = '';
+  let goalWeight = '';
+  const heightCm = p.heightCm != null ? String(p.heightCm) : '';
+  let heightFeet = '';
+  let heightInches = '';
+
+  if (p.weightKg != null) {
+    weight =
+      weightUnitPref === 'lbs'
+        ? String(Math.round(p.weightKg * KG_TO_LBS))
+        : String(p.weightKg);
+  }
+
+  if (p.goalWeightKg != null) {
+    goalWeight =
+      weightUnitPref === 'lbs'
+        ? String(Math.round(p.goalWeightKg * KG_TO_LBS))
+        : String(p.goalWeightKg);
+  }
+
+  if (p.heightCm != null && measurementUnitPref === 'ft') {
+    const totalIn = p.heightCm / CM_PER_INCH;
+    const feet = Math.floor(totalIn / 12);
+    const inches = Math.round(totalIn - feet * 12);
+    heightFeet = String(feet);
+    heightInches = String(inches);
+  }
+
+  return {
+    firstName: p.firstName ?? '',
+    lastName: p.lastName ?? '',
+    gender: p.gender ?? '',
+    activityLevel: p.activityLevel ?? '',
+    goal: p.goal ?? '',
+    rateLevel: p.rateLevel ?? '',
+    age: p.age != null ? String(p.age) : '',
+    heightCm,
+    heightFeet,
+    heightInches,
+    weight,
+    weightKg: p.weightKg != null ? String(p.weightKg) : '',
+    goalWeight,
+    goalWeightKg: p.goalWeightKg != null ? String(p.goalWeightKg) : '',
+    measurementUnitPref,
+    weightUnitPref
+  };
+};
 
 const ClientNutritionCalculator = () => {
   const dispatch = useDispatch();
 
-  const hydratedRef = useRef(false);
-  const prevProfileRef = useRef<ReturnType<
-    typeof selectLoadedUserProfile
-  > | null>(null);
-
-  const suppressPrefsPersistRef = useRef(false);
-
-  const prefsTimerRef = useRef<number | null>(null);
-  const latestPrefsRef = useRef<{
-    measurementUnitPref: MeasurementUnit;
-    weightUnitPref: WeightUnit;
-  } | null>(null);
+  const hydratedKeyRef = useRef<string | null>(null);
 
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
   const checkInsCount = useAppSelector((s) => s.checkIns.items.length);
 
-  const loadedProfileRef = useRef<typeof loadedProfile>(loadedProfile);
-  useEffect(() => {
-    loadedProfileRef.current = loadedProfile;
-  }, [loadedProfile]);
-
-  const handlePrefsChange = useCallback(
-    (prefs: {
-      measurementUnitPref: MeasurementUnit;
-      weightUnitPref: WeightUnit;
-    }) => {
-      if (suppressPrefsPersistRef.current) return;
-      if (!loadedProfileRef.current) return;
-
-      dispatch(userPreferencesUpdated(prefs));
-
-      latestPrefsRef.current = prefs;
-
-      if (prefsTimerRef.current) {
-        window.clearTimeout(prefsTimerRef.current);
-      }
-
-      prefsTimerRef.current = window.setTimeout(() => {
-        const latest = latestPrefsRef.current;
-        if (!latest) return;
-
-        dispatch(persistUserPreferencesRequested(latest));
-      }, PREFS_DEBOUNCE_MS);
-    },
-    [dispatch]
-  );
-
   const {
     form,
     setField,
+    replaceForm,
     clear,
     handleWeightDisplayChange,
     handleGoalWeightDisplayChange,
@@ -94,96 +104,25 @@ const ClientNutritionCalculator = () => {
     handleHeightInchesChange,
     handleMeasurementUnitPrefChange,
     handleWeightUnitPrefChange
-  } = useClientProfileForm({
-    onPrefsChange: handlePrefsChange
-  });
+  } = useClientProfileForm();
 
   useEffect(() => {
-    return () => {
-      if (prefsTimerRef.current) {
-        window.clearTimeout(prefsTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const prev = prevProfileRef.current;
-
-    if (loadedProfile === null) {
-      hydratedRef.current = false;
-      prevProfileRef.current = null;
+    if (!loadedProfile) {
+      hydratedKeyRef.current = null;
       return;
     }
 
-    if (prev !== loadedProfile) {
-      hydratedRef.current = false;
-      prevProfileRef.current = loadedProfile;
-    }
-  }, [loadedProfile]);
+    const hydrationKey = JSON.stringify({
+      profile: loadedProfile.profile,
+      measurementUnitPref: unitPrefs.measurementUnitPref,
+      weightUnitPref: unitPrefs.weightUnitPref
+    });
 
-  useEffect(() => {
-    if (!loadedProfile) return;
-    if (hydratedRef.current) return;
+    if (hydratedKeyRef.current === hydrationKey) return;
 
-    suppressPrefsPersistRef.current = true;
-
-    const p = loadedProfile.profile;
-    const { measurementUnitPref, weightUnitPref } = unitPrefs;
-
-    handleMeasurementUnitPrefChange(measurementUnitPref);
-    handleWeightUnitPrefChange(weightUnitPref);
-
-    setField('firstName', p.firstName ?? '');
-    setField('lastName', p.lastName ?? '');
-    setField('gender', p.gender ?? '');
-    setField('activityLevel', p.activityLevel ?? '');
-    setField('goal', p.goal ?? '');
-    setField('rateLevel', p.rateLevel ?? '');
-    setField('age', p.age != null ? String(p.age) : '');
-
-    if (p.weightKg != null) {
-      if (weightUnitPref === 'lbs') {
-        const lbs = p.weightKg * KG_TO_LBS;
-        handleWeightDisplayChange(String(Math.round(lbs)));
-      } else {
-        handleWeightDisplayChange(String(p.weightKg));
-      }
-    }
-
-    if (p.goalWeightKg != null) {
-      if (weightUnitPref === 'lbs') {
-        const lbs = p.goalWeightKg * KG_TO_LBS;
-        handleGoalWeightDisplayChange(String(Math.round(lbs)));
-      } else {
-        handleGoalWeightDisplayChange(String(p.goalWeightKg));
-      }
-    }
-
-    if (p.heightCm != null) {
-      if (measurementUnitPref === 'ft') {
-        const totalIn = p.heightCm / CM_PER_INCH;
-        const feet = Math.floor(totalIn / 12);
-        const inches = Math.round(totalIn - feet * 12);
-
-        handleHeightFeetChange(String(feet));
-        handleHeightInchesChange(String(inches));
-      } else {
-        handleHeightCmChange(String(p.heightCm));
-      }
-    }
-
-    setField('heightCm', p.heightCm != null ? String(p.heightCm) : '');
-    setField('weightKg', p.weightKg != null ? String(p.weightKg) : '');
-    setField(
-      'goalWeightKg',
-      p.goalWeightKg != null ? String(p.goalWeightKg) : ''
-    );
-
-    hydratedRef.current = true;
-    suppressPrefsPersistRef.current = false;
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedProfile, unitPrefs]);
+    replaceForm(buildHydratedForm(loadedProfile, unitPrefs));
+    hydratedKeyRef.current = hydrationKey;
+  }, [loadedProfile, unitPrefs, replaceForm]);
 
   const inputs = useMemo(() => {
     return {
@@ -191,7 +130,6 @@ const ClientNutritionCalculator = () => {
       activityLevel: form.activityLevel || null,
       goal: form.goal || null,
       rateLevel: form.rateLevel || null,
-
       heightCm: form.heightCm ? Number(form.heightCm) : null,
       weightKg: form.weightKg ? Number(form.weightKg) : null,
       goalWeightKg: form.goalWeightKg ? Number(form.goalWeightKg) : null,
@@ -283,7 +221,7 @@ const ClientNutritionCalculator = () => {
     };
 
     dispatch(persistUserProfileRequested(apiPayload));
-    // Seed the first check-in only once (starting weight baseline)
+
     if (checkInsCount === 0 && inputs.weightKg != null) {
       dispatch(
         createCheckInRequested({
@@ -357,6 +295,7 @@ const ClientNutritionCalculator = () => {
           />
         </Box>
       </Stack>
+
       <CheckInsPanel />
     </Box>
   );
