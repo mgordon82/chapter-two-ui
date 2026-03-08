@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { FormState } from '../types/formState';
 import { initialFormState } from '../types/formState';
 
@@ -21,9 +21,9 @@ export const useClientProfileForm = () => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const replaceForm = (nextForm: FormState) => {
+  const replaceForm = useCallback((nextForm: FormState) => {
     setForm(nextForm);
-  };
+  }, []);
 
   const clear = () => setForm(initialFormState);
 
