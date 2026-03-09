@@ -90,20 +90,21 @@ const Dashboard = () => {
       })
     : 'No check-ins yet';
 
-  const serverAvgChangeKg = trend.data?.metrics.avgChangePerWeekKg ?? null;
+  const serverAvgChangeKg =
+    trend.metrics.data?.metrics.avgChangePerWeekKg ?? null;
   const serverAvgChange =
     serverAvgChangeKg == null
       ? null
       : toDisplayWeight(serverAvgChangeKg, unitPref);
 
-  const serverConfidence = trend.data?.confidence ?? 'low';
-  const last7n = trend.data?.windows?.last7?.n ?? 0;
-  const prev7n = trend.data?.windows?.prev7?.n ?? 0;
+  const serverConfidence = trend.metrics.data?.confidence ?? 'low';
+  const last7n = trend.metrics.data?.windows?.last7?.n ?? 0;
+  const prev7n = trend.metrics.data?.windows?.prev7?.n ?? 0;
 
   const avgTone =
     serverAvgChange == null ||
     serverConfidence === 'low' ||
-    trend.data?.status === 'insufficient_data'
+    trend.metrics.data?.status === 'insufficient_data'
       ? 'warn'
       : serverAvgChange <= 0
       ? 'good'
@@ -116,9 +117,9 @@ const Dashboard = () => {
       ? 'Med confidence'
       : 'Low confidence';
 
-  const avgHelper = !trend.data
-    ? 'Run “Analyze trend” to calculate'
-    : trend.data.status === 'insufficient_data'
+  const avgHelper = !trend.metrics.data
+    ? 'Run “Generate Insight” to calculate'
+    : trend.metrics.data.status === 'insufficient_data'
     ? `Need check-ins in both weeks • ${last7n} vs ${prev7n}`
     : `Avg(last 7d) − Avg(prev 7d) • ${last7n} vs ${prev7n} check-ins`;
 
@@ -430,7 +431,7 @@ const Dashboard = () => {
                       color='text.secondary'
                       sx={{ mt: 0.5 }}
                     >
-                      Run trend analysis to estimate time to goal.
+                      Run Generate Insight to estimate time to goal.
                     </Typography>
                   )
                 ) : (

@@ -2,29 +2,40 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 export type TrendRange = '1W' | '1M' | '3M' | '6M' | '12M';
 
-export type TrendAnalyzeResponse = {
+export type TrendStatus = 'ok' | 'insufficient_data';
+export type TrendConfidence = 'low' | 'medium' | 'high';
+
+export type TrendOption = {
+  id: string;
+  kind: 'hold' | 'activity_bump' | 'macro_tweak';
+  title: string;
+  summary: string;
+};
+
+export type TrendAiRecommendation = {
+  id: string;
+  title: string;
+  summary: string;
+  rationale: string;
+};
+
+export type TrendAi = {
+  quickRead: string;
+  context: string | null;
+  disclaimer: string | null;
+  recommended: TrendAiRecommendation[];
+};
+
+export type TrendMetricsResponse = {
   requestId: string;
   range: TrendRange;
-  status: 'ok' | 'insufficient_data';
-  confidence: 'low' | 'medium' | 'high';
+  status: TrendStatus;
+  confidence: TrendConfidence;
   series: { date: string; weightKg: number }[];
-
   windows: null | {
     last7: { start: string; end: string; n: number };
     prev7: { start: string; end: string; n: number };
   };
-  ai?: {
-    quickRead: string;
-    context: string | null;
-    disclaimer: string | null;
-    recommended: Array<{
-      id: string;
-      title: string;
-      summary: string;
-      rationale: string;
-    }>;
-  };
-
   metrics: {
     currentWeightKg: number | null;
     avgLast7dKg: number | null;
@@ -32,111 +43,201 @@ export type TrendAnalyzeResponse = {
     avgChangePerWeekKg: number | null;
     avgChangePerWeekPct: number | null;
   };
-  options: Array<{
-    id: string;
-    kind: 'hold' | 'activity_bump' | 'macro_tweak';
-    title: string;
-    summary: string;
-  }>;
 };
 
-export type TrendAnalyzeRequest = {
+export type TrendInsightResponse = {
+  requestId: string;
+  range: TrendRange;
+  status: TrendStatus;
+  confidence: TrendConfidence;
+  options: TrendOption[];
+  ai: TrendAi | null;
+};
+
+export type TrendMetricsRequest = {
   range: TrendRange;
   force?: boolean;
 };
 
-export type TrendState = {
-  status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string | null;
-  data: TrendAnalyzeResponse | null;
+export type TrendInsightRequest = {
   range: TrendRange;
-  cachedAt: string | null;
-  cacheTtlMs: number;
+  force?: boolean;
 };
 
-const initialState: TrendState = {
+type TrendResourceState<T> = {
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
+  data: T | null;
+  cachedAt: string | null;
+};
+
+export type TrendState = {
+  range: TrendRange;
+  cacheTtlMs: number;
+  metrics: TrendResourceState<TrendMetricsResponse>;
+  insight: TrendResourceState<TrendInsightResponse>;
+};
+
+const createResourceState = <T>(): TrendResourceState<T> => ({
   status: 'idle',
   error: null,
   data: null,
-  range: '3M',
+  cachedAt: null
+});
 
-  cachedAt: null,
-  cacheTtlMs: 1000 * 60 * 60 // 1 hour
+const initialState: TrendState = {
+  range: '3M',
+  cacheTtlMs: 1000 * 60 * 60, // 1 hour
+  metrics: createResourceState<TrendMetricsResponse>(),
+  insight: createResourceState<TrendInsightResponse>()
 };
 
-const isCacheValid = (state: TrendState, range: TrendRange) => {
-  if (!state.data) return false;
-  if (state.data.range !== range) return false;
-  if (!state.cachedAt) return false;
+const isResourceCacheValid = <T extends { range: TrendRange }>(
+  resource: TrendResourceState<T>,
+  range: TrendRange,
+  cacheTtlMs: number
+) => {
+  if (!resource.data) return false;
+  if (resource.data.range !== range) return false;
+  if (!resource.cachedAt) return false;
 
-  const cachedAtMs = new Date(state.cachedAt).getTime();
+  const cachedAtMs = new Date(resource.cachedAt).getTime();
   if (!Number.isFinite(cachedAtMs)) return false;
 
-  return Date.now() - cachedAtMs < state.cacheTtlMs;
+  return Date.now() - cachedAtMs < cacheTtlMs;
 };
 
 const trendSlice = createSlice({
   name: 'trend',
   initialState,
   reducers: {
-    trendAnalyzeRequested(state, action: PayloadAction<TrendAnalyzeRequest>) {
+    trendMetricsRequested(state, action: PayloadAction<TrendMetricsRequest>) {
       const { range, force = false } = action.payload;
-
       state.range = range;
-      state.error = null;
+      state.metrics.error = null;
 
-      if (!force && isCacheValid(state, range)) {
-        state.status = 'succeeded';
+      if (
+        !force &&
+        isResourceCacheValid(state.metrics, range, state.cacheTtlMs)
+      ) {
+        state.metrics.status = 'succeeded';
         return;
       }
 
-      state.status = 'loading';
+      state.metrics.status = 'loading';
     },
 
-    trendAnalyzeSucceeded(state, action: PayloadAction<TrendAnalyzeResponse>) {
-      state.status = 'succeeded';
-      state.data = action.payload;
-      state.error = null;
-      state.cachedAt = new Date().toISOString();
+    trendMetricsSucceeded(state, action: PayloadAction<TrendMetricsResponse>) {
       state.range = action.payload.range;
+      state.metrics.status = 'succeeded';
+      state.metrics.error = null;
+      state.metrics.data = action.payload;
+      state.metrics.cachedAt = new Date().toISOString();
     },
 
-    trendAnalyzeFailed(state, action: PayloadAction<string>) {
-      state.status = 'failed';
-      state.error = action.payload;
+    trendMetricsFailed(state, action: PayloadAction<string>) {
+      state.metrics.status = 'failed';
+      state.metrics.error = action.payload;
+    },
+
+    trendInsightRequested(state, action: PayloadAction<TrendInsightRequest>) {
+      const { range, force = false } = action.payload;
+      state.range = range;
+      state.insight.error = null;
+
+      if (
+        !force &&
+        isResourceCacheValid(state.insight, range, state.cacheTtlMs)
+      ) {
+        state.insight.status = 'succeeded';
+        return;
+      }
+
+      state.insight.status = 'loading';
+    },
+
+    trendInsightSucceeded(state, action: PayloadAction<TrendInsightResponse>) {
+      state.range = action.payload.range;
+      state.insight.status = 'succeeded';
+      state.insight.error = null;
+      state.insight.data = action.payload;
+      state.insight.cachedAt = new Date().toISOString();
+    },
+
+    trendInsightFailed(state, action: PayloadAction<string>) {
+      state.insight.status = 'failed';
+      state.insight.error = action.payload;
     },
 
     trendReset(state) {
-      state.status = 'idle';
-      state.error = null;
-      state.data = null;
-      state.cachedAt = null;
+      state.range = '3M';
+      state.metrics = createResourceState<TrendMetricsResponse>();
+      state.insight = createResourceState<TrendInsightResponse>();
     },
 
     trendCacheTtlUpdated(state, action: PayloadAction<number>) {
       const ttl = action.payload;
-      if (Number.isFinite(ttl) && ttl >= 0) state.cacheTtlMs = ttl;
+      if (Number.isFinite(ttl) && ttl >= 0) {
+        state.cacheTtlMs = ttl;
+      }
+    },
+
+    trendMetricsCacheCleared(state) {
+      state.metrics.data = null;
+      state.metrics.cachedAt = null;
+      state.metrics.error = null;
+      if (state.metrics.status === 'succeeded') {
+        state.metrics.status = 'idle';
+      }
+    },
+
+    trendInsightCacheCleared(state) {
+      state.insight.data = null;
+      state.insight.cachedAt = null;
+      state.insight.error = null;
+      if (state.insight.status === 'succeeded') {
+        state.insight.status = 'idle';
+      }
     },
 
     trendCacheCleared(state) {
-      state.data = null;
-      state.cachedAt = null;
-      if (state.status === 'succeeded') state.status = 'idle';
+      state.metrics.data = null;
+      state.metrics.cachedAt = null;
+      state.metrics.error = null;
+      state.insight.data = null;
+      state.insight.cachedAt = null;
+      state.insight.error = null;
+
+      if (state.metrics.status === 'succeeded') {
+        state.metrics.status = 'idle';
+      }
+      if (state.insight.status === 'succeeded') {
+        state.insight.status = 'idle';
+      }
     }
   }
 });
 
 export const {
-  trendAnalyzeRequested,
-  trendAnalyzeSucceeded,
-  trendAnalyzeFailed,
+  trendMetricsRequested,
+  trendMetricsSucceeded,
+  trendMetricsFailed,
+  trendInsightRequested,
+  trendInsightSucceeded,
+  trendInsightFailed,
   trendReset,
   trendCacheTtlUpdated,
+  trendMetricsCacheCleared,
+  trendInsightCacheCleared,
   trendCacheCleared
 } = trendSlice.actions;
 
 export default trendSlice.reducer;
 
 export const trendCache = {
-  isCacheValid
+  isMetricsCacheValid: (state: TrendState, range: TrendRange): boolean =>
+    isResourceCacheValid(state.metrics, range, state.cacheTtlMs),
+
+  isInsightCacheValid: (state: TrendState, range: TrendRange): boolean =>
+    isResourceCacheValid(state.insight, range, state.cacheTtlMs)
 };

@@ -10,7 +10,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useState } from 'react';
 import { useAppDispatch } from '../../app/hooks';
 import {
-  trendAnalyzeRequested,
+  trendInsightRequested,
   type TrendRange,
   type TrendState
 } from './redux/trendSlice';
@@ -43,8 +43,8 @@ const TrendAnalysisCard = ({
     setShowFullQuickRead(false);
     setShowFullRationale(false);
 
-    if (!trend.data && trend.status !== 'loading') {
-      dispatch(trendAnalyzeRequested({ range: ANALYZE_RANGE }));
+    if (!trend.insight.data && trend.insight.status !== 'loading') {
+      dispatch(trendInsightRequested({ range: ANALYZE_RANGE }));
     }
   };
 
@@ -146,7 +146,7 @@ const TrendAnalysisCard = ({
                 component='span'
                 sx={{ display: { xs: 'none', sm: 'inline' } }}
               >
-                {showAnalyze ? 'Hide analysis' : 'Analyze trend'}
+                {showAnalyze ? 'Hide Insight' : 'Generate Insight'}
               </Box>
             </Button>
           </Stack>

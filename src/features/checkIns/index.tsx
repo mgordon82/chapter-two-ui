@@ -22,7 +22,7 @@ import CheckInsChart from './components/Chart';
 import CheckInList from './components/CheckInList';
 import AddCheckInDialog from './components/AddCheckInDialog';
 import { formatWeight, startDateForRange } from './helpers';
-import { trendAnalyzeRequested } from '../trend/redux/trendSlice';
+import { trendMetricsRequested } from '../trend/redux/trendSlice';
 
 const CheckInsPanel = () => {
   const dispatch = useAppDispatch();
@@ -32,6 +32,39 @@ const CheckInsPanel = () => {
   const trend = useAppSelector((s) => s.trend);
 
   const weightUnitPref = unitPrefs?.weightUnitPref === 'lbs' ? 'lbs' : 'kg';
+
+  const avgChangePerWeekKg =
+    trend.metrics.data?.metrics.avgChangePerWeekKg ?? null;
+
+  const trendDirectionLabel =
+    avgChangePerWeekKg == null
+      ? null
+      : avgChangePerWeekKg < -0.05
+      ? `Losing ~${formatWeight(
+          Math.abs(avgChangePerWeekKg),
+          weightUnitPref
+        )} ${weightUnitPref}/week`
+      : avgChangePerWeekKg > 0.05
+      ? `Gaining ~${formatWeight(
+          Math.abs(avgChangePerWeekKg),
+          weightUnitPref
+        )} ${weightUnitPref}/week`
+      : 'Holding steady';
+
+  const last7n = trend.metrics.data?.windows?.last7?.n ?? null;
+  const prev7n = trend.metrics.data?.windows?.prev7?.n ?? null;
+
+  const avgWeighInsPerWeek =
+    last7n != null && prev7n != null ? (last7n + prev7n) / 2 : null;
+
+  const consistencyTone =
+    avgWeighInsPerWeek == null
+      ? 'text.secondary'
+      : avgWeighInsPerWeek >= 4
+      ? 'success.main'
+      : avgWeighInsPerWeek >= 2
+      ? 'warning.main'
+      : 'text.secondary';
 
   const [view, setView] = useState<ViewMode>('chart');
   const [range, setRange] = useState<RangeKey>('3M');
@@ -98,9 +131,9 @@ const CheckInsPanel = () => {
             sx={{ minWidth: 0, flexWrap: 'wrap' }}
           >
             <IconButton
-              aria-label='insights'
-              onClick={() => dispatch(trendAnalyzeRequested({ range }))}
-              disabled={trend.status === 'loading'}
+              aria-label='analyze trend metrics'
+              onClick={() => dispatch(trendMetricsRequested({ range }))}
+              disabled={trend.metrics.status === 'loading'}
             >
               <InsightsIcon />
             </IconButton>
@@ -168,25 +201,57 @@ const CheckInsPanel = () => {
           </Typography>
         ) : null}
 
-        {trend.status === 'loading' ? (
+        {trendDirectionLabel ? (
+          <Typography
+            variant='body2'
+            sx={{
+              mt: 1,
+              color:
+                avgChangePerWeekKg == null
+                  ? 'text.secondary'
+                  : avgChangePerWeekKg < -0.05
+                  ? 'success.main'
+                  : avgChangePerWeekKg > 0.05
+                  ? 'warning.main'
+                  : 'text.secondary',
+              fontWeight: 600
+            }}
+          >
+            Trend: {trendDirectionLabel}
+          </Typography>
+        ) : null}
+
+        {avgWeighInsPerWeek != null && (
+          <Typography
+            variant='body2'
+            sx={{ mt: 0.5, color: consistencyTone, fontWeight: 600 }}
+          >
+            Consistency: {avgWeighInsPerWeek.toFixed(1)} weigh-ins/week
+            {avgWeighInsPerWeek < 4
+              ? ' • More frequent weigh-ins improve trend confidence'
+              : ''}
+          </Typography>
+        )}
+
+        {trend.metrics.status === 'loading' ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
             Analyzing trend…
           </Typography>
         ) : null}
 
-        {trend.status === 'failed' ? (
+        {trend.metrics.status === 'failed' ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='error'>
-            {trend.error}
+            {trend.metrics.error}
           </Typography>
         ) : null}
 
-        {trend.status === 'succeeded' && trend.data?.metrics ? (
+        {trend.metrics.status === 'succeeded' && trend.metrics.data?.metrics ? (
           <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mt: 1 }}>
             <Typography variant='body2' color='text.secondary'>
               Avg (last 7d):{' '}
-              {trend.data.metrics.avgLast7dKg != null
+              {trend.metrics.data.metrics.avgLast7dKg != null
                 ? `${formatWeight(
-                    trend.data.metrics.avgLast7dKg,
+                    trend.metrics.data.metrics.avgLast7dKg,
                     weightUnitPref
                   )} ${weightUnitPref}`
                 : '--'}
@@ -194,9 +259,9 @@ const CheckInsPanel = () => {
 
             <Typography variant='body2' color='text.secondary'>
               Avg (prev 7d):{' '}
-              {trend.data.metrics.avgPrev7dKg != null
+              {trend.metrics.data.metrics.avgPrev7dKg != null
                 ? `${formatWeight(
-                    trend.data.metrics.avgPrev7dKg,
+                    trend.metrics.data.metrics.avgPrev7dKg,
                     weightUnitPref
                   )} ${weightUnitPref}`
                 : '--'}
@@ -204,9 +269,9 @@ const CheckInsPanel = () => {
 
             <Typography variant='body2' color='text.secondary'>
               Avg change/wk:{' '}
-              {trend.data.metrics.avgChangePerWeekKg != null
+              {trend.metrics.data.metrics.avgChangePerWeekKg != null
                 ? `${formatWeight(
-                    trend.data.metrics.avgChangePerWeekKg,
+                    trend.metrics.data.metrics.avgChangePerWeekKg,
                     weightUnitPref
                   )} ${weightUnitPref}`
                 : '--'}

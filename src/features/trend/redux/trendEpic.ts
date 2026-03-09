@@ -6,85 +6,176 @@ import type { AnyAction, PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../../../app/store';
 
 import {
-  trendAnalyzeRequested,
-  trendAnalyzeSucceeded,
-  trendAnalyzeFailed,
-  type TrendAnalyzeResponse,
-  type TrendAnalyzeRequest,
+  trendMetricsRequested,
+  trendMetricsSucceeded,
+  trendMetricsFailed,
+  trendInsightRequested,
+  trendInsightSucceeded,
+  trendInsightFailed,
+  type TrendMetricsRequest,
+  type TrendMetricsResponse,
+  type TrendInsightRequest,
+  type TrendInsightResponse,
   trendCache
 } from './trendSlice';
 
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
 
-const trendAnalyzeEpic: Epic<AnyAction, AnyAction, RootState> = (
+const getErrorMessage = (err: unknown, fallback: string) => {
+  const message =
+    typeof err === 'object' && err && 'message' in err
+      ? (err as { message?: string }).message
+      : null;
+
+  if (message === 'NOT_SIGNED_IN') return 'Please sign in again.';
+  return message ?? fallback;
+};
+
+const parseErrorMessage = async (res: Response) => {
+  const message = `HTTP_${res.status}`;
+
+  try {
+    const json = await res.json();
+    if (json?.error) return json.error as string;
+    if (json?.message) return json.message as string;
+  } catch {
+    // ignore
+  }
+
+  try {
+    const text = await res.text();
+    if (text) return text;
+  } catch {
+    // ignore
+  }
+
+  return message;
+};
+
+const fetchTrendMetrics = async (
+  apiUrl: string,
+  range: TrendMetricsRequest['range']
+): Promise<TrendMetricsResponse> => {
+  const token = await getAccessToken();
+  if (!token) throw new Error('NOT_SIGNED_IN');
+
+  const res = await fetch(`${apiUrl}/api/trend/metrics`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ range })
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res));
+  }
+
+  const data = (await res.json()) as TrendMetricsResponse;
+  return { ...data, range };
+};
+
+const fetchTrendInsight = async (
+  apiUrl: string,
+  range: TrendInsightRequest['range']
+): Promise<TrendInsightResponse> => {
+  const token = await getAccessToken();
+  if (!token) throw new Error('NOT_SIGNED_IN');
+
+  const res = await fetch(`${apiUrl}/api/trend/insight`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ range })
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res));
+  }
+
+  const data = (await res.json()) as TrendInsightResponse;
+  return { ...data, range };
+};
+
+const trendMetricsEpic: Epic<AnyAction, AnyAction, RootState> = (
   action$,
   state$
 ) =>
   action$.pipe(
-    ofType(trendAnalyzeRequested.type),
+    ofType(trendMetricsRequested.type),
     withLatestFrom(state$),
     mergeMap(([action, state]) => {
       const API_URL = import.meta.env.VITE_API_URL;
-
-      const payload = (action as PayloadAction<TrendAnalyzeRequest>).payload;
+      const payload = (action as PayloadAction<TrendMetricsRequest>).payload;
       const { range, force = false } = payload;
 
-      const trendState = state.trend;
+      if (!force && trendCache.isMetricsCacheValid(state.trend, range)) {
+        return EMPTY;
+      }
 
-      // If cached and not forcing, skip the network call
-      if (!force && trendCache.isCacheValid(trendState, range)) {
+      return from(fetchTrendMetrics(API_URL, range)).pipe(
+        mergeMap((data) => of(trendMetricsSucceeded(data))),
+        catchError((err) =>
+          of(
+            trendMetricsFailed(getErrorMessage(err, 'Failed to analyze trend'))
+          )
+        )
+      );
+    })
+  );
+
+const trendInsightEpic: Epic<AnyAction, AnyAction, RootState> = (
+  action$,
+  state$
+) =>
+  action$.pipe(
+    ofType(trendInsightRequested.type),
+    withLatestFrom(state$),
+    mergeMap(([action, state]) => {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const payload = (action as PayloadAction<TrendInsightRequest>).payload;
+      const { range, force = false } = payload;
+
+      if (!force && trendCache.isInsightCacheValid(state.trend, range)) {
         return EMPTY;
       }
 
       return from(
-        (async () => {
-          const token = await getAccessToken();
-          if (!token) throw new Error('NOT_SIGNED_IN');
+        (async (): Promise<AnyAction[]> => {
+          const actions: AnyAction[] = [];
 
-          const res = await fetch(`${API_URL}/api/trend/analyze`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ range })
-          });
+          const hasValidMetricsCache = trendCache.isMetricsCacheValid(
+            state.trend,
+            range
+          );
 
-          if (!res.ok) {
-            let message = `HTTP_${res.status}`;
-            try {
-              const json = await res.json();
-              if (json?.error) message = json.error;
-              else if (json?.message) message = json.message;
-            } catch {
-              try {
-                const text = await res.text();
-                if (text) message = text;
-              } catch {
-                // ignore
-              }
-            }
-            throw new Error(message);
+          if (!hasValidMetricsCache) {
+            const metrics = await fetchTrendMetrics(API_URL, range);
+            actions.push(trendMetricsSucceeded(metrics));
           }
 
-          const data = (await res.json()) as TrendAnalyzeResponse;
+          const insight = await fetchTrendInsight(API_URL, range);
+          actions.push(trendInsightSucceeded(insight));
 
-          // normalize in case backend ever omits/mismatches range
-          const normalized: TrendAnalyzeResponse = { ...data, range };
-          return trendAnalyzeSucceeded(normalized);
+          return actions;
         })()
       ).pipe(
-        catchError((err) => {
-          const msg =
-            err?.message === 'NOT_SIGNED_IN'
-              ? 'Please sign in again.'
-              : err?.message ?? 'Failed to analyze trend';
-          return of(trendAnalyzeFailed(msg));
-        })
+        mergeMap((actions) => from(actions)),
+        catchError((err) =>
+          of(
+            trendInsightFailed(
+              getErrorMessage(err, 'Failed to generate trend insight')
+            )
+          )
+        )
       );
     })
   );
 
 export const trendEpics: Epic<AnyAction, AnyAction, RootState>[] = [
-  trendAnalyzeEpic
+  trendMetricsEpic,
+  trendInsightEpic
 ];

@@ -19,6 +19,10 @@ import {
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
 
 import { loadUserProfileRequested } from '../../nutritionCalculator/redux/nutritionCalculatorSlice';
+import {
+  trendMetricsRequested,
+  trendInsightCacheCleared
+} from '../../trend/redux/trendSlice';
 
 type GetCheckInsResponse = {
   ok: true;
@@ -113,7 +117,9 @@ const createCheckInEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
           return [
             createCheckInSucceeded({ id: String(data.id) }),
             fetchCheckInsRequested(),
-            loadUserProfileRequested()
+            loadUserProfileRequested(),
+            trendInsightCacheCleared(),
+            trendMetricsRequested({ range: '3M', force: true })
           ];
         })()
       ).pipe(

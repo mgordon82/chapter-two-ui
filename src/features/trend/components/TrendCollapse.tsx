@@ -9,15 +9,15 @@ import {
 } from '@mui/material';
 
 import { toDisplayWeight } from '../../checkIns/helpers';
-import { useDispatch } from 'react-redux';
 
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import {
-  trendAnalyzeRequested,
+  trendInsightRequested,
   type TrendRange,
   type TrendState
 } from '../redux/trendSlice';
 import type { WeightUnitPref } from '../../../types/units';
+import { useAppDispatch } from '../../../app/hooks';
 
 type TrendCollapseProps = {
   trend: TrendState;
@@ -46,7 +46,13 @@ const TrendCollapseSection = ({
   showFullRationale,
   setShowFullRationale
 }: TrendCollapseProps) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
+
+  const metricsState = trend.metrics;
+  const insightState = trend.insight;
+
+  const metricsData = metricsState.data;
+  const insightData = insightState.data;
 
   const clamp = (lines: number) => ({
     display: '-webkit-box',
@@ -55,7 +61,7 @@ const TrendCollapseSection = ({
     overflow: 'hidden'
   });
 
-  const trendDeltaKg = trend.data?.metrics.avgChangePerWeekKg ?? null;
+  const trendDeltaKg = metricsData?.metrics.avgChangePerWeekKg ?? null;
   const trendDelta =
     trendDeltaKg == null ? null : toDisplayWeight(trendDeltaKg, unitPref);
 
@@ -63,16 +69,16 @@ const TrendCollapseSection = ({
     trendDelta == null ? 'neutral' : trendDelta <= 0 ? 'down' : 'up';
 
   const confidenceLabel =
-    trend.data?.confidence === 'high'
+    metricsData?.confidence === 'high'
       ? 'High confidence'
-      : trend.data?.confidence === 'medium'
+      : metricsData?.confidence === 'medium'
       ? 'Medium confidence'
       : 'Low confidence';
 
   const minWeeklyN =
-    trend.data?.windows?.last7?.n != null &&
-    trend.data?.windows?.prev7?.n != null
-      ? Math.min(trend.data.windows.last7.n, trend.data.windows.prev7.n)
+    metricsData?.windows?.last7?.n != null &&
+    metricsData?.windows?.prev7?.n != null
+      ? Math.min(metricsData.windows.last7.n, metricsData.windows.prev7.n)
       : null;
 
   const confidenceLine =
@@ -81,17 +87,17 @@ const TrendCollapseSection = ({
       : confidenceLabel;
 
   const lowConfidenceHint =
-    trend.data?.confidence === 'low'
+    metricsData?.confidence === 'low'
       ? 'Tip: aim for 4–7 weigh-ins/week for a clearer trend.'
       : null;
 
-  const rerunAnalysis = () => {
+  const rerunInsight = () => {
     setShowTrendDetails(false);
-    dispatch(trendAnalyzeRequested({ range: range, force: true }));
+    dispatch(trendInsightRequested({ range, force: true }));
   };
 
-  const cachedAtLabel = trend.cachedAt
-    ? `Cached: ${new Date(trend.cachedAt).toLocaleString(undefined, {
+  const cachedAtLabel = insightState.cachedAt
+    ? `Cached: ${new Date(insightState.cachedAt).toLocaleString(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -100,9 +106,10 @@ const TrendCollapseSection = ({
       })}`
     : null;
 
-  const firstRec = trend.data?.ai?.recommended?.[0] ?? null;
+  const firstRec = insightData?.ai?.recommended?.[0] ?? null;
+  const firstOption = insightData?.options?.[0] ?? null;
 
-  const quickReadText = trend.data?.ai?.quickRead ?? '';
+  const quickReadText = insightData?.ai?.quickRead ?? '';
   const rationaleText = firstRec?.rationale ?? '';
 
   const showQuickReadToggle = quickReadText.length > 140;
@@ -122,8 +129,8 @@ const TrendCollapseSection = ({
             <Button
               size='small'
               variant='outlined'
-              onClick={rerunAnalysis}
-              disabled={trend.status === 'loading'}
+              onClick={rerunInsight}
+              disabled={insightState.status === 'loading'}
               sx={{
                 textTransform: 'none',
                 borderRadius: 999,
@@ -131,10 +138,10 @@ const TrendCollapseSection = ({
                 py: 0.25
               }}
             >
-              {trend.data ? 'Re-run analysis' : 'Run analysis'}
+              {insightData ? 'Re-run insight' : 'Generate insight'}
             </Button>
 
-            {trend.data ? (
+            {insightData ? (
               <Typography variant='caption' color='text.secondary'>
                 Cached until you re-run.
               </Typography>
@@ -152,18 +159,18 @@ const TrendCollapseSection = ({
           ) : null}
         </Stack>
 
-        {trend.status === 'loading' ? (
+        {insightState.status === 'loading' ? (
           <Stack direction='row' spacing={1} alignItems='center'>
             <CircularProgress size={18} />
             <Typography variant='body2' color='text.secondary'>
-              Analyzing trend…
+              Generating insight…
             </Typography>
           </Stack>
-        ) : trend.status === 'failed' ? (
+        ) : insightState.status === 'failed' ? (
           <Typography variant='body2' color='error'>
-            {trend.error ?? 'Failed to analyze trend.'}
+            {insightState.error ?? 'Failed to generate insight.'}
           </Typography>
-        ) : trend.data ? (
+        ) : insightData ? (
           <Box
             sx={{
               p: 2,
@@ -201,7 +208,8 @@ const TrendCollapseSection = ({
                     Quick read
                   </Typography>
                   <Typography variant='caption' color='text.secondary'>
-                    {trend.data.ai?.context ?? 'Based on your recent check-ins'}
+                    {insightData.ai?.context ??
+                      'Based on your recent check-ins'}
                   </Typography>
                 </Box>
               </Stack>
@@ -264,7 +272,7 @@ const TrendCollapseSection = ({
                   ...(showFullQuickRead ? {} : clamp(2))
                 }}
               >
-                {trend.data.status === 'insufficient_data'
+                {metricsData?.status === 'insufficient_data'
                   ? 'Log a few more weigh-ins this week to sharpen the signal and unlock stronger recommendations.'
                   : 'Small week-to-week swings are normal — we’re looking for consistent direction over 10–14 days.'}
               </Typography>
@@ -299,7 +307,7 @@ const TrendCollapseSection = ({
               ) : null}
             </Box>
 
-            {(firstRec || trend.data.options?.length) && (
+            {(firstRec || firstOption) && (
               <Box sx={{ mt: 1.25 }}>
                 <Divider sx={{ mb: 1.25, opacity: 0.5 }} />
 
@@ -393,7 +401,7 @@ const TrendCollapseSection = ({
                       </Box>
                     ) : null}
                   </Stack>
-                ) : (
+                ) : firstOption ? (
                   <Box
                     sx={{
                       p: 1.25,
@@ -411,17 +419,17 @@ const TrendCollapseSection = ({
                       Next step
                     </Typography>
                     <Typography variant='body2' sx={{ fontWeight: 700 }}>
-                      {trend.data.options[0].title}
+                      {firstOption.title}
                     </Typography>
                     <Typography
                       variant='body2'
                       color='text.secondary'
                       sx={{ mt: 0.25 }}
                     >
-                      {trend.data.options[0].summary}
+                      {firstOption.summary}
                     </Typography>
                   </Box>
-                )}
+                ) : null}
               </Box>
             )}
 
@@ -443,42 +451,42 @@ const TrendCollapseSection = ({
                 <Stack spacing={0.5} sx={{ mt: 1 }}>
                   <Typography variant='body2' color='text.secondary'>
                     Avg(last 7d):{' '}
-                    {trend.data.metrics.avgLast7dKg == null
+                    {metricsData?.metrics.avgLast7dKg == null
                       ? '—'
                       : `${toDisplayWeight(
-                          trend.data.metrics.avgLast7dKg,
+                          metricsData.metrics.avgLast7dKg,
                           unitPref
                         ).toFixed(1)} ${displayUnitLabel}`}
                   </Typography>
 
                   <Typography variant='body2' color='text.secondary'>
                     Avg(prev 7d):{' '}
-                    {trend.data.metrics.avgPrev7dKg == null
+                    {metricsData?.metrics.avgPrev7dKg == null
                       ? '—'
                       : `${toDisplayWeight(
-                          trend.data.metrics.avgPrev7dKg,
+                          metricsData.metrics.avgPrev7dKg,
                           unitPref
                         ).toFixed(1)} ${displayUnitLabel}`}
                   </Typography>
 
                   <Typography variant='body2' color='text.secondary'>
                     Change/week:{' '}
-                    {trend.data.metrics.avgChangePerWeekKg == null
+                    {metricsData?.metrics.avgChangePerWeekKg == null
                       ? '—'
                       : `${toDisplayWeight(
-                          trend.data.metrics.avgChangePerWeekKg,
+                          metricsData.metrics.avgChangePerWeekKg,
                           unitPref
                         ).toFixed(2)} ${displayUnitLabel}/wk`}
-                    {trend.data.metrics.avgChangePerWeekPct != null
-                      ? ` (${trend.data.metrics.avgChangePerWeekPct.toFixed(
+                    {metricsData?.metrics.avgChangePerWeekPct != null
+                      ? ` (${metricsData.metrics.avgChangePerWeekPct.toFixed(
                           2
                         )}%)`
                       : ''}
                   </Typography>
 
-                  {trend.data.ai?.disclaimer ? (
+                  {insightData.ai?.disclaimer ? (
                     <Typography variant='caption' color='text.secondary'>
-                      {trend.data.ai.disclaimer}
+                      {insightData.ai.disclaimer}
                     </Typography>
                   ) : null}
                 </Stack>
@@ -487,7 +495,7 @@ const TrendCollapseSection = ({
           </Box>
         ) : (
           <Typography variant='body2' color='text.secondary'>
-            Click “Run analysis” to run analysis.
+            Click “Generate insight” to get AI guidance.
           </Typography>
         )}
       </Box>
