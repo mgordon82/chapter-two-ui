@@ -142,6 +142,37 @@ const ClientNutritionCalculator = () => {
     return calcWeightGoal(inputs.weightKg, inputs.goalWeightKg);
   }, [inputs.weightKg, inputs.goalWeightKg]);
 
+  const weightGoalLabel = useMemo(() => {
+    if (weightGoal.amountKg == null || weightGoal.direction == null) {
+      return null;
+    }
+
+    if (weightGoal.direction === 'maintain') {
+      if (inputs.goalWeightKg == null) return 'Maintain current weight';
+
+      if (form.weightUnitPref === 'lbs') {
+        return `Maintain ${Math.round(inputs.goalWeightKg * KG_TO_LBS)} lbs`;
+      }
+
+      return `Maintain ${inputs.goalWeightKg} kg`;
+    }
+
+    if (form.weightUnitPref === 'lbs') {
+      return `${weightGoal.direction === 'lose' ? 'Lose' : 'Gain'} ${Math.round(
+        weightGoal.amountKg * KG_TO_LBS
+      )} lbs`;
+    }
+
+    return `${weightGoal.direction === 'lose' ? 'Lose' : 'Gain'} ${
+      weightGoal.amountKg
+    } kg`;
+  }, [
+    weightGoal.amountKg,
+    weightGoal.direction,
+    form.weightUnitPref,
+    inputs.goalWeightKg
+  ]);
+
   const bmr = useMemo(() => {
     return calcBmr({
       gender: inputs.gender,
@@ -289,7 +320,7 @@ const ClientNutritionCalculator = () => {
 
         <Box sx={{ width: { xs: '100%', md: 380 }, flexShrink: 0 }}>
           <CoachCalculatedValuesPanel
-            weightGoalLabel={weightGoal.label}
+            weightGoalLabel={weightGoalLabel}
             bmr={bmr}
             tdee={tdee}
             macros={macros}
