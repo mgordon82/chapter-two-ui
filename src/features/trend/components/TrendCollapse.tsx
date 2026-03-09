@@ -91,7 +91,13 @@ const TrendCollapseSection = ({
   };
 
   const cachedAtLabel = trend.cachedAt
-    ? `Cached: ${new Date(trend.cachedAt).toLocaleString()}`
+    ? `Cached: ${new Date(trend.cachedAt).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      })}`
     : null;
 
   const firstRec = trend.data?.ai?.recommended?.[0] ?? null;
