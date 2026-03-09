@@ -31,8 +31,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const { state } = useLocation();
-  const from =
-    (state as LocationState | null)?.from?.pathname || '/app/meal-generator';
+  const from = (state as LocationState | null)?.from?.pathname || '/app';
 
   const authStep = useSelector((s: RootState) => s.auth.step);
   const authError = useSelector((s: RootState) => s.auth.error);
