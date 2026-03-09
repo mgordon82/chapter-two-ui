@@ -108,8 +108,10 @@ const createCheckInEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
             throw new Error(message);
           }
 
+          const data = await res.json();
+
           return [
-            createCheckInSucceeded(),
+            createCheckInSucceeded({ id: String(data.id) }),
             fetchCheckInsRequested(),
             loadUserProfileRequested()
           ];

@@ -19,11 +19,26 @@ import {
   toDisplayWeight
 } from '../helpers';
 import type { CheckIn } from '../redux/checkInsSlice';
+import CheckInPhotosDialog from './CheckInPhotosDialog';
 
 type ChartTypes = {
   filteredItems: CheckIn[];
   weightUnitPref: UnitPrefType;
   range: RangeKey;
+};
+
+type ChartPoint = {
+  id: string;
+  recordedAt: string;
+  weight: number;
+  hasPhotos: boolean;
+  source: CheckIn;
+};
+
+type DotPayload = {
+  cx?: number;
+  cy?: number;
+  payload?: ChartPoint;
 };
 
 function useElementSize<T extends HTMLElement>() {
@@ -56,7 +71,16 @@ const CheckInTooltip = ({
 }: CheckInTooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
 
-  const raw = payload[0]?.value;
+  const firstEntry = payload[0] as
+    | {
+        value?: unknown;
+        payload?: ChartPoint;
+      }
+    | undefined;
+
+  const point = firstEntry?.payload;
+  const raw = firstEntry?.value;
+
   const n =
     typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
 
@@ -92,6 +116,20 @@ const CheckInTooltip = ({
       >
         Weight
       </Typography>
+
+      {point?.hasPhotos ? (
+        <Typography
+          variant='caption'
+          sx={{
+            display: 'block',
+            color: 'primary.main',
+            mt: 0.5,
+            fontWeight: 700
+          }}
+        >
+          Photos attached
+        </Typography>
+      ) : null}
     </Box>
   );
 };
@@ -102,14 +140,17 @@ const CheckInsChart = ({
   range
 }: ChartTypes) => {
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
+  const [selectedCheckIn, setSelectedCheckIn] = useState<CheckIn | null>(null);
 
-  const chartData = useMemo(() => {
+  const chartData = useMemo<ChartPoint[]>(() => {
     const chronological = [...filteredItems].reverse();
 
     return chronological.map((ci) => ({
       id: ci._id,
       recordedAt: ci.recordedAt,
-      weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref)
+      weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref),
+      hasPhotos: Boolean(ci.hasPhotos && ci.photos?.photos?.length),
+      source: ci
     }));
   }, [filteredItems, weightUnitPref]);
 
@@ -142,47 +183,113 @@ const CheckInsChart = ({
 
     return [Math.floor(min - padding), Math.ceil(max + padding)] as const;
   }, [filteredChartData, goalWeightDisplay]);
+
   const { ref, size } = useElementSize<HTMLDivElement>();
 
+  const renderDot = ({ cx, cy, payload }: DotPayload) => {
+    if (typeof cx !== 'number' || typeof cy !== 'number' || !payload) {
+      return null;
+    }
+
+    const clickable = payload.hasPhotos;
+
+    return (
+      <g
+        onClick={
+          clickable
+            ? (e) => {
+                e.stopPropagation();
+                setSelectedCheckIn(payload.source);
+              }
+            : undefined
+        }
+        style={{
+          cursor: clickable ? 'pointer' : 'default',
+          pointerEvents: 'all'
+        }}
+      >
+        {clickable ? (
+          <>
+            <circle
+              cx={cx}
+              cy={cy}
+              r={14}
+              fill='transparent'
+              stroke='transparent'
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={7}
+              fill='rgba(42, 201, 184, 0.18)'
+              stroke='rgba(42, 201, 184, 0.85)'
+              strokeWidth={1.5}
+            />
+            <circle cx={cx} cy={cy} r={3} fill='rgba(42, 201, 184, 1)' />
+          </>
+        ) : (
+          <>
+            <circle
+              cx={cx}
+              cy={cy}
+              r={10}
+              fill='transparent'
+              stroke='transparent'
+            />
+            <circle cx={cx} cy={cy} r={3} fill='currentColor' />
+          </>
+        )}
+      </g>
+    );
+  };
+
   return (
-    <Box
-      ref={ref}
-      sx={{ width: '100%', height: 200, minWidth: 0, minHeight: 0 }}
-    >
-      {size.width > 0 && size.height > 0 ? (
-        <ResponsiveContainer width='100%' height='100%'>
-          <LineChart
-            data={filteredChartData}
-            margin={{ top: 12, right: 20, left: 0, bottom: 0 }}
-          >
-            <XAxis
-              dataKey='recordedAt'
-              tick={{ fontSize: 12 }}
-              tickFormatter={(iso) => formatDateLabel(String(iso))}
-              minTickGap={20}
-            />
-            <YAxis tick={{ fontSize: 12 }} width={52} domain={yDomain} />
-            <Tooltip
-              content={<CheckInTooltip unit={weightUnitPref} />}
-              cursor={{ strokeDasharray: '4 4' }}
-              labelFormatter={(iso) => formatDateTimeLabel(String(iso))}
-            />
+    <>
+      <Box
+        ref={ref}
+        sx={{ width: '100%', height: 200, minWidth: 0, minHeight: 0 }}
+      >
+        {size.width > 0 && size.height > 0 ? (
+          <ResponsiveContainer width='100%' height='100%'>
+            <LineChart
+              data={filteredChartData}
+              margin={{ top: 12, right: 20, left: 0, bottom: 0 }}
+            >
+              <XAxis
+                dataKey='recordedAt'
+                tick={{ fontSize: 12 }}
+                tickFormatter={(iso) => formatDateLabel(String(iso))}
+                minTickGap={20}
+              />
+              <YAxis tick={{ fontSize: 12 }} width={52} domain={yDomain} />
+              <Tooltip
+                content={<CheckInTooltip unit={weightUnitPref} />}
+                cursor={{ strokeDasharray: '4 4' }}
+                labelFormatter={(iso) => formatDateTimeLabel(String(iso))}
+              />
 
-            {goalWeightDisplay != null ? (
-              <ReferenceLine y={goalWeightDisplay} strokeDasharray='4 4' />
-            ) : null}
+              {goalWeightDisplay != null ? (
+                <ReferenceLine y={goalWeightDisplay} strokeDasharray='4 4' />
+              ) : null}
 
-            <Line
-              type='monotone'
-              dataKey='weight'
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      ) : null}
-    </Box>
+              <Line
+                type='monotone'
+                dataKey='weight'
+                strokeWidth={2}
+                dot={renderDot}
+                activeDot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : null}
+      </Box>
+
+      <CheckInPhotosDialog
+        open={Boolean(selectedCheckIn)}
+        onClose={() => setSelectedCheckIn(null)}
+        checkIn={selectedCheckIn}
+      />
+    </>
   );
 };
 

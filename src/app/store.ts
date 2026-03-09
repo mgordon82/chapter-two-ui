@@ -9,6 +9,7 @@ import nutritionCalculatorReducer from '../features/nutritionCalculator/redux/nu
 import inviteUserReducer from '../features/users/redux/inviteUserSlice';
 import checkInsReducer from '../features/checkIns/redux/checkInsSlice';
 import trendReducer from '../features/trend/redux/trendSlice';
+import photosReducer from '../features/photos/redux/photosSlice';
 
 import { rootEpic } from './rootEpic';
 import { appReset } from './appActions';
@@ -21,7 +22,8 @@ const appReducer = combineReducers({
   auth: authReducer,
   inviteUser: inviteUserReducer,
   checkIns: checkInsReducer,
-  trend: trendReducer
+  trend: trendReducer,
+  photos: photosReducer
 });
 
 // ✅ RootState should come from appReducer (not rootReducer) to avoid circular typing issues

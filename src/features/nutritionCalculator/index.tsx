@@ -24,6 +24,7 @@ import { useAppSelector } from '../../app/hooks';
 import CheckInsPanel from '../checkIns';
 import { createCheckInRequested } from '../checkIns/redux/checkInsSlice';
 import type { FormState } from './types/formState';
+import StarterPhotosSection from '../photos/components/StarterPhotosSection';
 
 const KG_TO_LBS = 2.2046226218;
 const CM_PER_INCH = 2.54;
@@ -295,8 +296,10 @@ const ClientNutritionCalculator = () => {
           />
         </Box>
       </Stack>
-
-      <CheckInsPanel />
+      <Stack spacing={3}>
+        <StarterPhotosSection />
+        <CheckInsPanel />
+      </Stack>
     </Box>
   );
 };

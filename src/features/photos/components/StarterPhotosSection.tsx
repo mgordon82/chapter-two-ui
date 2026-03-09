@@ -1,0 +1,692 @@
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Paper,
+  Stack,
+  Step,
+  StepLabel,
+  Stepper,
+  Typography
+} from '@mui/material';
+import { useDispatch } from 'react-redux';
+
+import { useAppSelector } from '../../../app/hooks';
+import {
+  clearStarterUploadSession,
+  createStarterUploadSessionRequested,
+  fetchStarterPhotosRequested,
+  finalizeStarterPhotosRequested,
+  type PhotoPosition,
+  type StarterUploadRequestPhoto
+} from '../redux/photosSlice';
+import { uploadPhotoToSignedUrl } from '../helpers/uploadPhotoToSignedUrl';
+
+type UploadStep = {
+  key: PhotoPosition | 'review';
+  label: string;
+  required: boolean;
+};
+
+const steps: UploadStep[] = [
+  { key: 'front', label: 'Front Photo', required: true },
+  { key: 'side', label: 'Side Photo', required: false },
+  { key: 'back', label: 'Back Photo', required: false },
+  { key: 'review', label: 'Review', required: false }
+];
+
+const fileToUploadPhoto = (
+  position: PhotoPosition,
+  file: File
+): StarterUploadRequestPhoto => ({
+  position,
+  file,
+  mimeType: file.type,
+  originalFileName: file.name,
+  sizeBytes: file.size
+});
+
+const formatBytes = (value?: number | null) => {
+  if (!value || value <= 0) return '';
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const StarterPhotosSection = () => {
+  const dispatch = useDispatch();
+
+  const {
+    hasStarterPhotos,
+    starterPhotoSet,
+    loadingStarter,
+    creatingStarterUploadSession,
+    starterUploadSession,
+    finalizingStarterPhotos,
+    error
+  } = useAppSelector((s) => s.photos);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+
+  const [frontPhoto, setFrontPhoto] =
+    useState<StarterUploadRequestPhoto | null>(null);
+  const [sidePhoto, setSidePhoto] = useState<StarterUploadRequestPhoto | null>(
+    null
+  );
+  const [backPhoto, setBackPhoto] = useState<StarterUploadRequestPhoto | null>(
+    null
+  );
+
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchStarterPhotosRequested());
+  }, [dispatch]);
+
+  const selectedPhotos = useMemo(
+    () =>
+      [frontPhoto, sidePhoto, backPhoto].filter(
+        Boolean
+      ) as StarterUploadRequestPhoto[],
+    [frontPhoto, sidePhoto, backPhoto]
+  );
+
+  const currentStep = steps[activeStep];
+  const isReviewStep = currentStep?.key === 'review';
+
+  const currentPhoto =
+    currentStep?.key === 'front'
+      ? frontPhoto
+      : currentStep?.key === 'side'
+      ? sidePhoto
+      : currentStep?.key === 'back'
+      ? backPhoto
+      : null;
+
+  const resetDialogState = useCallback(() => {
+    setDialogOpen(false);
+    setActiveStep(0);
+    setFrontPhoto(null);
+    setSidePhoto(null);
+    setBackPhoto(null);
+    setLocalError(null);
+    setIsUploadingFiles(false);
+    dispatch(clearStarterUploadSession());
+  }, [dispatch]);
+
+  const openDialog = () => {
+    setDialogOpen(true);
+    setActiveStep(0);
+    setLocalError(null);
+  };
+
+  const setPhotoForPosition = (position: PhotoPosition, file: File | null) => {
+    if (!file) return;
+
+    const nextPhoto = fileToUploadPhoto(position, file);
+
+    if (position === 'front') setFrontPhoto(nextPhoto);
+    if (position === 'side') setSidePhoto(nextPhoto);
+    if (position === 'back') setBackPhoto(nextPhoto);
+
+    setLocalError(null);
+  };
+
+  const goNext = () => {
+    if (!isReviewStep && currentStep?.required && !currentPhoto) {
+      setLocalError(`${currentStep.label} is required`);
+      return;
+    }
+
+    setLocalError(null);
+
+    if (activeStep < steps.length - 1) {
+      setActiveStep((prev) => prev + 1);
+    }
+  };
+
+  const handleSkip = () => {
+    setLocalError(null);
+
+    if (activeStep < steps.length - 1) {
+      setActiveStep((prev) => prev + 1);
+    }
+  };
+
+  const handleCreateUploadSession = () => {
+    if (!frontPhoto) {
+      setLocalError('Front photo is required');
+      return;
+    }
+
+    dispatch(
+      createStarterUploadSessionRequested({
+        photos: selectedPhotos.map((photo) => ({
+          position: photo.position,
+          mimeType: photo.mimeType,
+          originalFileName: photo.originalFileName ?? null,
+          sizeBytes: photo.sizeBytes ?? null
+        }))
+      })
+    );
+  };
+
+  useEffect(() => {
+    if (!dialogOpen || !starterUploadSession) return;
+    if (selectedPhotos.length === 0) return;
+
+    let cancelled = false;
+
+    const runUploads = async () => {
+      try {
+        setIsUploadingFiles(true);
+        setLocalError(null);
+
+        for (const upload of starterUploadSession.uploads) {
+          const matchingPhoto = selectedPhotos.find(
+            (photo) => photo.position === upload.position
+          );
+
+          if (!matchingPhoto) {
+            throw new Error(`Missing selected file for ${upload.position}`);
+          }
+
+          await uploadPhotoToSignedUrl({
+            uploadUrl: upload.uploadUrl,
+            file: matchingPhoto.file,
+            mimeType: matchingPhoto.mimeType
+          });
+        }
+
+        if (cancelled) return;
+
+        dispatch(
+          finalizeStarterPhotosRequested({
+            photoSetId: starterUploadSession.photoSetId,
+            photos: selectedPhotos.map((photo) => ({
+              position: photo.position,
+              mimeType: photo.mimeType,
+              originalFileName: photo.originalFileName ?? null,
+              sizeBytes: photo.sizeBytes ?? null
+            }))
+          })
+        );
+      } catch (err) {
+        if (cancelled) return;
+        setLocalError(
+          err instanceof Error ? err.message : 'Failed to upload starter photos'
+        );
+        setIsUploadingFiles(false);
+      }
+    };
+
+    runUploads();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dialogOpen, dispatch, selectedPhotos, starterUploadSession]);
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    if (
+      !finalizingStarterPhotos &&
+      !creatingStarterUploadSession &&
+      !isUploadingFiles &&
+      hasStarterPhotos
+    ) {
+      resetDialogState();
+      dispatch(fetchStarterPhotosRequested());
+    }
+  }, [
+    creatingStarterUploadSession,
+    dialogOpen,
+    dispatch,
+    finalizingStarterPhotos,
+    hasStarterPhotos,
+    isUploadingFiles,
+    resetDialogState
+  ]);
+
+  useEffect(() => {
+    if (!finalizingStarterPhotos) {
+      setIsUploadingFiles(false);
+    }
+  }, [finalizingStarterPhotos]);
+
+  if (loadingStarter) {
+    return (
+      <Paper sx={{ p: 3 }}>
+        <Typography variant='body2'>Loading starter photos...</Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <>
+      <Paper sx={{ p: 3 }}>
+        <Stack spacing={2}>
+          <Typography variant='h6'>Starter Progress Photos</Typography>
+
+          {!hasStarterPhotos ? (
+            <>
+              <Typography variant='body2' color='text.secondary'>
+                Upload your starting photos so you and your coach can track
+                visual progress alongside your check-ins.
+              </Typography>
+
+              <Button variant='contained' onClick={openDialog}>
+                Upload Starter Photos
+              </Button>
+            </>
+          ) : (
+            <Stack spacing={2}>
+              <Typography variant='body2' color='text.secondary'>
+                Your starter photo set has been saved.
+              </Typography>
+
+              <Stack direction='row' spacing={2} flexWrap='wrap'>
+                {starterPhotoSet?.photos.map((photo) => (
+                  <Box
+                    key={photo.position}
+                    sx={{
+                      width: 120,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 120,
+                        height: 120,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        bgcolor: 'grey.900',
+                        border: '1px solid',
+                        borderColor: 'rgba(255,255,255,0.12)'
+                      }}
+                    >
+                      {photo.viewUrl ? (
+                        <Box
+                          component='img'
+                          src={photo.viewUrl}
+                          alt={`${photo.position} starter progress`}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            display: 'block'
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Typography
+                            variant='caption'
+                            sx={{ textTransform: 'capitalize' }}
+                          >
+                            {photo.position}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+
+                    <Typography
+                      variant='caption'
+                      sx={{ textTransform: 'capitalize', textAlign: 'center' }}
+                    >
+                      {photo.position}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+
+      <Dialog
+        open={dialogOpen}
+        onClose={
+          creatingStarterUploadSession ||
+          finalizingStarterPhotos ||
+          isUploadingFiles
+            ? undefined
+            : resetDialogState
+        }
+        fullWidth
+        maxWidth='sm'
+      >
+        <DialogTitle>Upload Starter Photos</DialogTitle>
+
+        <DialogContent>
+          <Stack spacing={3} sx={{ pt: 1 }}>
+            <Stepper activeStep={activeStep}>
+              {steps.map((step) => (
+                <Step key={step.key}>
+                  <StepLabel>{step.label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+
+            {!isReviewStep ? (
+              <Stack spacing={1.5}>
+                <Typography variant='subtitle1'>{currentStep.label}</Typography>
+
+                <Typography variant='body2' color='text.secondary'>
+                  {currentStep.required
+                    ? 'This photo is required.'
+                    : 'This photo is optional. You can upload one or skip it.'}
+                </Typography>
+
+                <Button variant='outlined' component='label'>
+                  {currentPhoto ? 'Replace Photo' : 'Choose Photo'}
+                  <input
+                    hidden
+                    type='file'
+                    accept='image/jpeg,image/png'
+                    onChange={(e) =>
+                      setPhotoForPosition(
+                        currentStep.key as PhotoPosition,
+                        e.target.files?.[0] ?? null
+                      )
+                    }
+                  />
+                </Button>
+
+                {currentPhoto ? (
+                  <Stack spacing={1}>
+                    <Typography variant='body2'>
+                      Selected: {currentPhoto.originalFileName}
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        width: 160,
+                        height: 160,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        border: '1px solid',
+                        borderColor: 'rgba(255,255,255,0.12)',
+                        bgcolor: 'grey.900'
+                      }}
+                    >
+                      <Box
+                        component='img'
+                        src={URL.createObjectURL(currentPhoto.file)}
+                        alt={`${currentStep.label} preview`}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block'
+                        }}
+                      />
+                    </Box>
+                  </Stack>
+                ) : (
+                  <Typography variant='body2' color='text.secondary'>
+                    No photo selected
+                  </Typography>
+                )}
+
+                {(localError || error) && (
+                  <Typography variant='body2' color='error'>
+                    {localError || error}
+                  </Typography>
+                )}
+              </Stack>
+            ) : (
+              <Stack spacing={2}>
+                <Typography variant='subtitle1'>
+                  Review Starter Photos
+                </Typography>
+
+                <Typography variant='body2' color='text.secondary'>
+                  Please review the photos you selected before submitting.
+                </Typography>
+
+                <Stack direction='row' spacing={2} flexWrap='wrap'>
+                  {steps
+                    .filter((step) => step.key !== 'review')
+                    .map((step) => {
+                      const photo =
+                        step.key === 'front'
+                          ? frontPhoto
+                          : step.key === 'side'
+                          ? sidePhoto
+                          : backPhoto;
+
+                      return (
+                        <Box
+                          key={step.key}
+                          sx={{
+                            width: 150,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 150,
+                              height: 150,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid',
+                              borderColor: 'rgba(255,255,255,0.12)',
+                              bgcolor: 'grey.900',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {photo ? (
+                              <Box
+                                component='img'
+                                src={URL.createObjectURL(photo.file)}
+                                alt={`${step.label} preview`}
+                                sx={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  display: 'block'
+                                }}
+                              />
+                            ) : (
+                              <Typography
+                                variant='caption'
+                                color='text.secondary'
+                                sx={{ textTransform: 'capitalize' }}
+                              >
+                                Skipped
+                              </Typography>
+                            )}
+                          </Box>
+
+                          <Stack spacing={0.25}>
+                            <Typography
+                              variant='caption'
+                              sx={{
+                                textTransform: 'capitalize',
+                                textAlign: 'center'
+                              }}
+                            >
+                              {step.key}
+                            </Typography>
+
+                            <Typography
+                              variant='caption'
+                              color='text.secondary'
+                              sx={{ textAlign: 'center' }}
+                            >
+                              {photo?.originalFileName ?? 'No photo selected'}
+                            </Typography>
+
+                            {photo?.sizeBytes ? (
+                              <Typography
+                                variant='caption'
+                                color='text.secondary'
+                                sx={{ textAlign: 'center' }}
+                              >
+                                {formatBytes(photo.sizeBytes)}
+                              </Typography>
+                            ) : null}
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+                </Stack>
+
+                {(localError || error) && (
+                  <Typography variant='body2' color='error'>
+                    {localError || error}
+                  </Typography>
+                )}
+              </Stack>
+            )}
+
+            <Stack spacing={1}>
+              <Typography variant='caption' color='text.secondary'>
+                Selected so far:
+              </Typography>
+
+              <Stack direction='row' spacing={1} flexWrap='wrap'>
+                {steps
+                  .filter((step) => step.key !== 'review')
+                  .map((step) => {
+                    const selected =
+                      step.key === 'front'
+                        ? frontPhoto
+                        : step.key === 'side'
+                        ? sidePhoto
+                        : backPhoto;
+
+                    return (
+                      <Box
+                        key={step.key}
+                        sx={{
+                          px: 1.5,
+                          py: 0.75,
+                          borderRadius: 999,
+                          border: '1px solid',
+                          borderColor: selected
+                            ? 'rgba(42, 201, 184, 0.45)'
+                            : 'rgba(255,255,255,0.12)',
+                          bgcolor: selected
+                            ? 'rgba(42, 201, 184, 0.16)'
+                            : 'rgba(255,255,255,0.04)'
+                        }}
+                      >
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            textTransform: 'capitalize',
+                            color: selected ? 'primary.main' : 'text.secondary'
+                          }}
+                        >
+                          {step.key}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+              </Stack>
+            </Stack>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={resetDialogState}
+            disabled={
+              creatingStarterUploadSession ||
+              finalizingStarterPhotos ||
+              isUploadingFiles
+            }
+          >
+            Cancel
+          </Button>
+
+          {activeStep > 0 && (
+            <Button
+              onClick={() => {
+                setLocalError(null);
+                setActiveStep((prev) => prev - 1);
+              }}
+              disabled={
+                creatingStarterUploadSession ||
+                finalizingStarterPhotos ||
+                isUploadingFiles
+              }
+            >
+              Back
+            </Button>
+          )}
+
+          {!isReviewStep &&
+            !currentStep.required &&
+            activeStep < steps.length - 1 && (
+              <Button
+                onClick={handleSkip}
+                disabled={
+                  creatingStarterUploadSession ||
+                  finalizingStarterPhotos ||
+                  isUploadingFiles
+                }
+              >
+                Skip
+              </Button>
+            )}
+
+          {!isReviewStep ? (
+            <Button
+              variant='contained'
+              onClick={goNext}
+              disabled={
+                currentStep.required && !currentPhoto
+                  ? true
+                  : creatingStarterUploadSession ||
+                    finalizingStarterPhotos ||
+                    isUploadingFiles
+              }
+            >
+              Next
+            </Button>
+          ) : (
+            <Button
+              variant='contained'
+              onClick={handleCreateUploadSession}
+              disabled={
+                !frontPhoto ||
+                creatingStarterUploadSession ||
+                finalizingStarterPhotos ||
+                isUploadingFiles
+              }
+            >
+              {creatingStarterUploadSession ||
+              finalizingStarterPhotos ||
+              isUploadingFiles
+                ? 'Uploading...'
+                : 'Submit'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default StarterPhotosSection;

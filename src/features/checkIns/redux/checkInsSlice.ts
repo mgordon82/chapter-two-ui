@@ -8,6 +8,18 @@ export type CheckIn = {
     weightKg: number;
     notes?: string;
   };
+  hasPhotos?: boolean;
+  photos?: {
+    photos: Array<{
+      position: 'front' | 'side' | 'back';
+      storageKey: string;
+      mimeType: string;
+      originalFileName?: string | null;
+      sizeBytes?: number | null;
+      uploadedAt?: string;
+      viewUrl?: string;
+    }>;
+  };
   createdAt: string;
   createdByUserId: string;
   isDeleted: boolean;
@@ -23,6 +35,7 @@ type CheckInsState = {
   items: CheckIn[];
   loading: boolean;
   creating: boolean;
+  lastCreatedCheckInId: string | null;
   error: string | null;
 };
 
@@ -30,6 +43,7 @@ const initialState: CheckInsState = {
   items: [],
   loading: false,
   creating: false,
+  lastCreatedCheckInId: null,
   error: null
 };
 
@@ -53,14 +67,21 @@ const checkInsSlice = createSlice({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     createCheckInRequested(state, _action: PayloadAction<CreateCheckInInput>) {
       state.creating = true;
+      state.lastCreatedCheckInId = null;
       state.error = null;
     },
-    createCheckInSucceeded(state) {
+    createCheckInSucceeded(state, action: PayloadAction<{ id: string }>) {
       state.creating = false;
+      state.lastCreatedCheckInId = action.payload.id;
     },
     createCheckInFailed(state, action: PayloadAction<string>) {
       state.creating = false;
+      state.lastCreatedCheckInId = null;
       state.error = action.payload;
+    },
+
+    clearLastCreatedCheckInId(state) {
+      state.lastCreatedCheckInId = null;
     },
 
     clearCheckInsError(state) {
@@ -76,6 +97,7 @@ export const {
   createCheckInRequested,
   createCheckInSucceeded,
   createCheckInFailed,
+  clearLastCreatedCheckInId,
   clearCheckInsError
 } = checkInsSlice.actions;
 
