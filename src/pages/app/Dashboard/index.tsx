@@ -81,7 +81,13 @@ const Dashboard = () => {
   const goalWeight = hasGoal ? toDisplayWeight(goalWeightKg, unitPref) : 0;
 
   const lastCheckInLabel = latest
-    ? new Date(latest.recordedAt).toLocaleDateString()
+    ? new Date(latest.recordedAt).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      })
     : 'No check-ins yet';
 
   const serverAvgChangeKg = trend.data?.metrics.avgChangePerWeekKg ?? null;

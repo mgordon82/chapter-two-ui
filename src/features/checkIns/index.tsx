@@ -155,8 +155,15 @@ const CheckInsPanel = () => {
 
         {!loading && items.length > 0 && latest ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
-            Latest: {new Date(latest.recordedAt).toLocaleDateString()} —{' '}
-            {formatWeight(latest.metrics.weightKg, weightUnitPref)}{' '}
+            Latest:{' '}
+            {new Date(latest.recordedAt).toLocaleString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            })}{' '}
+            — {formatWeight(latest.metrics.weightKg, weightUnitPref)}{' '}
             {weightUnitPref}
           </Typography>
         ) : null}

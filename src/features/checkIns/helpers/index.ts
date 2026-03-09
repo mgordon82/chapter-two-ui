@@ -30,14 +30,20 @@ export const toDisplayWeight = (weightKg: number, unit: 'kg' | 'lbs') => {
 };
 
 export const formatDateLabel = (iso: string) => {
-  return new Date(iso).toLocaleDateString();
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
 };
 
 export const formatDateTimeLabel = (iso: string) => {
-  return new Date(iso).toLocaleString([], {
-    month: 'numeric',
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
     day: 'numeric',
-    year: '2-digit',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit'
   });

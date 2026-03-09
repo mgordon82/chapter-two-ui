@@ -54,7 +54,13 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
           const hasPhotos = Boolean(ci.hasPhotos && ci.photos?.photos?.length);
 
           const date = new Date(ci.recordedAt);
-          const dateText = date.toLocaleDateString();
+          const dateText = date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
 
           const next = idx < items.length - 1 ? items[idx + 1] : null;
           const deltaKg = next

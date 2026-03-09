@@ -200,7 +200,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
       return;
     }
 
-    const recordedAtIso = new Date(`${dateValue}T12:00:00.000Z`).toISOString();
+    const recordedAtIso = new Date().toISOString();
 
     const weightKg =
       weightUnitPref === 'lbs' ? lbsToKgRounded(w, 2) : Number(w.toFixed(2));
