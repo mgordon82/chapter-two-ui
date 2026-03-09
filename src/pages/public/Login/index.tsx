@@ -102,9 +102,20 @@ const Login = () => {
     dispatch(newPasswordSubmitted({ email, password, newPassword }));
   };
 
+  const handleFormKeyDown = (
+    e: React.KeyboardEvent<HTMLFormElement>,
+    onSubmit: (e: React.FormEvent) => void
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
   const passwordAdornment = (shown: boolean, toggle: () => void) => (
     <InputAdornment position='end'>
       <IconButton
+        type='button'
         aria-label={shown ? 'Hide password' : 'Show password'}
         onClick={toggle}
         edge='end'
@@ -123,7 +134,13 @@ const Login = () => {
       </Typography>
 
       {!needsNewPassword ? (
-        <Box component='form' onSubmit={handleLogin}>
+        <Box
+          component='form'
+          onSubmit={handleLogin}
+          onKeyDown={(e: React.KeyboardEvent<HTMLFormElement>) =>
+            handleFormKeyDown(e, handleLogin)
+          }
+        >
           <TextField
             label='Email'
             value={email}
@@ -159,7 +176,13 @@ const Login = () => {
           </Button>
         </Box>
       ) : (
-        <Box component='form' onSubmit={handleSetNewPassword}>
+        <Box
+          component='form'
+          onSubmit={handleSetNewPassword}
+          onKeyDown={(e: React.KeyboardEvent<HTMLFormElement>) =>
+            handleFormKeyDown(e, handleSetNewPassword)
+          }
+        >
           <Typography sx={{ mb: 1 }}>
             You've been invited — set a new password to finish setup.
           </Typography>
