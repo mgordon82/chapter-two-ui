@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Chapter Two</string>
+	<string>MiPT</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,11 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Chapter Two uses the camera so you can take progress photos for check-ins.</string>
+	<string>MiPT uses the camera so you can take progress photos for check-ins.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Chapter Two may save photos related to your progress photo workflow.</string>
+	<string>MiPT may save photos related to your progress photo workflow.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Chapter Two uses your photo library so you can choose progress photos for check-ins.</string>
+	<string>MiPT uses your photo library so you can choose progress photos for check-ins.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
