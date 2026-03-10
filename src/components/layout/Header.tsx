@@ -69,7 +69,7 @@ const Header: React.FC = () => {
                 <Typography
                   variant='h5'
                   fontWeight={700}
-                  sx={{ letterSpacing: 0.5, textTransform: 'uppercase' }}
+                  sx={{ letterSpacing: 0.5 }}
                 >
                   <Link
                     component={RouterLink}
@@ -80,7 +80,7 @@ const Header: React.FC = () => {
                       '&:hover': { color: 'inherit', textDecoration: 'none' }
                     }}
                   >
-                    Chapter Two
+                    MiPT
                   </Link>
                 </Typography>
               </Stack>
@@ -141,7 +141,6 @@ const Header: React.FC = () => {
                   fontWeight={700}
                   sx={{
                     letterSpacing: 0.5,
-                    textTransform: 'uppercase',
                     lineHeight: 1
                   }}
                 >
@@ -154,7 +153,7 @@ const Header: React.FC = () => {
                       '&:hover': { color: 'inherit', textDecoration: 'none' }
                     }}
                   >
-                    Chapter Two
+                    MiPT
                   </Link>
                 </Typography>
               </Stack>

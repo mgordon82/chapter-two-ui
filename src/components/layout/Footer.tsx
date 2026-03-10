@@ -6,7 +6,8 @@ const Footer = () => {
   return (
     <Box textAlign='center' mb={2}>
       <Typography>
-        &copy; {copyrightDate} Chapter Two. All Rights Reserved.
+        &copy; {copyrightDate} MiPT. Owned and Operated by: Chapter Two. All
+        Rights Reserved.
       </Typography>
     </Box>
   );

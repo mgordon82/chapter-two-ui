@@ -14,12 +14,11 @@ const LandingPage: React.FC = () => {
         fontWeight={700}
         mb={4}
         sx={{
-          letterSpacing: 0.5,
-          textTransform: 'uppercase'
+          letterSpacing: 0.5
         }}
         color='text.secondary'
       >
-        Chapter Two
+        MiPT
       </Typography>
 
       <Stack gap={10}>
