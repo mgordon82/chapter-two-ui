@@ -203,6 +203,34 @@ const ClientNutritionCalculator = () => {
     macros = calculateMacros(dailyCalorieTarget, inputs.weightKg, gender);
   }
 
+  const isSaveDisabled = useMemo(() => {
+    return (
+      !form.firstName.trim() ||
+      !form.lastName.trim() ||
+      !form.gender ||
+      !form.activityLevel ||
+      !form.goal ||
+      !form.rateLevel ||
+      !form.age ||
+      !form.heightCm ||
+      !form.weightKg ||
+      !form.goalWeightKg ||
+      !macros
+    );
+  }, [
+    form.firstName,
+    form.lastName,
+    form.gender,
+    form.activityLevel,
+    form.goal,
+    form.rateLevel,
+    form.age,
+    form.heightCm,
+    form.weightKg,
+    form.goalWeightKg,
+    macros
+  ]);
+
   const handleSave = () => {
     const reduxPayload = {
       inputs,
@@ -309,6 +337,7 @@ const ClientNutritionCalculator = () => {
             </Button>
 
             <Button
+              disabled={isSaveDisabled}
               variant='contained'
               onClick={handleSave}
               sx={{ width: { xs: '100%', sm: 'auto' } }}
