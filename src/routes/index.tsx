@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 import PublicLayout from '../components/layout/PublicLayout';
 import PrivateLayout from '../components/layout/PrivateLayout';
@@ -40,12 +41,31 @@ const RequireRole: React.FC<{
   return children;
 };
 
+const RootEntry: React.FC = () => {
+  const step = useAppSelector((s) => s.auth.step);
+  const isNative = Capacitor.isNativePlatform();
+
+  if (!isNative) {
+    return <LandingPage />;
+  }
+
+  if (step === 'SIGNED_IN') {
+    return <Navigate to='/app' replace />;
+  }
+
+  if (step === 'SIGNING_IN' || step === 'UNINITIALIZED') {
+    return null;
+  }
+
+  return <Navigate to='/login' replace />;
+};
+
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route element={<PublicLayout />}>
-          <Route path='/' element={<LandingPage />} />
+          <Route path='/' element={<RootEntry />} />
           <Route path='/login' element={<Login />} />
         </Route>
 

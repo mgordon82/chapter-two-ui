@@ -7,7 +7,8 @@ import {
   Stack,
   IconButton,
   Drawer,
-  useMediaQuery
+  useMediaQuery,
+  Box
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -18,9 +19,13 @@ import { Link as RouterLink } from 'react-router-dom';
 import NavDrawer from '../sections/navDrawer';
 import { useDispatch } from 'react-redux';
 import { loadUserProfileRequested } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
+import { Capacitor } from '@capacitor/core';
+
 const drawerWidth = 240;
+const nativeHeaderPadding = '30px';
 
 const Header: React.FC = () => {
+  const isNative = Capacitor.isNativePlatform();
   const dispatch = useDispatch();
   const isDesktop = useMediaQuery('(min-width:900px)');
 
@@ -45,76 +50,166 @@ const Header: React.FC = () => {
         color='transparent'
         sx={{
           borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-          bgcolor: 'background.paper'
+          bgcolor: 'background.paper',
+          pt: isNative
+            ? `calc(env(safe-area-inset-top) + ${nativeHeaderPadding})`
+            : 0
         }}
       >
-        <Toolbar sx={{ px: 0, minHeight: 64 }}>
-          <Stack
-            direction='row'
-            justifyContent='space-between'
-            alignItems='center'
-            flexGrow={1}
-          >
-            <Stack direction='row' alignItems='flex-end' gap={2}>
-              {!isDesktop && (
+        {isDesktop ? (
+          <Toolbar sx={{ px: 2, minHeight: 72 }}>
+            <Stack
+              direction='row'
+              justifyContent='space-between'
+              alignItems='center'
+              flexGrow={1}
+              width='100%'
+            >
+              <Stack direction='row' alignItems='center' gap={2}>
+                <Typography
+                  variant='h5'
+                  fontWeight={700}
+                  sx={{ letterSpacing: 0.5, textTransform: 'uppercase' }}
+                >
+                  <Link
+                    component={RouterLink}
+                    to='/app'
+                    underline='none'
+                    color='inherit'
+                    sx={{
+                      '&:hover': { color: 'inherit', textDecoration: 'none' }
+                    }}
+                  >
+                    Chapter Two
+                  </Link>
+                </Typography>
+              </Stack>
+
+              {macros && (
+                <Stack direction='row' alignItems='flex-end' gap={3}>
+                  <MacroItem
+                    name='Calories'
+                    value={macros.calories || 0}
+                    unit='kcal'
+                    color='#2563EB'
+                  />
+                  <MacroItem
+                    name='Protein'
+                    value={macros.protein || 0}
+                    unit='g'
+                    color='#16A34A'
+                  />
+                  <MacroItem
+                    name='Carbs'
+                    value={macros.carbs || 0}
+                    unit='g'
+                    color='#F59E0B'
+                  />
+                  <MacroItem
+                    name='Fat'
+                    value={macros.fats || 0}
+                    unit='g'
+                    color='#DC2626'
+                  />
+                </Stack>
+              )}
+            </Stack>
+          </Toolbar>
+        ) : (
+          <Box sx={{ px: 1.5, py: 1 }}>
+            <Toolbar
+              disableGutters
+              sx={{
+                minHeight: 56,
+                px: 0,
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <Stack direction='row' alignItems='center' gap={1}>
                 <IconButton
                   onClick={toggleMobileDrawer}
                   aria-label='open navigation'
                   size='medium'
+                  sx={{ ml: 0.5 }}
                 >
                   <MenuIcon />
                 </IconButton>
-              )}
 
-              <Typography
-                variant='h5'
-                fontWeight={700}
-                sx={{ letterSpacing: 0.5, textTransform: 'uppercase' }}
-              >
-                <Link
-                  component={RouterLink}
-                  to='/app'
-                  underline='none'
-                  color='inherit'
+                <Typography
+                  variant='h6'
+                  fontWeight={700}
                   sx={{
-                    '&:hover': { color: 'inherit', textDecoration: 'none' }
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
+                    lineHeight: 1
                   }}
                 >
-                  Chapter Two
-                </Link>
-              </Typography>
-            </Stack>
+                  <Link
+                    component={RouterLink}
+                    to='/app'
+                    underline='none'
+                    color='inherit'
+                    sx={{
+                      '&:hover': { color: 'inherit', textDecoration: 'none' }
+                    }}
+                  >
+                    Chapter Two
+                  </Link>
+                </Typography>
+              </Stack>
+            </Toolbar>
 
             {macros && (
-              <Stack direction='row' alignItems='flex-end' gap={3}>
-                <MacroItem
-                  name='Calories'
-                  value={macros.calories || 0}
-                  unit='kcal'
-                  color='#2563EB'
-                />
-                <MacroItem
-                  name='Protein'
-                  value={macros.protein || 0}
-                  unit='g'
-                  color='#16A34A'
-                />
-                <MacroItem
-                  name='Carbs'
-                  value={macros.carbs || 0}
-                  unit='g'
-                  color='#F59E0B'
-                />
-                <MacroItem
-                  name='Fat'
-                  value={macros.fats || 0}
-                  unit='g'
-                  color='#DC2626'
-                />
-              </Stack>
+              <Box
+                sx={{
+                  mt: 0.5,
+                  px: 0.5,
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                  WebkitOverflowScrolling: 'touch',
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  scrollbarWidth: 'none'
+                }}
+              >
+                <Stack
+                  direction='row'
+                  alignItems='flex-end'
+                  gap={2}
+                  sx={{
+                    minWidth: 'max-content',
+                    pb: 0.5
+                  }}
+                >
+                  <MacroItem
+                    name='Calories'
+                    value={macros.calories || 0}
+                    unit='kcal'
+                    color='#2563EB'
+                  />
+                  <MacroItem
+                    name='Protein'
+                    value={macros.protein || 0}
+                    unit='g'
+                    color='#16A34A'
+                  />
+                  <MacroItem
+                    name='Carbs'
+                    value={macros.carbs || 0}
+                    unit='g'
+                    color='#F59E0B'
+                  />
+                  <MacroItem
+                    name='Fat'
+                    value={macros.fats || 0}
+                    unit='g'
+                    color='#DC2626'
+                  />
+                </Stack>
+              </Box>
             )}
-          </Stack>
-        </Toolbar>
+          </Box>
+        )}
       </AppBar>
 
       <Drawer
@@ -124,7 +219,12 @@ const Header: React.FC = () => {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { width: drawerWidth }
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            pt: isNative
+              ? `calc(env(safe-area-inset-top) + ${nativeHeaderPadding})`
+              : 0
+          }
         }}
       >
         <NavDrawer setMobileOpen={setMobileOpen} />
@@ -135,7 +235,10 @@ const Header: React.FC = () => {
         open={isDesktop}
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box'
+          }
         }}
       >
         <NavDrawer setMobileOpen={setMobileOpen} />

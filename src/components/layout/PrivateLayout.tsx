@@ -18,7 +18,13 @@ const PrivateLayout: React.FC = () => {
     >
       <Header />
 
-      <Container maxWidth='lg' sx={{ py: 4 }}>
+      <Container
+        maxWidth='lg'
+        sx={{
+          py: { xs: 2, md: 4 },
+          px: { xs: 2, sm: 3 }
+        }}
+      >
         <Outlet />
       </Container>
     </Box>

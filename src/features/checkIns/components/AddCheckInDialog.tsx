@@ -15,6 +15,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { lbsToKgRounded } from '../../../utils/conversions/weight';
@@ -32,6 +33,7 @@ import {
   type StarterUploadRequestPhoto
 } from '../../photos/redux/photosSlice';
 import { uploadPhotoToSignedUrl } from '../../photos/helpers/uploadPhotoToSignedUrl';
+import { Capacitor } from '@capacitor/core';
 
 type AddCheckInDialogProps = {
   open: boolean;
@@ -68,8 +70,24 @@ const formatBytes = (value?: number | null) => {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const dataUrlToFile = async (
+  dataUrl: string,
+  fileName: string
+): Promise<File> => {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const mimeType = blob.type || 'image/jpeg';
+  return new File([blob], fileName, { type: mimeType });
+};
+
+const createPhotoFileName = (position: PhotoPosition) => {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  return `checkin-${position}-${stamp}.jpeg`;
+};
+
 const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
   const dispatch = useAppDispatch();
+  const isNative = Capacitor.isNativePlatform();
 
   const { weightUnitPref } = useAppSelector(selectUserUnitPrefs);
   const {
@@ -163,6 +181,85 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     if (position === 'back') setBackPhoto(nextPhoto);
 
     setLocalError(null);
+  };
+
+  const handleFileInputChange = (
+    position: PhotoPosition,
+    file: File | null
+  ) => {
+    setPhotoForPosition(position, file);
+  };
+
+  const handleTakePhoto = async (position: PhotoPosition) => {
+    try {
+      setLocalError(null);
+
+      const photo = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera
+      });
+
+      if (!photo.dataUrl) {
+        throw new Error('No photo was captured.');
+      }
+
+      const file = await dataUrlToFile(
+        photo.dataUrl,
+        createPhotoFileName(position)
+      );
+
+      setPhotoForPosition(position, file);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to take photo';
+
+      if (
+        message.toLowerCase().includes('cancel') ||
+        message.toLowerCase().includes('canceled')
+      ) {
+        return;
+      }
+
+      setLocalError(message);
+    }
+  };
+
+  const handleChooseFromLibrary = async (position: PhotoPosition) => {
+    try {
+      setLocalError(null);
+
+      const photo = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Photos
+      });
+
+      if (!photo.dataUrl) {
+        throw new Error('No photo was selected.');
+      }
+
+      const file = await dataUrlToFile(
+        photo.dataUrl,
+        createPhotoFileName(position)
+      );
+
+      setPhotoForPosition(position, file);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to choose photo';
+
+      if (
+        message.toLowerCase().includes('cancel') ||
+        message.toLowerCase().includes('canceled')
+      ) {
+        return;
+      }
+
+      setLocalError(message);
+    }
   };
 
   const goNext = () => {
@@ -435,20 +532,52 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
                       : 'This photo is optional. You can upload one or skip it.'}
                   </Typography>
 
-                  <Button variant='outlined' component='label'>
-                    {currentPhoto ? 'Replace Photo' : 'Choose Photo'}
-                    <input
-                      hidden
-                      type='file'
-                      accept='image/jpeg,image/png'
-                      onChange={(e) =>
-                        setPhotoForPosition(
-                          currentStep.key as PhotoPosition,
-                          e.target.files?.[0] ?? null
-                        )
-                      }
-                    />
-                  </Button>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                    {isNative ? (
+                      <>
+                        <Button
+                          variant='contained'
+                          onClick={() =>
+                            handleTakePhoto(currentStep.key as PhotoPosition)
+                          }
+                          disabled={disableClose}
+                        >
+                          {currentPhoto ? 'Retake Photo' : 'Take Photo'}
+                        </Button>
+
+                        <Button
+                          variant='outlined'
+                          onClick={() =>
+                            handleChooseFromLibrary(
+                              currentStep.key as PhotoPosition
+                            )
+                          }
+                          disabled={disableClose}
+                        >
+                          Choose From Library
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant='contained'
+                        component='label'
+                        disabled={disableClose}
+                      >
+                        {currentPhoto ? 'Replace Photo' : 'Choose Photo'}
+                        <input
+                          hidden
+                          type='file'
+                          accept='image/jpeg,image/png'
+                          onChange={(e) =>
+                            handleFileInputChange(
+                              currentStep.key as PhotoPosition,
+                              e.target.files?.[0] ?? null
+                            )
+                          }
+                        />
+                      </Button>
+                    )}
+                  </Stack>
 
                   {currentPhoto ? (
                     <Stack spacing={1}>
