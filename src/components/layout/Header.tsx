@@ -169,13 +169,16 @@ const Header: React.FC = () => {
                   overflowY: 'hidden',
                   WebkitOverflowScrolling: 'touch',
                   '&::-webkit-scrollbar': { display: 'none' },
-                  scrollbarWidth: 'none'
+                  scrollbarWidth: 'none',
+                  justifyItems: 'end'
                 }}
               >
                 <Stack
                   direction='row'
                   alignItems='flex-end'
+                  justifyContent='space-evenly'
                   gap={2}
+                  width='100%'
                   sx={{
                     minWidth: 'max-content',
                     pb: 0.5
