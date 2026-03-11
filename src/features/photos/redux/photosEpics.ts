@@ -186,7 +186,7 @@ const createProgressUploadSessionEpic: Epic<AnyAction, AnyAction, RootState> = (
         mergeMap((data) =>
           of(
             createProgressUploadSessionSucceeded({
-              checkInId: String(data.checkInId),
+              photoSetId: String(data.photoSetId),
               uploads: Array.isArray(data.uploads) ? data.uploads : []
             })
           )

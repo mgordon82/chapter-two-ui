@@ -29,6 +29,7 @@ export type CreateCheckInInput = {
   recordedAt?: string;
   weightKg: number;
   notes?: string;
+  progressPhotoSetId?: string;
 };
 
 type CheckInsState = {

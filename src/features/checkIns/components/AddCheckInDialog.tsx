@@ -22,7 +22,8 @@ import { lbsToKgRounded } from '../../../utils/conversions/weight';
 import { toIsoDateInputValue } from '../helpers';
 import {
   clearLastCreatedCheckInId,
-  createCheckInRequested
+  createCheckInRequested,
+  type CreateCheckInInput
 } from '../redux/checkInsSlice';
 import { selectUserUnitPrefs } from '../../nutritionCalculator/redux/nutritionCalculatorSlice';
 import {
@@ -123,10 +124,13 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
   const [localError, setLocalError] = useState<string | null>(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [progressFinalizeStarted, setProgressFinalizeStarted] = useState(false);
-  const [
-    progressUploadRequestedForCheckInId,
-    setProgressUploadRequestedForCheckInId
-  ] = useState<string | null>(null);
+  const [pendingCheckInPayload, setPendingCheckInPayload] =
+    useState<CreateCheckInInput | null>(null);
+  const [currentProgressPhotoSetId, setCurrentProgressPhotoSetId] = useState<
+    string | null
+  >(null);
+  const [checkInRequestedAfterFinalize, setCheckInRequestedAfterFinalize] =
+    useState(false);
 
   const resetForm = useCallback(() => {
     setDateValue(toIsoDateInputValue(new Date()));
@@ -140,7 +144,9 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     setLocalError(null);
     setIsUploadingFiles(false);
     setProgressFinalizeStarted(false);
-    setProgressUploadRequestedForCheckInId(null);
+    setPendingCheckInPayload(null);
+    setCurrentProgressPhotoSetId(null);
+    setCheckInRequestedAfterFinalize(false);
     dispatch(clearLastCreatedCheckInId());
     dispatch(clearProgressUploadSession());
   }, [dispatch]);
@@ -283,53 +289,70 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     }
   };
 
-  const handleSave = () => {
+  const buildCreateCheckInPayload = (): CreateCheckInInput | null => {
     const w = Number(weightDisplay);
     if (!Number.isFinite(w) || w <= 0) {
       setLocalError('Please enter a valid weight');
-      return;
+      return null;
     }
 
     if (includeProgressPhotos && !frontPhoto) {
       setLocalError(
         'Front photo is required when progress photos are included'
       );
-      return;
+      return null;
     }
-
-    const recordedAtIso = new Date().toISOString();
 
     const weightKg =
       weightUnitPref === 'lbs' ? lbsToKgRounded(w, 2) : Number(w.toFixed(2));
 
-    dispatch(
-      createCheckInRequested({
-        recordedAt: recordedAtIso,
-        weightKg,
-        notes: notes.trim() ? notes.trim() : undefined
-      })
-    );
+    const recordedAtIso = (() => {
+      const now = new Date();
 
-    setLocalError(null);
+      if (!dateValue) {
+        return now.toISOString();
+      }
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+
+      const recordedAt = new Date(
+        year,
+        (month ?? 1) - 1,
+        day ?? 1,
+        now.getHours(),
+        now.getMinutes(),
+        now.getSeconds(),
+        now.getMilliseconds()
+      );
+
+      return recordedAt.toISOString();
+    })();
+
+    return {
+      recordedAt: recordedAtIso,
+      weightKg,
+      notes: notes.trim() ? notes.trim() : undefined
+    };
   };
 
-  useEffect(() => {
-    if (!open) return;
-    if (!lastCreatedCheckInId) return;
+  const handleSave = () => {
+    const payload = buildCreateCheckInPayload();
+    if (!payload) return;
+
+    setLocalError(null);
 
     if (!includeProgressPhotos) {
+      dispatch(createCheckInRequested(payload));
       return;
     }
 
-    if (progressUploadRequestedForCheckInId === lastCreatedCheckInId) {
-      return;
-    }
-
-    setProgressUploadRequestedForCheckInId(lastCreatedCheckInId);
+    setPendingCheckInPayload(payload);
+    setProgressFinalizeStarted(false);
+    setCurrentProgressPhotoSetId(null);
+    setCheckInRequestedAfterFinalize(false);
 
     dispatch(
       createProgressUploadSessionRequested({
-        checkInId: lastCreatedCheckInId,
         photos: selectedPhotos.map((photo) => ({
           position: photo.position,
           mimeType: photo.mimeType,
@@ -338,14 +361,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
         }))
       })
     );
-  }, [
-    dispatch,
-    includeProgressPhotos,
-    lastCreatedCheckInId,
-    open,
-    progressUploadRequestedForCheckInId,
-    selectedPhotos
-  ]);
+  };
 
   useEffect(() => {
     if (!open || !progressUploadSession) return;
@@ -357,6 +373,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
       try {
         setIsUploadingFiles(true);
         setLocalError(null);
+        setCurrentProgressPhotoSetId(progressUploadSession.photoSetId);
 
         for (const upload of progressUploadSession.uploads) {
           const matchingPhoto = selectedPhotos.find(
@@ -380,7 +397,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
 
         dispatch(
           finalizeProgressPhotosRequested({
-            checkInId: progressUploadSession.checkInId,
+            photoSetId: progressUploadSession.photoSetId,
             photos: selectedPhotos.map((photo) => ({
               position: photo.position,
               mimeType: photo.mimeType,
@@ -391,6 +408,12 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
         );
       } catch (err) {
         if (cancelled) return;
+
+        console.error('[AddCheckInDialog] progress photo upload failed', {
+          photoSetId: progressUploadSession.photoSetId,
+          error: err instanceof Error ? err.message : String(err)
+        });
+
         setLocalError(
           err instanceof Error
             ? err.message
@@ -409,9 +432,63 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
 
   useEffect(() => {
     if (!open) return;
+    if (!includeProgressPhotos) return;
+    if (!progressFinalizeStarted) return;
+    if (finalizingProgressPhotos) return;
+    if (photosError) return;
+    if (!pendingCheckInPayload) return;
+    if (!currentProgressPhotoSetId) return;
+    if (checkInRequestedAfterFinalize) return;
+
+    setCheckInRequestedAfterFinalize(true);
+
+    dispatch(
+      createCheckInRequested({
+        ...pendingCheckInPayload,
+        progressPhotoSetId: currentProgressPhotoSetId
+      })
+    );
+  }, [
+    checkInRequestedAfterFinalize,
+    currentProgressPhotoSetId,
+    dispatch,
+    finalizingProgressPhotos,
+    includeProgressPhotos,
+    open,
+    pendingCheckInPayload,
+    photosError,
+    progressFinalizeStarted
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
 
     if (
-      !includeProgressPhotos &&
+      includeProgressPhotos &&
+      lastCreatedCheckInId &&
+      !creating &&
+      !checkInError &&
+      !photosError &&
+      !localError
+    ) {
+      onClose();
+    }
+  }, [
+    checkInError,
+    creating,
+    includeProgressPhotos,
+    lastCreatedCheckInId,
+    localError,
+    onClose,
+    open,
+    photosError
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (
+      includeProgressPhotos &&
       lastCreatedCheckInId &&
       !creating &&
       !checkInError
@@ -425,28 +502,6 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     lastCreatedCheckInId,
     onClose,
     open
-  ]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    if (
-      includeProgressPhotos &&
-      progressFinalizeStarted &&
-      !finalizingProgressPhotos &&
-      !photosError &&
-      !checkInError
-    ) {
-      onClose();
-    }
-  }, [
-    checkInError,
-    finalizingProgressPhotos,
-    includeProgressPhotos,
-    onClose,
-    open,
-    photosError,
-    progressFinalizeStarted
   ]);
 
   useEffect(() => {

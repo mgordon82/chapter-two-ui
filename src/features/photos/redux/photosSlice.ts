@@ -59,7 +59,6 @@ export type FinalizeStarterPhotosPayload = {
 };
 
 export type ProgressUploadSessionPayload = {
-  checkInId: string;
   photos: Array<{
     position: PhotoPosition;
     mimeType: string;
@@ -69,12 +68,12 @@ export type ProgressUploadSessionPayload = {
 };
 
 export type ProgressUploadSessionResponse = {
-  checkInId: string;
+  photoSetId: string;
   uploads: StarterUploadSessionItem[];
 };
 
 export type FinalizeProgressPhotosPayload = {
-  checkInId: string;
+  photoSetId: string;
   photos: Array<{
     position: PhotoPosition;
     mimeType: string;
