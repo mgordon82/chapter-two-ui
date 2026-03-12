@@ -28,6 +28,8 @@
 	<string>MiPT uses the camera so you can take progress photos for check-ins.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>MiPT reads Apple Health data like weight, steps, and workouts to help track progress and personalize insights.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>MiPT may write health-related data to Apple Health when you choose to save or sync your progress information.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>MiPT may save photos related to your progress photo workflow.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
