@@ -75,18 +75,20 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
           const lastWeightRecordedAt =
             integrationData?.integration?.lastSync?.weightRecordedAt ?? null;
 
-          let nextStartDate = '2025-01-01T00:00:00Z';
+          let nextStartDate: string;
 
           if (lastWeightRecordedAt) {
             const lastDate = new Date(lastWeightRecordedAt);
-            if (!Number.isNaN(lastDate.getTime())) {
-              nextStartDate = new Date(lastDate.getTime() + 1000).toISOString();
-            }
+            nextStartDate = new Date(lastDate.getTime() + 1000).toISOString();
+          } else {
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            nextStartDate = oneYearAgo.toISOString();
           }
 
           const weightSamples = await HealthKit.getWeightSamples({
             startDate: nextStartDate,
-            limit: 20
+            limit: 500
           });
 
           let createdCount = 0;
@@ -157,7 +159,7 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
               duplicateCount,
               conflictCount
             }),
-            fetchCheckInsRequested()
+            fetchCheckInsRequested({ range: '3M' })
           ];
         })()
       ).pipe(

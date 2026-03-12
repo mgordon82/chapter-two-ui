@@ -302,7 +302,10 @@ const finalizeProgressPhotosEpic: Epic<AnyAction, AnyAction, RootState> = (
         })()
       ).pipe(
         mergeMap(() =>
-          from([finalizeProgressPhotosSucceeded(), fetchCheckInsRequested()])
+          from([
+            finalizeProgressPhotosSucceeded(),
+            fetchCheckInsRequested({ range: '3M' })
+          ])
         ),
         catchError((err: unknown) =>
           of(

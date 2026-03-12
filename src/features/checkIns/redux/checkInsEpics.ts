@@ -16,6 +16,8 @@ import {
   type CreateCheckInInput
 } from './checkInsSlice';
 
+import type { RangeKey } from '../types';
+
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
 
 import { loadUserProfileRequested } from '../../nutritionCalculator/redux/nutritionCalculatorSlice';
@@ -32,18 +34,24 @@ type GetCheckInsResponse = {
 const fetchCheckInsEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
   action$.pipe(
     ofType(fetchCheckInsRequested.type),
-    mergeMap(() => {
+    mergeMap((action: PayloadAction<{ range: RangeKey }>) => {
       const API_URL = import.meta.env.VITE_API_URL;
+      const { range } = action.payload;
 
       return from(
         (async () => {
           const token = await getAccessToken();
           if (!token) throw new Error('NOT_SIGNED_IN');
 
-          const res = await fetch(`${API_URL}/api/check-ins/current-user`, {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const params = new URLSearchParams({ range });
+
+          const res = await fetch(
+            `${API_URL}/api/check-ins/current-user?${params.toString()}`,
+            {
+              method: 'GET',
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
 
           if (!res.ok) {
             let message = `HTTP_${res.status}`;
@@ -62,7 +70,10 @@ const fetchCheckInsEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
           }
 
           const data = (await res.json()) as GetCheckInsResponse;
-          return fetchCheckInsSucceeded(data.items);
+          return fetchCheckInsSucceeded({
+            items: data.items,
+            range
+          });
         })()
       ).pipe(
         catchError((err) => {
@@ -116,7 +127,7 @@ const createCheckInEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
 
           return [
             createCheckInSucceeded({ id: String(data.id) }),
-            fetchCheckInsRequested(),
+            fetchCheckInsRequested({ range: '3M' }),
             loadUserProfileRequested(),
             trendInsightCacheCleared(),
             trendMetricsRequested({ range: '3M', force: true })

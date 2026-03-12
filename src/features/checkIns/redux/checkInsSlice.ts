@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { RangeKey } from '../types';
 
 export type CheckIn = {
   _id: string;
@@ -46,6 +47,7 @@ type CheckInsState = {
   creating: boolean;
   lastCreatedCheckInId: string | null;
   error: string | null;
+  loadedRange: RangeKey | null;
 };
 
 const initialState: CheckInsState = {
@@ -53,20 +55,29 @@ const initialState: CheckInsState = {
   loading: false,
   creating: false,
   lastCreatedCheckInId: null,
-  error: null
+  error: null,
+  loadedRange: null
 };
 
 const checkInsSlice = createSlice({
   name: 'checkIns',
   initialState,
   reducers: {
-    fetchCheckInsRequested(state) {
+    fetchCheckInsRequested(
+      state,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      _action: PayloadAction<{ range: RangeKey }>
+    ) {
       state.loading = true;
       state.error = null;
     },
-    fetchCheckInsSucceeded(state, action: PayloadAction<CheckIn[]>) {
+    fetchCheckInsSucceeded(
+      state,
+      action: PayloadAction<{ items: CheckIn[]; range: RangeKey }>
+    ) {
       state.loading = false;
-      state.items = action.payload;
+      state.items = action.payload.items;
+      state.loadedRange = action.payload.range;
     },
     fetchCheckInsFailed(state, action: PayloadAction<string>) {
       state.loading = false;

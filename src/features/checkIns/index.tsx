@@ -25,9 +25,27 @@ import { formatWeight, startDateForRange } from './helpers';
 import { trendMetricsRequested } from '../trend/redux/trendSlice';
 import HealthKitPanel from '../healthKit/components/HealthKitPanel';
 
+const rangeRank: Record<RangeKey, number> = {
+  '1W': 1,
+  '1M': 2,
+  '3M': 3,
+  '6M': 4,
+  '12M': 5
+};
+
+const doesLoadedRangeCoverRequestedRange = (
+  loaded: RangeKey | null,
+  requested: RangeKey
+) => {
+  if (!loaded) return false;
+  return rangeRank[loaded] >= rangeRank[requested];
+};
+
 const CheckInsPanel = () => {
   const dispatch = useAppDispatch();
-  const { items, loading, error } = useAppSelector((s) => s.checkIns);
+  const { items, loading, error, loadedRange } = useAppSelector(
+    (s) => s.checkIns
+  );
 
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
   const trend = useAppSelector((s) => s.trend);
@@ -81,8 +99,15 @@ const CheckInsPanel = () => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchCheckInsRequested());
-  }, [dispatch]);
+    if (!loadedRange) {
+      dispatch(fetchCheckInsRequested({ range: '3M' }));
+      return;
+    }
+
+    if (!doesLoadedRangeCoverRequestedRange(loadedRange, range)) {
+      dispatch(fetchCheckInsRequested({ range }));
+    }
+  }, [dispatch, loadedRange, range]);
 
   const latest = useMemo(() => {
     if (!items?.length) return null;
@@ -93,13 +118,28 @@ const CheckInsPanel = () => {
   }, [items]);
 
   const filteredItems = useMemo(() => {
-    if (!items.length) return items;
+    if (!items.length) return [];
 
-    const end = new Date(items[0].recordedAt);
-    const start = startDateForRange(range, end).getTime();
+    const end = new Date();
+    const start = startDateForRange(range, end);
 
-    return items.filter((ci) => new Date(ci.recordedAt).getTime() >= start);
+    return [...items]
+      .filter((ci) => {
+        const recordedAt = new Date(ci.recordedAt);
+        return recordedAt >= start && recordedAt <= end;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
+      );
   }, [items, range]);
+
+  const listItems = useMemo(() => {
+    return [...filteredItems].sort(
+      (a, b) =>
+        new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+  }, [filteredItems]);
 
   const handleViewChange = (_: unknown, next: ViewMode | null) => {
     if (!next) return;
@@ -320,16 +360,18 @@ const CheckInsPanel = () => {
 
         {!loading && items.length > 0 ? (
           <Box sx={{ mt: 1, minWidth: 0, minHeight: 0 }}>
+            <Typography variant='caption' sx={{ display: 'block', mt: 1 }}>
+              Range: {range} • Showing {filteredItems.length} item(s)
+            </Typography>
             {view === 'chart' ? (
               <CheckInsChart
                 filteredItems={filteredItems}
                 weightUnitPref={weightUnitPref}
-                range={range}
               />
             ) : (
               <Box sx={{ maxHeight: 200, overflowY: 'auto', pr: 0.5 }}>
                 <CheckInList
-                  filteredItems={filteredItems}
+                  filteredItems={listItems}
                   weightUnitPref={weightUnitPref}
                 />
               </Box>

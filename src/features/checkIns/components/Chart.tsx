@@ -11,11 +11,10 @@ import {
 } from 'recharts';
 import { useAppSelector } from '../../../app/hooks';
 import { selectLoadedUserProfile } from '../../nutritionCalculator/redux/nutritionCalculatorSlice';
-import type { CheckInTooltipProps, RangeKey, UnitPrefType } from '../types';
+import type { CheckInTooltipProps, UnitPrefType } from '../types';
 import {
   formatDateLabel,
   formatDateTimeLabel,
-  startDateForRange,
   toDisplayWeight
 } from '../helpers';
 import type { CheckIn } from '../redux/checkInsSlice';
@@ -24,7 +23,6 @@ import CheckInPhotosDialog from './CheckInPhotosDialog';
 type ChartTypes = {
   filteredItems: CheckIn[];
   weightUnitPref: UnitPrefType;
-  range: RangeKey;
 };
 
 type ChartPoint = {
@@ -155,18 +153,12 @@ const CheckInTooltip = ({
   );
 };
 
-const CheckInsChart = ({
-  filteredItems,
-  weightUnitPref,
-  range
-}: ChartTypes) => {
+const CheckInsChart = ({ filteredItems, weightUnitPref }: ChartTypes) => {
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
   const [selectedCheckIn, setSelectedCheckIn] = useState<CheckIn | null>(null);
 
   const chartData = useMemo<ChartPoint[]>(() => {
-    const chronological = [...filteredItems].reverse();
-
-    return chronological.map((ci) => ({
+    return [...filteredItems].map((ci) => ({
       id: ci._id,
       recordedAt: ci.recordedAt,
       weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref),
@@ -177,13 +169,8 @@ const CheckInsChart = ({
   }, [filteredItems, weightUnitPref]);
 
   const filteredChartData = useMemo(() => {
-    if (chartData.length === 0) return chartData;
-
-    const end = new Date(chartData[chartData.length - 1].recordedAt);
-    const start = startDateForRange(range, end).getTime();
-
-    return chartData.filter((d) => new Date(d.recordedAt).getTime() >= start);
-  }, [chartData, range]);
+    return chartData;
+  }, [chartData]);
 
   const goalWeightDisplay = useMemo(() => {
     const kg = loadedProfile?.profile?.goalWeightKg ?? null;
@@ -281,7 +268,7 @@ const CheckInsChart = ({
                 dataKey='recordedAt'
                 tick={{ fontSize: 12 }}
                 tickFormatter={(iso) => formatDateLabel(String(iso))}
-                minTickGap={20}
+                minTickGap={40}
               />
               <YAxis tick={{ fontSize: 12 }} width={52} domain={yDomain} />
               <Tooltip
