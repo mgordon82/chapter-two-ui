@@ -32,7 +32,8 @@ type ChartPoint = {
   recordedAt: string;
   weight: number;
   hasPhotos: boolean;
-  source: CheckIn;
+  sourceCheckIn: CheckIn;
+  sourceLabel: string | null;
 };
 
 type DotPayload = {
@@ -61,6 +62,12 @@ function useElementSize<T extends HTMLElement>() {
   }, []);
 
   return { ref, size };
+}
+
+function getCheckInSourceLabel(ci: CheckIn): string | null {
+  if (ci.source?.appSourceName) return ci.source.appSourceName;
+  if (ci.source?.type === 'apple_health') return 'Apple Health';
+  return null;
 }
 
 const CheckInTooltip = ({
@@ -117,6 +124,20 @@ const CheckInTooltip = ({
         Weight
       </Typography>
 
+      {point?.sourceLabel ? (
+        <Typography
+          variant='caption'
+          sx={{
+            display: 'block',
+            color: 'rgba(255,255,255,0.75)',
+            mt: 0.5,
+            fontWeight: 700
+          }}
+        >
+          Source: {point.sourceLabel}
+        </Typography>
+      ) : null}
+
       {point?.hasPhotos ? (
         <Typography
           variant='caption'
@@ -150,7 +171,8 @@ const CheckInsChart = ({
       recordedAt: ci.recordedAt,
       weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref),
       hasPhotos: Boolean(ci.hasPhotos && ci.photos?.photos?.length),
-      source: ci
+      sourceCheckIn: ci,
+      sourceLabel: getCheckInSourceLabel(ci)
     }));
   }, [filteredItems, weightUnitPref]);
 
@@ -199,7 +221,7 @@ const CheckInsChart = ({
           clickable
             ? (e) => {
                 e.stopPropagation();
-                setSelectedCheckIn(payload.source);
+                setSelectedCheckIn(payload.sourceCheckIn);
               }
             : undefined
         }

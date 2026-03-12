@@ -24,6 +24,12 @@ function getCheckInNotes(ci: CheckIn): string {
   return (n1 || n2 || '').trim();
 }
 
+function getCheckInSourceLabel(ci: CheckIn): string | null {
+  if (ci.source?.appSourceName) return ci.source.appSourceName;
+  if (ci.source?.type === 'apple_health') return 'Apple Health';
+  return null;
+}
+
 const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
   const [selectedCheckIn, setSelectedCheckIn] = useState<CheckIn | null>(null);
 
@@ -52,6 +58,7 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
           const notes = getCheckInNotes(ci);
           const hasNotes = notes.length > 0;
           const hasPhotos = Boolean(ci.hasPhotos && ci.photos?.photos?.length);
+          const sourceLabel = getCheckInSourceLabel(ci);
 
           const date = new Date(ci.recordedAt);
           const dateText = date.toLocaleString(undefined, {
@@ -106,7 +113,12 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
               />
 
               <Box sx={{ minWidth: 0, flex: 1, pl: 0.5 }}>
-                <Stack direction='row' alignItems='center' spacing={1}>
+                <Stack
+                  direction='row'
+                  alignItems='center'
+                  spacing={1}
+                  flexWrap='wrap'
+                >
                   <Typography variant='body2' sx={{ fontWeight: 650 }}>
                     {dateText}
                   </Typography>
@@ -124,6 +136,22 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
                     >
                       {deltaSign}
                       {deltaText}
+                    </Typography>
+                  ) : null}
+
+                  {sourceLabel ? (
+                    <Typography
+                      variant='caption'
+                      sx={{
+                        px: 0.75,
+                        py: 0.15,
+                        borderRadius: 999,
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        color: 'rgba(255,255,255,0.7)',
+                        fontWeight: 700
+                      }}
+                    >
+                      {sourceLabel}
                     </Typography>
                   ) : null}
 

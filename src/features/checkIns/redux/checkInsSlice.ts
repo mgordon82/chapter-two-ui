@@ -23,6 +23,14 @@ export type CheckIn = {
   createdAt: string;
   createdByUserId: string;
   isDeleted: boolean;
+  source?: {
+    type?: 'apple_health' | 'manual';
+    integration?: 'apple_health';
+    appSourceName?: string | null;
+    deviceSourceName?: string | null;
+    externalSampleId?: string | null;
+    importedAt?: string | null;
+  };
 };
 
 export type CreateCheckInInput = {

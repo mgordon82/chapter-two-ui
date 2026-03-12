@@ -23,6 +23,7 @@ import CheckInList from './components/CheckInList';
 import AddCheckInDialog from './components/AddCheckInDialog';
 import { formatWeight, startDateForRange } from './helpers';
 import { trendMetricsRequested } from '../trend/redux/trendSlice';
+import HealthKitPanel from '../healthKit/components/HealthKitPanel';
 
 const CheckInsPanel = () => {
   const dispatch = useAppDispatch();
@@ -30,6 +31,7 @@ const CheckInsPanel = () => {
 
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
   const trend = useAppSelector((s) => s.trend);
+  const healthKit = useAppSelector((s) => s.healthKit);
 
   const weightUnitPref = unitPrefs?.weightUnitPref === 'lbs' ? 'lbs' : 'kg';
 
@@ -65,6 +67,14 @@ const CheckInsPanel = () => {
       : avgWeighInsPerWeek >= 2
       ? 'warning.main'
       : 'text.secondary';
+
+  const appleHealthStatusText = healthKit.syncing
+    ? 'Apple Health syncing…'
+    : healthKit.error
+    ? 'Apple Health sync failed'
+    : healthKit.lastSummary
+    ? `Apple Health synced • ${healthKit.lastSummary.createdCount} new`
+    : 'Apple Health available';
 
   const [view, setView] = useState<ViewMode>('chart');
   const [range, setRange] = useState<RangeKey>('3M');
@@ -112,16 +122,34 @@ const CheckInsPanel = () => {
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           justifyContent={{ xs: 'normal', md: 'space-between' }}
-          alignItems={{ xs: 'left', md: 'center' }}
+          alignItems={{ xs: 'normal', md: 'center' }}
+          gap={1}
         >
           <Stack
             direction='row'
-            justifyContent='left'
+            justifyContent='space-between'
             alignItems='center'
             gap={2}
           >
             <Typography variant='h6'>Check-ins</Typography>
             {loading ? <CircularProgress size={18} /> : null}
+            <Stack direction='row' gap={1}>
+              <HealthKitPanel />
+              <IconButton
+                aria-label='analyze trend metrics'
+                onClick={() => dispatch(trendMetricsRequested({ range }))}
+                disabled={trend.metrics.status === 'loading'}
+              >
+                <InsightsIcon />
+              </IconButton>
+              <Button
+                variant='outlined'
+                onClick={() => setOpen(true)}
+                disabled={loading}
+              >
+                + Add
+              </Button>
+            </Stack>
           </Stack>
 
           <Stack
@@ -130,14 +158,6 @@ const CheckInsPanel = () => {
             gap={1}
             sx={{ minWidth: 0, flexWrap: 'wrap' }}
           >
-            <IconButton
-              aria-label='analyze trend metrics'
-              onClick={() => dispatch(trendMetricsRequested({ range }))}
-              disabled={trend.metrics.status === 'loading'}
-            >
-              <InsightsIcon />
-            </IconButton>
-
             <ToggleButtonGroup
               size='small'
               value={range}
@@ -163,16 +183,35 @@ const CheckInsPanel = () => {
               <ToggleButton value='chart'>Chart</ToggleButton>
               <ToggleButton value='list'>List</ToggleButton>
             </ToggleButtonGroup>
-
-            <Button
-              variant='outlined'
-              onClick={() => setOpen(true)}
-              disabled={loading}
-            >
-              Add
-            </Button>
           </Stack>
         </Stack>
+
+        {healthKit.lastSummary || healthKit.syncing || healthKit.error ? (
+          <Typography
+            variant='caption'
+            sx={{
+              mt: 0.5,
+              display: 'inline-flex',
+              alignItems: 'center',
+              px: 1,
+              py: 0.5,
+              borderRadius: 999,
+              backgroundColor: healthKit.error
+                ? 'rgba(211, 47, 47, 0.15)'
+                : healthKit.syncing
+                ? 'rgba(255, 255, 255, 0.08)'
+                : 'rgba(76, 175, 80, 0.15)',
+              color: healthKit.error
+                ? 'error.main'
+                : healthKit.syncing
+                ? 'text.secondary'
+                : 'success.main',
+              fontWeight: 700
+            }}
+          >
+            {appleHealthStatusText}
+          </Typography>
+        ) : null}
 
         {error ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='error'>
