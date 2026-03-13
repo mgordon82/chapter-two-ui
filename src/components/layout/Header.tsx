@@ -21,6 +21,8 @@ import { useDispatch } from 'react-redux';
 import { loadUserProfileRequested } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 import { Capacitor } from '@capacitor/core';
 
+import logoImg from '../../assets/Logo-white.png';
+
 const drawerWidth = 240;
 const nativeHeaderPadding = '30px';
 
@@ -65,7 +67,15 @@ const Header: React.FC = () => {
               flexGrow={1}
               width='100%'
             >
-              <Stack direction='row' alignItems='center' gap={2}>
+              <Stack direction='row' alignItems='flex-end' gap={2}>
+                <Box
+                  component='img'
+                  src={logoImg}
+                  alt={'MiPT logo'}
+                  sx={{
+                    width: 50
+                  }}
+                />
                 <Typography
                   variant='h5'
                   fontWeight={700}
@@ -126,7 +136,7 @@ const Header: React.FC = () => {
                 alignItems: 'center'
               }}
             >
-              <Stack direction='row' alignItems='center' gap={1}>
+              <Stack direction='row' alignItems='flex-end' gap={1}>
                 <IconButton
                   onClick={toggleMobileDrawer}
                   aria-label='open navigation'
@@ -135,7 +145,14 @@ const Header: React.FC = () => {
                 >
                   <MenuIcon />
                 </IconButton>
-
+                <Box
+                  component='img'
+                  src={logoImg}
+                  alt={'MiPT logo'}
+                  sx={{
+                    width: 30
+                  }}
+                />
                 <Typography
                   variant='h6'
                   fontWeight={700}

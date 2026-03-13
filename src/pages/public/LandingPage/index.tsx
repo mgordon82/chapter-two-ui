@@ -18,14 +18,14 @@ const LandingPage: React.FC = () => {
         }}
         color='text.secondary'
       >
-        MiPT
+        Chapter Two
       </Typography>
 
       <Stack gap={10}>
         <MediaSection
           title='Your Dream Body Awaits'
           subtitle='Learn exactly how to turn your fitness around in a matter of
-              months before summer'
+              months before summer. Ask us about our new app!'
           image={coachPhoto}
           imageAlt='photo of coach'
           buttonLabel='Claim Your Guide Here'
