@@ -28,12 +28,10 @@ const healthKitSlice = createSlice({
       state.error = null;
     },
     healthKitSyncSucceeded(state, action: PayloadAction<HealthKitSyncSummary>) {
-      console.log('healthKit reducer success', action.payload);
       state.syncing = false;
       state.lastSummary = action.payload;
     },
     healthKitSyncFailed(state, action: PayloadAction<string>) {
-      console.log('healthKit reducer failed', action.payload);
       state.syncing = false;
       state.error = action.payload;
     },

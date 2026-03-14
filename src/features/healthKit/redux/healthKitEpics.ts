@@ -145,13 +145,6 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
               conflictCount += 1;
           }
 
-          console.log('healthKitSyncSucceeded dispatching', {
-            total: weightSamples.items.length,
-            createdCount,
-            duplicateCount,
-            conflictCount
-          });
-
           return [
             healthKitSyncSucceeded({
               total: weightSamples.items.length,
@@ -170,7 +163,6 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
               ? 'Please sign in again.'
               : err?.message ?? 'Failed to sync Apple Health';
 
-          console.log('healthKitSyncFailed dispatching', msg);
           return of(healthKitSyncFailed(msg));
         })
       );
