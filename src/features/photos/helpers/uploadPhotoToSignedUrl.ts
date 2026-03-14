@@ -28,24 +28,13 @@ export async function uploadPhotoToSignedUrl(params: {
   } catch (err) {
     window.clearTimeout(timeout);
 
-    const errorName = err instanceof Error ? err.name : 'UnknownError';
-    const errorMessage = err instanceof Error ? err.message : String(err);
-
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new Error(
-        `Photo upload timed out after ${Math.round(
-          timeoutMs / 1000
-        )} seconds. File: ${file.name} (${(file.size / (1024 * 1024)).toFixed(
-          1
-        )} MB).`
+        'Photo upload timed out. Please check your connection and try again.'
       );
     }
 
-    throw new Error(
-      `Photo upload request failed. Origin: ${window.location.origin}. File: ${
-        file.name
-      }. Type: ${file.type || mimeType}. Error: ${errorName} - ${errorMessage}`
-    );
+    throw new Error('Photo upload failed. Please try again.');
   }
 
   window.clearTimeout(timeout);
