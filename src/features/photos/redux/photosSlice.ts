@@ -92,12 +92,12 @@ type PhotosState = {
   creatingStarterUploadSession: boolean;
   starterUploadSession: StarterUploadSessionResponse | null;
   finalizingStarterPhotos: boolean;
+  starterError: string | null;
 
   creatingProgressUploadSession: boolean;
   progressUploadSession: ProgressUploadSessionResponse | null;
   finalizingProgressPhotos: boolean;
-
-  error: string | null;
+  progressError: string | null;
 };
 
 const initialState: PhotosState = {
@@ -107,12 +107,12 @@ const initialState: PhotosState = {
   creatingStarterUploadSession: false,
   starterUploadSession: null,
   finalizingStarterPhotos: false,
+  starterError: null,
 
   creatingProgressUploadSession: false,
   progressUploadSession: null,
   finalizingProgressPhotos: false,
-
-  error: null
+  progressError: null
 };
 
 const photosSlice = createSlice({
@@ -121,7 +121,7 @@ const photosSlice = createSlice({
   reducers: {
     fetchStarterPhotosRequested(state) {
       state.loadingStarter = true;
-      state.error = null;
+      state.starterError = null;
     },
     fetchStarterPhotosSucceeded(
       state,
@@ -136,7 +136,7 @@ const photosSlice = createSlice({
     },
     fetchStarterPhotosFailed(state, action: PayloadAction<string>) {
       state.loadingStarter = false;
-      state.error = action.payload;
+      state.starterError = action.payload;
     },
 
     createStarterUploadSessionRequested(
@@ -144,7 +144,7 @@ const photosSlice = createSlice({
       _action: PayloadAction<StarterUploadSessionPayload>
     ) {
       state.creatingStarterUploadSession = true;
-      state.error = null;
+      state.starterError = null;
       state.starterUploadSession = null;
     },
     createStarterUploadSessionSucceeded(
@@ -156,7 +156,7 @@ const photosSlice = createSlice({
     },
     createStarterUploadSessionFailed(state, action: PayloadAction<string>) {
       state.creatingStarterUploadSession = false;
-      state.error = action.payload;
+      state.starterError = action.payload;
     },
 
     createProgressUploadSessionRequested(
@@ -165,7 +165,7 @@ const photosSlice = createSlice({
     ) {
       state.creatingProgressUploadSession = true;
       state.progressUploadSession = null;
-      state.error = null;
+      state.progressError = null;
     },
     createProgressUploadSessionSucceeded(
       state,
@@ -176,7 +176,7 @@ const photosSlice = createSlice({
     },
     createProgressUploadSessionFailed(state, action: PayloadAction<string>) {
       state.creatingProgressUploadSession = false;
-      state.error = action.payload;
+      state.progressError = action.payload;
     },
 
     finalizeProgressPhotosRequested(
@@ -184,7 +184,7 @@ const photosSlice = createSlice({
       _action: PayloadAction<FinalizeProgressPhotosPayload>
     ) {
       state.finalizingProgressPhotos = true;
-      state.error = null;
+      state.progressError = null;
     },
     finalizeProgressPhotosSucceeded(state) {
       state.finalizingProgressPhotos = false;
@@ -192,7 +192,7 @@ const photosSlice = createSlice({
     },
     finalizeProgressPhotosFailed(state, action: PayloadAction<string>) {
       state.finalizingProgressPhotos = false;
-      state.error = action.payload;
+      state.progressError = action.payload;
     },
 
     clearProgressUploadSession(state) {
@@ -204,7 +204,7 @@ const photosSlice = createSlice({
       _action: PayloadAction<FinalizeStarterPhotosPayload>
     ) {
       state.finalizingStarterPhotos = true;
-      state.error = null;
+      state.starterError = null;
     },
     finalizeStarterPhotosSucceeded(
       state,
@@ -217,11 +217,14 @@ const photosSlice = createSlice({
     },
     finalizeStarterPhotosFailed(state, action: PayloadAction<string>) {
       state.finalizingStarterPhotos = false;
-      state.error = action.payload;
+      state.starterError = action.payload;
     },
 
-    clearPhotosError(state) {
-      state.error = null;
+    clearStarterError(state) {
+      state.starterError = null;
+    },
+    clearProgressError(state) {
+      state.progressError = null;
     },
     clearStarterUploadSession(state) {
       state.starterUploadSession = null;
@@ -246,7 +249,8 @@ export const {
   finalizeStarterPhotosRequested,
   finalizeStarterPhotosSucceeded,
   finalizeStarterPhotosFailed,
-  clearPhotosError,
+  clearStarterError,
+  clearProgressError,
   clearStarterUploadSession
 } = photosSlice.actions;
 

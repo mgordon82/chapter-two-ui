@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -25,7 +25,10 @@ import {
   type PhotoPosition,
   type StarterUploadRequestPhoto
 } from '../redux/photosSlice';
+import { normalizeImageFile } from '../helpers/normalizeImageFile';
 import { uploadPhotoToSignedUrl } from '../helpers/uploadPhotoToSignedUrl';
+import { validateImageFile } from '../helpers/validateImageFile';
+import { useObjectUrl } from '../helpers/useObjectUrl';
 
 type UploadStep = {
   key: PhotoPosition | 'review';
@@ -39,17 +42,6 @@ const steps: UploadStep[] = [
   { key: 'back', label: 'Back Photo', required: false },
   { key: 'review', label: 'Review', required: false }
 ];
-
-const fileToUploadPhoto = (
-  position: PhotoPosition,
-  file: File
-): StarterUploadRequestPhoto => ({
-  position,
-  file,
-  mimeType: file.type,
-  originalFileName: file.name,
-  sizeBytes: file.size
-});
 
 const formatBytes = (value?: number | null) => {
   if (!value || value <= 0) return '';
@@ -73,6 +65,17 @@ const formatTakenAtLabel = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
+const fileToUploadPhoto = (
+  position: PhotoPosition,
+  file: File
+): StarterUploadRequestPhoto => ({
+  position,
+  file,
+  mimeType: file.type,
+  originalFileName: file.name,
+  sizeBytes: file.size
+});
+
 const StarterPhotosSection = () => {
   const dispatch = useDispatch();
 
@@ -83,7 +86,7 @@ const StarterPhotosSection = () => {
     creatingStarterUploadSession,
     starterUploadSession,
     finalizingStarterPhotos,
-    error
+    starterError
   } = useAppSelector((s) => s.photos);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -98,11 +101,62 @@ const StarterPhotosSection = () => {
     null
   );
 
+  const frontPreviewUrl = useObjectUrl(frontPhoto?.file);
+  const sidePreviewUrl = useObjectUrl(sidePhoto?.file);
+  const backPreviewUrl = useObjectUrl(backPhoto?.file);
+
   const [starterTakenAt, setStarterTakenAt] = useState(
     toLocalDateInputValue(new Date())
   );
   const [localError, setLocalError] = useState<string | null>(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+
+  const hadFinalizeInFlightRef = useRef(false);
+
+  const getInitialStarterTakenAt = useCallback(() => {
+    const existingTakenAt = starterPhotoSet?.photos?.[0]?.takenAt;
+
+    if (!existingTakenAt) {
+      return toLocalDateInputValue(new Date());
+    }
+
+    const date = new Date(existingTakenAt);
+    if (Number.isNaN(date.getTime())) {
+      return toLocalDateInputValue(new Date());
+    }
+
+    return toLocalDateInputValue(date);
+  }, [starterPhotoSet?.photos]);
+
+  const clearDialogForm = useCallback(
+    (useExistingTakenAt: boolean) => {
+      setActiveStep(0);
+      setFrontPhoto(null);
+      setSidePhoto(null);
+      setBackPhoto(null);
+      setStarterTakenAt(
+        useExistingTakenAt
+          ? getInitialStarterTakenAt()
+          : toLocalDateInputValue(new Date())
+      );
+      setLocalError(null);
+      setIsUploadingFiles(false);
+      dispatch(clearStarterUploadSession());
+    },
+    [dispatch, getInitialStarterTakenAt]
+  );
+
+  const resetDialogState = useCallback(() => {
+    hadFinalizeInFlightRef.current = false;
+    setDialogOpen(false);
+    clearDialogForm(false);
+  }, [clearDialogForm]);
+
+  const openDialog = () => {
+    hadFinalizeInFlightRef.current = false;
+    setDialogOpen(true);
+    clearDialogForm(true);
+  };
 
   const selectedPhotos = useMemo(
     () =>
@@ -112,47 +166,73 @@ const StarterPhotosSection = () => {
     [frontPhoto, sidePhoto, backPhoto]
   );
 
+  const isBusy =
+    creatingStarterUploadSession || finalizingStarterPhotos || isUploadingFiles;
+
+  const displayError = localError || starterError;
+
   const currentStep = steps[activeStep];
   const isReviewStep = currentStep?.key === 'review';
 
+  const getPreviewUrlForPosition = useCallback(
+    (position: PhotoPosition) => {
+      if (position === 'front') return frontPreviewUrl;
+      if (position === 'side') return sidePreviewUrl;
+      return backPreviewUrl;
+    },
+    [frontPreviewUrl, sidePreviewUrl, backPreviewUrl]
+  );
+
+  const getPhotoForPosition = useCallback(
+    (position: PhotoPosition) => {
+      if (position === 'front') return frontPhoto;
+      if (position === 'side') return sidePhoto;
+      return backPhoto;
+    },
+    [frontPhoto, sidePhoto, backPhoto]
+  );
+
+  const setPhotoStateForPosition = useCallback(
+    (position: PhotoPosition, photo: StarterUploadRequestPhoto | null) => {
+      if (position === 'front') setFrontPhoto(photo);
+      if (position === 'side') setSidePhoto(photo);
+      if (position === 'back') setBackPhoto(photo);
+    },
+    []
+  );
+
   const currentPhoto =
-    currentStep?.key === 'front'
-      ? frontPhoto
-      : currentStep?.key === 'side'
-      ? sidePhoto
-      : currentStep?.key === 'back'
-      ? backPhoto
+    currentStep && currentStep.key !== 'review'
+      ? getPhotoForPosition(currentStep.key)
       : null;
 
-  const resetDialogState = useCallback(() => {
-    setDialogOpen(false);
-    setActiveStep(0);
-    setFrontPhoto(null);
-    setSidePhoto(null);
-    setBackPhoto(null);
-    setStarterTakenAt(toLocalDateInputValue(new Date()));
-    setLocalError(null);
-    setIsUploadingFiles(false);
-    dispatch(clearStarterUploadSession());
-  }, [dispatch]);
-
-  const openDialog = () => {
-    setDialogOpen(true);
-    setActiveStep(0);
-    setStarterTakenAt(toLocalDateInputValue(new Date()));
-    setLocalError(null);
-  };
-
-  const setPhotoForPosition = (position: PhotoPosition, file: File | null) => {
+  const setPhotoForPosition = async (
+    position: PhotoPosition,
+    file: File | null
+  ) => {
     if (!file) return;
 
-    const nextPhoto = fileToUploadPhoto(position, file);
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setLocalError(validationError);
+      return;
+    }
 
-    if (position === 'front') setFrontPhoto(nextPhoto);
-    if (position === 'side') setSidePhoto(nextPhoto);
-    if (position === 'back') setBackPhoto(nextPhoto);
+    try {
+      const normalizedFile = await normalizeImageFile(file);
+      const nextPhoto = fileToUploadPhoto(position, normalizedFile);
 
-    setLocalError(null);
+      setPhotoStateForPosition(position, nextPhoto);
+      setLocalError(null);
+    } catch (err) {
+      console.error('[normalizeImageFile] failed', err);
+
+      setLocalError(
+        err instanceof Error
+          ? `Failed to process image: ${err.message}`
+          : 'Failed to process image file'
+      );
+    }
   };
 
   const goNext = () => {
@@ -200,8 +280,9 @@ const StarterPhotosSection = () => {
   };
 
   useEffect(() => {
-    if (!dialogOpen || !starterUploadSession) return;
-    if (selectedPhotos.length === 0) return;
+    if (!dialogOpen || !starterUploadSession || selectedPhotos.length === 0) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -242,6 +323,7 @@ const StarterPhotosSection = () => {
         );
       } catch (err) {
         if (cancelled) return;
+
         setLocalError(
           err instanceof Error ? err.message : 'Failed to upload starter photos'
         );
@@ -263,13 +345,19 @@ const StarterPhotosSection = () => {
   ]);
 
   useEffect(() => {
-    if (!dialogOpen) return;
+    if (finalizingStarterPhotos) {
+      hadFinalizeInFlightRef.current = true;
+      return;
+    }
+
     if (
-      !finalizingStarterPhotos &&
+      dialogOpen &&
+      hadFinalizeInFlightRef.current &&
       !creatingStarterUploadSession &&
       !isUploadingFiles &&
       hasStarterPhotos
     ) {
+      hadFinalizeInFlightRef.current = false;
       resetDialogState();
       dispatch(fetchStarterPhotosRequested());
     }
@@ -319,6 +407,10 @@ const StarterPhotosSection = () => {
               <Typography variant='body2' color='text.secondary'>
                 Your starter photo set has been saved.
               </Typography>
+
+              <Button variant='outlined' onClick={openDialog}>
+                Replace Starter Photos
+              </Button>
 
               {starterPhotoSet?.photos?.[0]?.takenAt ? (
                 <Typography variant='caption' color='text.secondary'>
@@ -397,13 +489,7 @@ const StarterPhotosSection = () => {
 
       <Dialog
         open={dialogOpen}
-        onClose={
-          creatingStarterUploadSession ||
-          finalizingStarterPhotos ||
-          isUploadingFiles
-            ? undefined
-            : resetDialogState
-        }
+        onClose={isBusy ? undefined : resetDialogState}
         fullWidth
         maxWidth='sm'
       >
@@ -434,7 +520,7 @@ const StarterPhotosSection = () => {
                   <input
                     hidden
                     type='file'
-                    accept='image/jpeg,image/png'
+                    accept='image/jpeg,image/png,image/heic,image/heif'
                     onChange={(e) =>
                       setPhotoForPosition(
                         currentStep.key as PhotoPosition,
@@ -463,7 +549,11 @@ const StarterPhotosSection = () => {
                     >
                       <Box
                         component='img'
-                        src={URL.createObjectURL(currentPhoto.file)}
+                        src={
+                          getPreviewUrlForPosition(
+                            currentStep.key as PhotoPosition
+                          ) ?? undefined
+                        }
                         alt={`${currentStep.label} preview`}
                         sx={{
                           width: '100%',
@@ -480,9 +570,9 @@ const StarterPhotosSection = () => {
                   </Typography>
                 )}
 
-                {(localError || error) && (
+                {displayError && (
                   <Typography variant='body2' color='error'>
-                    {localError || error}
+                    {displayError}
                   </Typography>
                 )}
               </Stack>
@@ -513,12 +603,9 @@ const StarterPhotosSection = () => {
                   {steps
                     .filter((step) => step.key !== 'review')
                     .map((step) => {
-                      const photo =
-                        step.key === 'front'
-                          ? frontPhoto
-                          : step.key === 'side'
-                          ? sidePhoto
-                          : backPhoto;
+                      const photo = getPhotoForPosition(
+                        step.key as PhotoPosition
+                      );
 
                       return (
                         <Box
@@ -547,7 +634,11 @@ const StarterPhotosSection = () => {
                             {photo ? (
                               <Box
                                 component='img'
-                                src={URL.createObjectURL(photo.file)}
+                                src={
+                                  getPreviewUrlForPosition(
+                                    step.key as PhotoPosition
+                                  ) ?? undefined
+                                }
                                 alt={`${step.label} preview`}
                                 sx={{
                                   width: '100%',
@@ -601,9 +692,9 @@ const StarterPhotosSection = () => {
                     })}
                 </Stack>
 
-                {(localError || error) && (
+                {displayError && (
                   <Typography variant='body2' color='error'>
-                    {localError || error}
+                    {displayError}
                   </Typography>
                 )}
               </Stack>
@@ -618,12 +709,9 @@ const StarterPhotosSection = () => {
                 {steps
                   .filter((step) => step.key !== 'review')
                   .map((step) => {
-                    const selected =
-                      step.key === 'front'
-                        ? frontPhoto
-                        : step.key === 'side'
-                        ? sidePhoto
-                        : backPhoto;
+                    const selected = getPhotoForPosition(
+                      step.key as PhotoPosition
+                    );
 
                     return (
                       <Box
@@ -659,14 +747,7 @@ const StarterPhotosSection = () => {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            onClick={resetDialogState}
-            disabled={
-              creatingStarterUploadSession ||
-              finalizingStarterPhotos ||
-              isUploadingFiles
-            }
-          >
+          <Button onClick={resetDialogState} disabled={isBusy}>
             Cancel
           </Button>
 
@@ -676,11 +757,7 @@ const StarterPhotosSection = () => {
                 setLocalError(null);
                 setActiveStep((prev) => prev - 1);
               }}
-              disabled={
-                creatingStarterUploadSession ||
-                finalizingStarterPhotos ||
-                isUploadingFiles
-              }
+              disabled={isBusy}
             >
               Back
             </Button>
@@ -689,14 +766,7 @@ const StarterPhotosSection = () => {
           {!isReviewStep &&
             !currentStep.required &&
             activeStep < steps.length - 1 && (
-              <Button
-                onClick={handleSkip}
-                disabled={
-                  creatingStarterUploadSession ||
-                  finalizingStarterPhotos ||
-                  isUploadingFiles
-                }
-              >
+              <Button onClick={handleSkip} disabled={isBusy}>
                 Skip
               </Button>
             )}
@@ -705,13 +775,7 @@ const StarterPhotosSection = () => {
             <Button
               variant='contained'
               onClick={goNext}
-              disabled={
-                currentStep.required && !currentPhoto
-                  ? true
-                  : creatingStarterUploadSession ||
-                    finalizingStarterPhotos ||
-                    isUploadingFiles
-              }
+              disabled={(currentStep?.required && !currentPhoto) || isBusy}
             >
               Next
             </Button>
@@ -719,19 +783,9 @@ const StarterPhotosSection = () => {
             <Button
               variant='contained'
               onClick={handleCreateUploadSession}
-              disabled={
-                !frontPhoto ||
-                !starterTakenAt ||
-                creatingStarterUploadSession ||
-                finalizingStarterPhotos ||
-                isUploadingFiles
-              }
+              disabled={!frontPhoto || !starterTakenAt || isBusy}
             >
-              {creatingStarterUploadSession ||
-              finalizingStarterPhotos ||
-              isUploadingFiles
-                ? 'Uploading...'
-                : 'Submit'}
+              {isBusy ? 'Uploading...' : 'Submit'}
             </Button>
           )}
         </DialogActions>
