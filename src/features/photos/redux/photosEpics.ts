@@ -24,7 +24,8 @@ import {
   finalizeStarterPhotosSucceeded,
   finalizeStarterPhotosFailed,
   type StarterUploadSessionPayload,
-  type FinalizeStarterPhotosPayload
+  type FinalizeStarterPhotosPayload,
+  type StarterPhoto
 } from './photosSlice';
 
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
@@ -68,7 +69,16 @@ const fetchStarterPhotosEpic: Epic<AnyAction, AnyAction, RootState> = (
                   ? {
                       id: String(data.photoSet.id),
                       photos: Array.isArray(data.photoSet.photos)
-                        ? data.photoSet.photos
+                        ? data.photoSet.photos.map((photo: StarterPhoto) => ({
+                            position: photo.position,
+                            storageKey: photo.storageKey,
+                            mimeType: photo.mimeType,
+                            originalFileName: photo.originalFileName ?? null,
+                            sizeBytes: photo.sizeBytes ?? null,
+                            uploadedAt: photo.uploadedAt ?? undefined,
+                            takenAt: photo.takenAt ?? null,
+                            viewUrl: photo.viewUrl ?? undefined
+                          }))
                         : []
                     }
                   : null
@@ -246,7 +256,15 @@ const finalizeStarterPhotosEpic: Epic<AnyAction, AnyAction, RootState> = (
             finalizeStarterPhotosSucceeded({
               id: String(data.photoSet.id),
               photos: Array.isArray(data.photoSet?.photos)
-                ? data.photoSet.photos
+                ? data.photoSet.photos.map((photo: StarterPhoto) => ({
+                    position: photo.position,
+                    storageKey: photo.storageKey,
+                    mimeType: photo.mimeType,
+                    originalFileName: photo.originalFileName ?? null,
+                    sizeBytes: photo.sizeBytes ?? null,
+                    uploadedAt: photo.uploadedAt ?? undefined,
+                    takenAt: photo.takenAt ?? null
+                  }))
                 : []
             })
           )

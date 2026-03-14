@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 export type PhotoPosition = 'front' | 'side' | 'back';
@@ -9,6 +10,7 @@ export type StarterPhoto = {
   originalFileName?: string | null;
   sizeBytes?: number | null;
   uploadedAt?: string;
+  takenAt?: string | null;
   viewUrl?: string;
 };
 
@@ -50,6 +52,7 @@ export type StarterUploadSessionResponse = {
 
 export type FinalizeStarterPhotosPayload = {
   photoSetId: string;
+  takenAt: string;
   photos: Array<{
     position: PhotoPosition;
     mimeType: string;
@@ -138,7 +141,6 @@ const photosSlice = createSlice({
 
     createStarterUploadSessionRequested(
       state,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _action: PayloadAction<StarterUploadSessionPayload>
     ) {
       state.creatingStarterUploadSession = true;
@@ -156,9 +158,9 @@ const photosSlice = createSlice({
       state.creatingStarterUploadSession = false;
       state.error = action.payload;
     },
+
     createProgressUploadSessionRequested(
       state,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _action: PayloadAction<ProgressUploadSessionPayload>
     ) {
       state.creatingProgressUploadSession = true;
@@ -179,7 +181,6 @@ const photosSlice = createSlice({
 
     finalizeProgressPhotosRequested(
       state,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _action: PayloadAction<FinalizeProgressPhotosPayload>
     ) {
       state.finalizingProgressPhotos = true;
@@ -200,7 +201,6 @@ const photosSlice = createSlice({
 
     finalizeStarterPhotosRequested(
       state,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _action: PayloadAction<FinalizeStarterPhotosPayload>
     ) {
       state.finalizingStarterPhotos = true;

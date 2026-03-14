@@ -11,6 +11,7 @@ import {
   Step,
   StepLabel,
   Stepper,
+  TextField,
   Typography
 } from '@mui/material';
 import { useDispatch } from 'react-redux';
@@ -56,6 +57,22 @@ const formatBytes = (value?: number | null) => {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const toLocalDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatTakenAtLabel = (value?: string | null) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString();
+};
+
 const StarterPhotosSection = () => {
   const dispatch = useDispatch();
 
@@ -81,12 +98,11 @@ const StarterPhotosSection = () => {
     null
   );
 
+  const [starterTakenAt, setStarterTakenAt] = useState(
+    toLocalDateInputValue(new Date())
+  );
   const [localError, setLocalError] = useState<string | null>(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
-
-  useEffect(() => {
-    dispatch(fetchStarterPhotosRequested());
-  }, [dispatch]);
 
   const selectedPhotos = useMemo(
     () =>
@@ -114,6 +130,7 @@ const StarterPhotosSection = () => {
     setFrontPhoto(null);
     setSidePhoto(null);
     setBackPhoto(null);
+    setStarterTakenAt(toLocalDateInputValue(new Date()));
     setLocalError(null);
     setIsUploadingFiles(false);
     dispatch(clearStarterUploadSession());
@@ -122,6 +139,7 @@ const StarterPhotosSection = () => {
   const openDialog = () => {
     setDialogOpen(true);
     setActiveStep(0);
+    setStarterTakenAt(toLocalDateInputValue(new Date()));
     setLocalError(null);
   };
 
@@ -161,6 +179,11 @@ const StarterPhotosSection = () => {
   const handleCreateUploadSession = () => {
     if (!frontPhoto) {
       setLocalError('Front photo is required');
+      return;
+    }
+
+    if (!starterTakenAt) {
+      setLocalError('Please choose the date these starter photos were taken');
       return;
     }
 
@@ -208,6 +231,7 @@ const StarterPhotosSection = () => {
         dispatch(
           finalizeStarterPhotosRequested({
             photoSetId: starterUploadSession.photoSetId,
+            takenAt: new Date(`${starterTakenAt}T12:00:00`).toISOString(),
             photos: selectedPhotos.map((photo) => ({
               position: photo.position,
               mimeType: photo.mimeType,
@@ -230,7 +254,13 @@ const StarterPhotosSection = () => {
     return () => {
       cancelled = true;
     };
-  }, [dialogOpen, dispatch, selectedPhotos, starterUploadSession]);
+  }, [
+    dialogOpen,
+    dispatch,
+    selectedPhotos,
+    starterTakenAt,
+    starterUploadSession
+  ]);
 
   useEffect(() => {
     if (!dialogOpen) return;
@@ -289,6 +319,13 @@ const StarterPhotosSection = () => {
               <Typography variant='body2' color='text.secondary'>
                 Your starter photo set has been saved.
               </Typography>
+
+              {starterPhotoSet?.photos?.[0]?.takenAt ? (
+                <Typography variant='caption' color='text.secondary'>
+                  Taken on{' '}
+                  {formatTakenAtLabel(starterPhotoSet.photos[0].takenAt)}
+                </Typography>
+              ) : null}
 
               <Stack direction='row' spacing={2} flexWrap='wrap'>
                 {starterPhotoSet?.photos.map((photo) => (
@@ -458,6 +495,19 @@ const StarterPhotosSection = () => {
                 <Typography variant='body2' color='text.secondary'>
                   Please review the photos you selected before submitting.
                 </Typography>
+
+                <TextField
+                  label='Taken on'
+                  type='date'
+                  value={starterTakenAt}
+                  onChange={(e) => {
+                    setStarterTakenAt(e.target.value);
+                    setLocalError(null);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  helperText='Use the date these starter photos were actually taken.'
+                  fullWidth
+                />
 
                 <Stack direction='row' spacing={2} flexWrap='wrap'>
                   {steps
@@ -671,6 +721,7 @@ const StarterPhotosSection = () => {
               onClick={handleCreateUploadSession}
               disabled={
                 !frontPhoto ||
+                !starterTakenAt ||
                 creatingStarterUploadSession ||
                 finalizingStarterPhotos ||
                 isUploadingFiles
