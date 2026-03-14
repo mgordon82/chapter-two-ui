@@ -17,16 +17,6 @@ export async function uploadPhotoToSignedUrl(params: {
   let res: Response;
 
   try {
-    console.log('[uploadPhotoToSignedUrl] starting upload', {
-      origin: window.location.origin,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      mimeType,
-      timeoutMs,
-      uploadUrl
-    });
-
     res = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
@@ -38,28 +28,23 @@ export async function uploadPhotoToSignedUrl(params: {
   } catch (err) {
     window.clearTimeout(timeout);
 
-    console.error('[uploadPhotoToSignedUrl] fetch threw', {
-      origin: window.location.origin,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      mimeType,
-      timeoutMs,
-      uploadUrl,
-      errorName: err instanceof Error ? err.name : null,
-      errorMessage: err instanceof Error ? err.message : String(err)
-    });
+    const errorName = err instanceof Error ? err.name : 'UnknownError';
+    const errorMessage = err instanceof Error ? err.message : String(err);
 
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new Error(
-        'Photo upload timed out. Please check your connection and try again.'
+        `Photo upload timed out after ${Math.round(
+          timeoutMs / 1000
+        )} seconds. File: ${file.name} (${(file.size / (1024 * 1024)).toFixed(
+          1
+        )} MB).`
       );
     }
 
     throw new Error(
-      err instanceof Error
-        ? `Photo upload request failed: ${err.message}`
-        : 'Photo upload request failed'
+      `Photo upload request failed. Origin: ${window.location.origin}. File: ${
+        file.name
+      }. Type: ${file.type || mimeType}. Error: ${errorName} - ${errorMessage}`
     );
   }
 
@@ -73,19 +58,6 @@ export async function uploadPhotoToSignedUrl(params: {
     } catch {
       responseText = '';
     }
-
-    console.error('[uploadPhotoToSignedUrl] upload failed', {
-      origin: window.location.origin,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      mimeType,
-      timeoutMs,
-      uploadUrl,
-      status: res.status,
-      statusText: res.statusText,
-      responseText
-    });
 
     throw new Error(
       `Failed to upload photo to storage (${res.status} ${res.statusText})${
