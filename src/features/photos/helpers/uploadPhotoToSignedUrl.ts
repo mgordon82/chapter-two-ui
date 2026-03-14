@@ -4,7 +4,7 @@ export async function uploadPhotoToSignedUrl(params: {
   mimeType: string;
   timeoutMs?: number;
 }) {
-  const { uploadUrl, file, mimeType, timeoutMs = 30000 } = params;
+  const { uploadUrl, file, mimeType, timeoutMs = 60000 } = params;
 
   const body =
     file instanceof Blob ? file : new Blob([file], { type: mimeType });
@@ -17,6 +17,16 @@ export async function uploadPhotoToSignedUrl(params: {
   let res: Response;
 
   try {
+    console.log('[uploadPhotoToSignedUrl] starting upload', {
+      origin: window.location.origin,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      mimeType,
+      timeoutMs,
+      uploadUrl
+    });
+
     res = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
@@ -29,11 +39,15 @@ export async function uploadPhotoToSignedUrl(params: {
     window.clearTimeout(timeout);
 
     console.error('[uploadPhotoToSignedUrl] fetch threw', {
+      origin: window.location.origin,
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
       mimeType,
-      error: err instanceof Error ? err.message : String(err)
+      timeoutMs,
+      uploadUrl,
+      errorName: err instanceof Error ? err.name : null,
+      errorMessage: err instanceof Error ? err.message : String(err)
     });
 
     if (err instanceof DOMException && err.name === 'AbortError') {
@@ -61,10 +75,13 @@ export async function uploadPhotoToSignedUrl(params: {
     }
 
     console.error('[uploadPhotoToSignedUrl] upload failed', {
+      origin: window.location.origin,
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
       mimeType,
+      timeoutMs,
+      uploadUrl,
       status: res.status,
       statusText: res.statusText,
       responseText
