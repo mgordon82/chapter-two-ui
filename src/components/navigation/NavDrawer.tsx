@@ -51,10 +51,11 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
     dispatch(logoutRequested());
   };
 
-  const isSelected = (path: string) => {
-    return path === '/app'
-      ? !!matchPath({ path: '/app', end: true }, location.pathname)
-      : !!matchPath({ path, end: false }, location.pathname);
+  const isSelected = (item: NavItem) => {
+    return !!matchPath(
+      { path: item.path, end: item.exact ?? false },
+      location.pathname
+    );
   };
 
   const initials = (name?: string | null) => {
@@ -66,7 +67,7 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
   };
 
   const renderNavItem = (item: NavItem) => {
-    const selected = isSelected(item.path);
+    const selected = isSelected(item);
 
     return (
       <ListItemButton

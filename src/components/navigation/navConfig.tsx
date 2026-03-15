@@ -3,6 +3,7 @@ import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import PeopleIcon from '@mui/icons-material/People';
 
 export type AppRole = 'client' | 'coach' | 'admin' | 'staff';
 
@@ -10,6 +11,7 @@ export type NavItem = {
   label: string;
   path: string;
   icon: React.ReactNode;
+  exact?: boolean;
 };
 
 export type NavSection = {
@@ -32,7 +34,8 @@ export const getNavSectionsForRole = (role: AppRole): NavSection[] => {
       {
         label: 'Dashboard',
         path: '/app',
-        icon: <DashboardIcon />
+        icon: <DashboardIcon />,
+        exact: true
       },
       {
         label: 'Meal Generator',
@@ -60,6 +63,12 @@ export const getNavSectionsForRole = (role: AppRole): NavSection[] => {
       {
         heading: 'Admin Tools',
         items: [
+          {
+            label: 'All Users',
+            path: '/app/users',
+            icon: <PeopleIcon />,
+            exact: true
+          },
           {
             label: 'Invite User',
             path: '/app/users/invite',

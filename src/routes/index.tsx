@@ -17,6 +17,7 @@ import InviteUser from '../features/users/InviteUser';
 
 import { useAppSelector } from '../app/hooks';
 import ForgotPassword from '../pages/public/ForgotPassword';
+import AdminUsersPage from '../features/users/AdminUsers';
 
 type AppRole = 'client' | 'coach' | 'admin' | 'staff';
 
@@ -79,14 +80,26 @@ const AppRoutes: React.FC = () => {
               element={<ClientNutritionCalculator />}
             />
             <Route path='meal-generator' element={<MealGenerator />} />
-            <Route
-              path='users/invite'
-              element={
-                <RequireRole allowed={['admin', 'staff', 'coach']}>
-                  <InviteUser />
-                </RequireRole>
-              }
-            />
+
+            <Route path='users'>
+              <Route
+                index
+                element={
+                  <RequireRole allowed={['admin', 'staff']}>
+                    <AdminUsersPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path='invite'
+                element={
+                  <RequireRole allowed={['admin', 'staff', 'coach']}>
+                    <InviteUser />
+                  </RequireRole>
+                }
+              />
+            </Route>
+
             <Route path='*' element={<Navigate to='/app' replace />} />
           </Route>
         </Route>

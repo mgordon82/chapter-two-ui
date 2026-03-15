@@ -11,6 +11,9 @@ import checkInsReducer from '../features/checkIns/redux/checkInsSlice';
 import trendReducer from '../features/trend/redux/trendSlice';
 import photosReducer from '../features/photos/redux/photosSlice';
 import healthKitReducer from '../features/healthKit/redux/healthKitSlice';
+import usersListReducer from '../features/users/redux/userListSlice';
+import coachOptionsReducer from '../features/users/redux/coachOptionsSlice';
+import assignCoachReducer from '../features/users/redux/assignCoachSlice';
 
 import { rootEpic } from './rootEpic';
 import { appReset } from './appActions';
@@ -25,7 +28,10 @@ const appReducer = combineReducers({
   checkIns: checkInsReducer,
   trend: trendReducer,
   photos: photosReducer,
-  healthKit: healthKitReducer
+  healthKit: healthKitReducer,
+  usersList: usersListReducer,
+  coachOptions: coachOptionsReducer,
+  assignCoach: assignCoachReducer
 });
 
 // ✅ RootState should come from appReducer (not rootReducer) to avoid circular typing issues

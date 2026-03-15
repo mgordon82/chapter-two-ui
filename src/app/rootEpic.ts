@@ -12,6 +12,9 @@ import { checkInsEpics } from '../features/checkIns/redux/checkInsEpics';
 import { trendEpics } from '../features/trend/redux/trendEpic';
 import { photosEpics } from '../features/photos/redux/photosEpics';
 import { healthKitEpics } from '../features/healthKit/redux/healthKitEpics';
+import { userEpics } from '../features/users/redux/userEpics';
+import { coachOptionsEpic } from '../features/users/redux/coachOptionsEpics';
+import { assignCoachEpic } from '../features/users/redux/assignCoachEpics';
 
 export const rootEpic: Epic<AnyAction, AnyAction, RootState> = combineEpics(
   authEpic,
@@ -22,5 +25,8 @@ export const rootEpic: Epic<AnyAction, AnyAction, RootState> = combineEpics(
   ...checkInsEpics,
   ...trendEpics,
   ...photosEpics,
-  ...healthKitEpics
+  ...healthKitEpics,
+  ...userEpics,
+  coachOptionsEpic,
+  assignCoachEpic
 );
