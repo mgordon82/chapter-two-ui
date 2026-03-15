@@ -4,7 +4,7 @@ import { calcWeightGoal } from './calculations/weightGoal';
 import { calcBmr } from './calculations/bmr';
 import { calcTdee } from './calculations/tdee';
 
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Box, Button, Divider, Stack, Typography } from '@mui/material';
 
 import ProfileDetails from './components/ProfileDetails';
 import { CoachCalculatedValuesPanel } from './components/CoachCalculatedValuesPanel';
@@ -25,6 +25,7 @@ import CheckInsPanel from '../checkIns';
 import { createCheckInRequested } from '../checkIns/redux/checkInsSlice';
 import type { FormState } from './types/formState';
 import StarterPhotosSection from '../photos/components/StarterPhotosSection';
+import ChangePasswordSection from '../account/components/ChangePasswordSection';
 
 const KG_TO_LBS = 2.2046226218;
 const CM_PER_INCH = 2.54;
@@ -359,6 +360,8 @@ const ClientNutritionCalculator = () => {
       <Stack spacing={3}>
         <StarterPhotosSection />
         <CheckInsPanel />
+        <Divider sx={{ my: 1 }} />
+        <ChangePasswordSection />
       </Stack>
     </Box>
   );

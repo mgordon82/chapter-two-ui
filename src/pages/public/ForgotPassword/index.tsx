@@ -2,20 +2,22 @@ import React from 'react';
 import {
   Box,
   Button,
-  TextField,
-  Typography,
   IconButton,
   InputAdornment,
-  Link
+  TextField,
+  Typography
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 
 import type { RootState } from '../../../app/store';
-import { loginRequested, newPasswordSubmitted } from '../../../auth/authSlice';
-
+import {
+  forgotPasswordFlowCleared,
+  forgotPasswordRequested,
+  forgotPasswordSubmitted
+} from '../../../auth/authSlice';
 import {
   validatePassword,
   passwordsMatch,
@@ -23,31 +25,21 @@ import {
 } from '../../../auth/helpers/passwordPolicy';
 import PasswordRequirementsPopper from '../../../auth/components/PasswordRequirementsPopper';
 
-type LocationState = {
-  from?: { pathname: string };
-  emailPrefill?: string;
-};
-
-const Login = () => {
+const ForgotPassword = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  const location = useLocation();
-  const { state } = location;
-  const from = (state as LocationState | null)?.from?.pathname || '/app';
 
   const authStep = useSelector((s: RootState) => s.auth.step);
   const authError = useSelector((s: RootState) => s.auth.error);
 
   const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-
+  const [code, setCode] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmNewPassword, setConfirmNewPassword] = React.useState('');
+
   const [newPasswordTouched, setNewPasswordTouched] = React.useState(false);
   const [confirmTouched, setConfirmTouched] = React.useState(false);
 
-  const [showPassword, setShowPassword] = React.useState(false);
   const [showNewPassword, setShowNewPassword] = React.useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] =
     React.useState(false);
@@ -55,27 +47,12 @@ const Login = () => {
   const [pwAnchorEl, setPwAnchorEl] = React.useState<HTMLElement | null>(null);
   const [showPwRules, setShowPwRules] = React.useState(false);
 
-  const needsNewPassword = authStep === 'NEW_PASSWORD_REQUIRED';
-  const signingIn = authStep === 'SIGNING_IN';
-
-  React.useEffect(() => {
-    if (authStep === 'SIGNED_IN') {
-      navigate(from, { replace: true });
-    }
-  }, [authStep, from, navigate]);
-
-  React.useEffect(() => {
-    const emailPrefill = (state as LocationState | null)?.emailPrefill;
-
-    if (emailPrefill) {
-      setEmail(emailPrefill);
-    }
-  }, [state]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(loginRequested({ email, password }));
-  };
+  const requestingCode = authStep === 'FORGOT_PASSWORD_REQUESTING';
+  const confirmingReset = authStep === 'FORGOT_PASSWORD_CONFIRMING';
+  const codeSent =
+    authStep === 'FORGOT_PASSWORD_CODE_SENT' ||
+    authStep === 'FORGOT_PASSWORD_CONFIRMING';
+  const resetSuccess = authStep === 'FORGOT_PASSWORD_SUCCESS';
 
   const validation = React.useMemo(
     () => validatePassword(newPassword, defaultCognitoLikePolicy),
@@ -93,34 +70,52 @@ const Login = () => {
     newPassword.length > 0 &&
     !match;
 
-  const canSubmitNewPassword = validation.isValid && match;
+  const canSubmitRequest = email.trim().length > 0;
+  const canSubmitReset =
+    email.trim().length > 0 &&
+    code.trim().length > 0 &&
+    validation.isValid &&
+    match;
 
   React.useEffect(() => {
-    if (showPwRules && canSubmitNewPassword) {
+    if (showPwRules && canSubmitReset) {
       setShowPwRules(false);
     }
-  }, [showPwRules, canSubmitNewPassword]);
+  }, [showPwRules, canSubmitReset]);
 
-  const handleSetNewPassword = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    return () => {
+      dispatch(forgotPasswordFlowCleared());
+    };
+  }, [dispatch]);
+
+  const handleRequestCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitRequest) return;
+
+    dispatch(forgotPasswordRequested({ email: email.trim() }));
+  };
+
+  const handleConfirmReset = (e: React.FormEvent) => {
     e.preventDefault();
 
     setNewPasswordTouched(true);
     setConfirmTouched(true);
 
-    if (!canSubmitNewPassword) return;
+    if (!canSubmitReset) return;
 
-    setShowPwRules(false);
-    dispatch(newPasswordSubmitted({ email, password, newPassword }));
+    dispatch(
+      forgotPasswordSubmitted({
+        email: email.trim(),
+        code: code.trim(),
+        newPassword
+      })
+    );
   };
 
-  const handleFormKeyDown = (
-    e: React.KeyboardEvent<HTMLFormElement>,
-    onSubmit: (e: React.FormEvent) => void
-  ) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onSubmit(e as unknown as React.FormEvent);
-    }
+  const handleBackToLogin = () => {
+    dispatch(forgotPasswordFlowCleared());
+    navigate('/login', { state: { emailPrefill: email } });
   };
 
   const passwordAdornment = (shown: boolean, toggle: () => void) => (
@@ -136,22 +131,56 @@ const Login = () => {
     </InputAdornment>
   );
 
-  const popperOpen = showPwRules && !canSubmitNewPassword;
+  const popperOpen = showPwRules && !canSubmitReset;
 
   return (
     <Box sx={{ maxWidth: 420, mx: 'auto', mt: 6 }}>
-      <Typography variant='h5' sx={{ mb: 2 }}>
-        Sign in
+      <Typography variant='h5' sx={{ mb: 1 }}>
+        Forgot password
       </Typography>
 
-      {!needsNewPassword ? (
-        <Box
-          component='form'
-          onSubmit={handleLogin}
-          onKeyDown={(e: React.KeyboardEvent<HTMLFormElement>) =>
-            handleFormKeyDown(e, handleLogin)
-          }
-        >
+      <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+        {!codeSent && !resetSuccess
+          ? 'Enter your email and we’ll send you a reset code.'
+          : resetSuccess
+          ? 'Your password has been updated. You can sign in now.'
+          : 'Enter the code from your email and choose a new password.'}
+      </Typography>
+
+      {!codeSent && !resetSuccess ? (
+        <Box component='form' onSubmit={handleRequestCode}>
+          <TextField
+            label='Email'
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            margin='normal'
+            autoComplete='email'
+          />
+
+          <Button
+            type='submit'
+            variant='contained'
+            fullWidth
+            sx={{ mt: 2 }}
+            disabled={!canSubmitRequest || requestingCode}
+          >
+            {requestingCode ? 'Sending code...' : 'Send reset code'}
+          </Button>
+
+          <Button
+            variant='text'
+            fullWidth
+            sx={{ mt: 1 }}
+            onClick={handleBackToLogin}
+          >
+            Back to sign in
+          </Button>
+        </Box>
+      ) : null}
+
+      {codeSent && !resetSuccess ? (
+        <Box component='form' onSubmit={handleConfirmReset}>
           <TextField
             label='Email'
             value={email}
@@ -162,53 +191,13 @@ const Login = () => {
           />
 
           <TextField
-            label='Password'
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            label='Verification Code'
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
             fullWidth
             margin='normal'
-            autoComplete='current-password'
-            InputProps={{
-              endAdornment: passwordAdornment(showPassword, () =>
-                setShowPassword((v) => !v)
-              )
-            }}
+            autoComplete='one-time-code'
           />
-
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-            <Link
-              component='button'
-              type='button'
-              variant='body2'
-              onClick={() => navigate('/forgot-password')}
-              underline='hover'
-            >
-              Forgot password?
-            </Link>
-          </Box>
-
-          <Button
-            type='submit'
-            variant='contained'
-            fullWidth
-            sx={{ mt: 2 }}
-            disabled={signingIn}
-          >
-            {signingIn ? 'Signing in...' : 'Sign in'}
-          </Button>
-        </Box>
-      ) : (
-        <Box
-          component='form'
-          onSubmit={handleSetNewPassword}
-          onKeyDown={(e: React.KeyboardEvent<HTMLFormElement>) =>
-            handleFormKeyDown(e, handleSetNewPassword)
-          }
-        >
-          <Typography sx={{ mb: 1 }}>
-            You've been invited — set a new password to finish setup.
-          </Typography>
 
           <TextField
             label='New Password'
@@ -216,11 +205,11 @@ const Login = () => {
             value={newPassword}
             onChange={(e) => {
               setNewPassword(e.target.value);
-              if (!canSubmitNewPassword) setShowPwRules(true);
+              if (!canSubmitReset) setShowPwRules(true);
             }}
             onFocus={(e) => {
               setPwAnchorEl(e.currentTarget);
-              if (!canSubmitNewPassword) setShowPwRules(true);
+              if (!canSubmitReset) setShowPwRules(true);
             }}
             onBlur={() => setNewPasswordTouched(true)}
             fullWidth
@@ -259,7 +248,7 @@ const Login = () => {
             onChange={(e) => setConfirmNewPassword(e.target.value)}
             onFocus={(e) => {
               setPwAnchorEl(e.currentTarget);
-              if (!canSubmitNewPassword) setShowPwRules(true);
+              if (!canSubmitReset) setShowPwRules(true);
             }}
             onBlur={() => setConfirmTouched(true)}
             fullWidth
@@ -279,19 +268,58 @@ const Login = () => {
             variant='contained'
             fullWidth
             sx={{ mt: 2 }}
-            disabled={!canSubmitNewPassword}
+            disabled={!canSubmitReset || confirmingReset}
           >
-            Set new password
+            {confirmingReset ? 'Resetting password...' : 'Reset password'}
+          </Button>
+
+          <Button
+            variant='text'
+            fullWidth
+            sx={{ mt: 1 }}
+            onClick={() =>
+              dispatch(forgotPasswordRequested({ email: email.trim() }))
+            }
+            disabled={!email.trim() || requestingCode || confirmingReset}
+          >
+            Resend code
+          </Button>
+
+          <Button
+            variant='text'
+            fullWidth
+            sx={{ mt: 1 }}
+            onClick={handleBackToLogin}
+          >
+            Back to sign in
           </Button>
         </Box>
-      )}
+      ) : null}
 
-      {authStep === 'SIGNING_IN' && (
-        <Typography sx={{ mt: 2 }}>Signing in…</Typography>
-      )}
-      {needsNewPassword && (
-        <Typography sx={{ mt: 2 }}>New password required.</Typography>
-      )}
+      {resetSuccess ? (
+        <Box>
+          <Button
+            variant='contained'
+            fullWidth
+            sx={{ mt: 2 }}
+            onClick={handleBackToLogin}
+          >
+            Back to sign in
+          </Button>
+        </Box>
+      ) : null}
+
+      {codeSent && !resetSuccess && !authError ? (
+        <Typography sx={{ mt: 2 }} color='success.main'>
+          A reset code has been sent to your email.
+        </Typography>
+      ) : null}
+
+      {resetSuccess && !authError ? (
+        <Typography sx={{ mt: 2 }} color='success.main'>
+          Your password has been reset successfully.
+        </Typography>
+      ) : null}
 
       {authError ? (
         <Typography sx={{ mt: 1 }} color='error'>
@@ -302,4 +330,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default ForgotPassword;

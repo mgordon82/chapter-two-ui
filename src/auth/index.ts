@@ -2,7 +2,10 @@ import {
   signIn,
   confirmSignIn,
   fetchAuthSession,
-  signOut
+  signOut,
+  resetPassword,
+  confirmResetPassword,
+  updatePassword
 } from 'aws-amplify/auth';
 import { getCurrentUser } from 'aws-amplify/auth';
 
@@ -36,6 +39,32 @@ export async function completeNewPassword(newPassword: string) {
   const accessToken = session.tokens?.accessToken?.toString();
   if (!accessToken) throw new Error('No access token returned.');
   return accessToken;
+}
+
+export async function requestPasswordReset(email: string) {
+  await resetPassword({ username: email });
+}
+
+export async function submitPasswordReset(
+  email: string,
+  code: string,
+  newPassword: string
+) {
+  await confirmResetPassword({
+    username: email,
+    confirmationCode: code,
+    newPassword
+  });
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+) {
+  await updatePassword({
+    oldPassword: currentPassword,
+    newPassword
+  });
 }
 
 export async function logout() {

@@ -16,6 +16,7 @@ import ClientNutritionCalculator from '../pages/app/ClientNutritionCalculator';
 import InviteUser from '../features/users/InviteUser';
 
 import { useAppSelector } from '../app/hooks';
+import ForgotPassword from '../pages/public/ForgotPassword';
 
 type AppRole = 'client' | 'coach' | 'admin' | 'staff';
 
@@ -67,6 +68,7 @@ const AppRoutes: React.FC = () => {
         <Route element={<PublicLayout />}>
           <Route path='/' element={<RootEntry />} />
           <Route path='/login' element={<Login />} />
+          <Route path='/forgot-password' element={<ForgotPassword />} />
         </Route>
 
         <Route element={<RequireAuth />}>

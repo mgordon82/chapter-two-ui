@@ -6,13 +6,24 @@ import {
   authErrorSet,
   authInitRequested,
   authStepSet,
+  changePasswordRequested,
+  forgotPasswordRequested,
+  forgotPasswordSubmitted,
   loginRequested,
   logoutRequested,
   newPasswordSubmitted,
   currentUserSet
 } from './authSlice';
 
-import { completeNewPassword, isAuthenticated, login, logout } from './index';
+import {
+  changePassword,
+  completeNewPassword,
+  isAuthenticated,
+  login,
+  logout,
+  requestPasswordReset,
+  submitPasswordReset
+} from './index';
 import { fetchCurrentUser } from './helpers/fetchCurrentUser';
 import { activateCurrentUser } from './helpers/activateCurrentUser';
 import { appReset } from '../app/appActions';
@@ -65,6 +76,9 @@ export const authEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
         a.type === authInitRequested.type ||
         a.type === loginRequested.type ||
         a.type === newPasswordSubmitted.type ||
+        a.type === forgotPasswordRequested.type ||
+        a.type === forgotPasswordSubmitted.type ||
+        a.type === changePasswordRequested.type ||
         a.type === logoutRequested.type
       );
     }),
@@ -244,7 +258,6 @@ export const authEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
           }),
 
           mergeMap((maybeOk) => {
-            // if activation failed, we already emitted actions and should stop
             if (!maybeOk || typeof maybeOk !== 'object' || !('ok' in maybeOk)) {
               return EMPTY;
             }
@@ -281,6 +294,66 @@ export const authEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
                 );
               })
             );
+          })
+        );
+      }
+
+      // FORGOT PASSWORD - REQUEST CODE
+      if (a.type === forgotPasswordRequested.type) {
+        const { email } = a.payload as { email: string };
+
+        return of(authStepSet('FORGOT_PASSWORD_REQUESTING')).pipe(
+          mergeMap(() => from(requestPasswordReset(email))),
+          mergeMap(() => of(authStepSet('FORGOT_PASSWORD_CODE_SENT'))),
+          catchError((err: unknown) => {
+            const msg =
+              err instanceof Error
+                ? err.message
+                : 'Failed to send password reset code';
+
+            return of(authErrorSet(msg), authStepSet('SIGNED_OUT'));
+          })
+        );
+      }
+
+      // FORGOT PASSWORD - CONFIRM RESET
+      if (a.type === forgotPasswordSubmitted.type) {
+        const { email, code, newPassword } = a.payload as {
+          email: string;
+          code: string;
+          newPassword: string;
+        };
+
+        return of(authStepSet('FORGOT_PASSWORD_CONFIRMING')).pipe(
+          mergeMap(() => from(submitPasswordReset(email, code, newPassword))),
+          mergeMap(() => of(authStepSet('FORGOT_PASSWORD_SUCCESS'))),
+          catchError((err: unknown) => {
+            const msg =
+              err instanceof Error ? err.message : 'Failed to reset password';
+
+            return of(
+              authErrorSet(msg),
+              authStepSet('FORGOT_PASSWORD_CODE_SENT')
+            );
+          })
+        );
+      }
+
+      // CHANGE PASSWORD
+      if (a.type === changePasswordRequested.type) {
+        const { currentPassword, newPassword } = a.payload as {
+          currentPassword: string;
+          newPassword: string;
+        };
+
+        return of(authStepSet('CHANGING_PASSWORD')).pipe(
+          mergeMap(() => from(changePassword(currentPassword, newPassword))),
+          mergeMap(() => of(authStepSet('PASSWORD_CHANGE_SUCCESS'))),
+          catchError((err: unknown) => {
+            const msg =
+              err instanceof Error ? err.message : 'Failed to change password';
+
+            return of(authErrorSet(msg), authStepSet('SIGNED_IN'));
           })
         );
       }

@@ -387,7 +387,17 @@ const StarterPhotosSection = () => {
 
   return (
     <>
-      <Paper sx={{ p: 3 }}>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 2,
+          mb: 2,
+          borderRadius: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          minWidth: 0
+        }}
+      >
         <Stack spacing={2}>
           <Typography variant='h6'>Starter Progress Photos</Typography>
 
