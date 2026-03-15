@@ -24,6 +24,7 @@ import {
   type AppRole,
   type NavItem
 } from './navConfig';
+import { selectLoadedUserProfile } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 
 type NavDrawerProps = {
   setMobileOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -35,13 +36,22 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
   const location = useLocation();
 
   const currentUser = useAppSelector((s) => s.auth.currentUser);
+  const loadedProfile = useAppSelector(selectLoadedUserProfile);
+
   const roleRaw = currentUser?.role;
   const role: AppRole = isAppRole(roleRaw) ? roleRaw : 'client';
 
+  const profileFirstName = loadedProfile?.profile.firstName?.trim() ?? '';
+  const profileLastName = loadedProfile?.profile.lastName?.trim() ?? '';
+  const profileDisplayName = [profileFirstName, profileLastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
   const currentUserDisplayName = currentUser?.displayName?.trim() ?? '';
   const email = currentUser?.email?.trim() ?? '';
-  const displayName = currentUserDisplayName || email;
 
+  const displayName = profileDisplayName || currentUserDisplayName || email;
   const greeting = displayName || 'Welcome';
   const navSections = getNavSectionsForRole(role);
 
