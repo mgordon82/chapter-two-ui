@@ -15,7 +15,10 @@ import {
   persistUserProfileRequested,
   saveNutritionProfile,
   type UserProfileUpsertPayload,
+  selectIsSavingRemote,
   selectLoadedUserProfile,
+  selectRemoteError,
+  selectRemoteSavedAt,
   selectUserUnitPrefs
 } from './redux/nutritionCalculatorSlice';
 import { calculateMacros, type MacroResult } from './calculations/dailyMacros';
@@ -92,6 +95,9 @@ const ClientNutritionCalculator = () => {
 
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
   const unitPrefs = useAppSelector(selectUserUnitPrefs);
+  const isSavingRemote = useAppSelector(selectIsSavingRemote);
+  const remoteError = useAppSelector(selectRemoteError);
+  const remoteSavedAt = useAppSelector(selectRemoteSavedAt);
   const checkInsCount = useAppSelector((s) => s.checkIns.items.length);
 
   const {
@@ -326,25 +332,50 @@ const ClientNutritionCalculator = () => {
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
-            justifyContent='flex-end'
+            justifyContent='space-between'
+            alignItems={{ xs: 'stretch', sm: 'center' }}
             sx={{ mt: 2 }}
           >
-            <Button
-              variant='outlined'
-              onClick={clear}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Clear
-            </Button>
+            <Box sx={{ minHeight: 24, display: 'flex', alignItems: 'center' }}>
+              {remoteError ? (
+                <Typography
+                  variant='body2'
+                  sx={{ color: 'error.main', fontWeight: 500 }}
+                >
+                  {remoteError}
+                </Typography>
+              ) : remoteSavedAt ? (
+                <Typography
+                  variant='body2'
+                  sx={{ color: 'success.main', fontWeight: 500 }}
+                >
+                  Profile saved successfully
+                </Typography>
+              ) : null}
+            </Box>
 
-            <Button
-              disabled={isSaveDisabled}
-              variant='contained'
-              onClick={handleSave}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
               sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
-              Save
-            </Button>
+              <Button
+                variant='outlined'
+                onClick={clear}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Clear
+              </Button>
+
+              <Button
+                disabled={isSaveDisabled || isSavingRemote}
+                variant='contained'
+                onClick={handleSave}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                {isSavingRemote ? 'Saving...' : 'Save'}
+              </Button>
+            </Stack>
           </Stack>
         </Box>
 
@@ -357,6 +388,7 @@ const ClientNutritionCalculator = () => {
           />
         </Box>
       </Stack>
+
       <Stack spacing={3}>
         <StarterPhotosSection />
         <CheckInsPanel />

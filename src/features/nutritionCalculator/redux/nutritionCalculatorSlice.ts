@@ -142,10 +142,6 @@ const nutritionCalculatorSlice = createSlice({
       state.lastSubmitted = null;
     },
 
-    /**
-     * ✅ Optimistic, local-only update of prefs.
-     * Keeps loadedProfile in sync with what the user selected.
-     */
     userPreferencesUpdated(
       state,
       action: PayloadAction<PersistUserPreferencesPayload>
@@ -164,26 +160,22 @@ const nutritionCalculatorSlice = createSlice({
       };
     },
 
-    /**
-     * Existing full profile save (e.g., Save button)
-     */
     persistUserProfileRequested(
       state,
       _action: PayloadAction<UserProfileUpsertPayload>
     ) {
       state.isSavingRemote = true;
       state.remoteError = null;
+      state.remoteSavedAt = null;
     },
 
-    /**
-     * ✅ New: preferences-only save (e.g., unit toggles)
-     */
     persistUserPreferencesRequested(
       state,
       _action: PayloadAction<PersistUserPreferencesPayload>
     ) {
       state.isSavingRemote = true;
       state.remoteError = null;
+      state.remoteSavedAt = null;
     },
 
     persistUserProfileSucceeded(state) {
@@ -195,6 +187,7 @@ const nutritionCalculatorSlice = createSlice({
     persistUserProfileFailed(state, action: PayloadAction<string>) {
       state.isSavingRemote = false;
       state.remoteError = action.payload;
+      state.remoteSavedAt = null;
     },
 
     loadUserProfileRequested(state) {
@@ -246,6 +239,15 @@ export const selectNutritionHistory = (state: RootState) =>
 
 export const selectLoadedUserProfile = (state: RootState) =>
   state.nutritionCalculator.loadedProfile;
+
+export const selectIsSavingRemote = (state: RootState) =>
+  state.nutritionCalculator.isSavingRemote;
+
+export const selectRemoteError = (state: RootState) =>
+  state.nutritionCalculator.remoteError;
+
+export const selectRemoteSavedAt = (state: RootState) =>
+  state.nutritionCalculator.remoteSavedAt;
 
 export const selectUserUnitPrefs = createSelector(
   [
