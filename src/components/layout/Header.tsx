@@ -16,12 +16,12 @@ import MacroItem from '../macroItem';
 import { useAppSelector } from '../../app/hooks';
 import { Link as RouterLink } from 'react-router-dom';
 
-import NavDrawer from '../sections/navDrawer';
 import { useDispatch } from 'react-redux';
 import { loadUserProfileRequested } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 import { Capacitor } from '@capacitor/core';
 
 import logoImg from '../../assets/Logo-white.png';
+import NavDrawer from '../navigation/NavDrawer';
 
 const drawerWidth = 240;
 const nativeHeaderPadding = '30px';

@@ -11,15 +11,19 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import LogoutIcon from '@mui/icons-material/Logout';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useAppSelector } from '../../app/hooks';
 import { useDispatch } from 'react-redux';
 import { logoutRequested } from '../../auth/authSlice';
 import { useLocation, useNavigate, matchPath } from 'react-router-dom';
+import {
+  bottomNavItems,
+  getNavSectionsForRole,
+  isAppRole,
+  type AppRole,
+  type NavItem
+} from './navConfig';
 
 type NavDrawerProps = {
   setMobileOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -31,14 +35,15 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
   const location = useLocation();
 
   const currentUser = useAppSelector((s) => s.auth.currentUser);
-  const role = currentUser?.role;
-  const canInvite = role === 'admin' || role === 'staff' || role === 'coach';
+  const roleRaw = currentUser?.role;
+  const role: AppRole = isAppRole(roleRaw) ? roleRaw : 'client';
 
   const currentUserDisplayName = currentUser?.displayName?.trim() ?? '';
   const email = currentUser?.email?.trim() ?? '';
   const displayName = currentUserDisplayName || email;
 
   const greeting = displayName || 'Welcome';
+  const navSections = getNavSectionsForRole(role);
 
   const closeMobileDrawer = () => setMobileOpen(false);
 
@@ -46,27 +51,11 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
     dispatch(logoutRequested());
   };
 
-  const navItems = [
-    {
-      label: 'Dashboard',
-      path: '/app',
-      icon: <DashboardIcon />
-    },
-    {
-      label: 'Meal Generator',
-      path: '/app/meal-generator',
-      icon: <RestaurantMenuIcon />
-    },
-    ...(canInvite
-      ? [
-          {
-            label: 'Invite User',
-            path: '/app/users/invite',
-            icon: <PersonAddIcon />
-          }
-        ]
-      : [])
-  ];
+  const isSelected = (path: string) => {
+    return path === '/app'
+      ? !!matchPath({ path: '/app', end: true }, location.pathname)
+      : !!matchPath({ path, end: false }, location.pathname);
+  };
 
   const initials = (name?: string | null) => {
     if (!name) return <PersonOutlineIcon />;
@@ -74,6 +63,39 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
     const a = parts[0]?.[0] ?? '';
     const b = parts[1]?.[0] ?? '';
     return (a + b).toUpperCase() || a.toUpperCase() || <PersonOutlineIcon />;
+  };
+
+  const renderNavItem = (item: NavItem) => {
+    const selected = isSelected(item.path);
+
+    return (
+      <ListItemButton
+        key={item.label}
+        selected={selected}
+        onClick={() => {
+          navigate(item.path);
+          closeMobileDrawer();
+        }}
+        sx={{
+          borderRadius: 2,
+          mx: 0.5,
+          my: 0.5,
+          '&.Mui-selected': {
+            bgcolor: 'action.selected',
+            '&:hover': { bgcolor: 'action.selected' }
+          },
+          '& .MuiListItemIcon-root': {
+            color: selected ? 'text.primary' : 'text.secondary'
+          }
+        }}
+      >
+        <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+        <ListItemText
+          primary={item.label}
+          primaryTypographyProps={{ fontWeight: selected ? 700 : 500 }}
+        />
+      </ListItemButton>
+    );
   };
 
   return (
@@ -109,49 +131,36 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
 
       <Divider />
 
-      <List sx={{ px: 1, pt: 1 }}>
-        {navItems.map((item) => {
-          const selected =
-            item.path === '/app'
-              ? !!matchPath({ path: '/app', end: true }, location.pathname) // exact
-              : !!matchPath({ path: item.path, end: false }, location.pathname); // allow subroutes if you ever add them
+      <Box sx={{ pt: 1 }}>
+        {navSections.map((section, index) => (
+          <Box key={section.heading ?? `section-${index}`} sx={{ mb: 1 }}>
+            {section.heading ? (
+              <Typography
+                variant='overline'
+                sx={{
+                  px: 2,
+                  color: 'text.secondary',
+                  letterSpacing: 0.8
+                }}
+              >
+                {section.heading}
+              </Typography>
+            ) : null}
 
-          return (
-            <ListItemButton
-              key={item.label}
-              selected={selected}
-              onClick={() => {
-                navigate(item.path);
-                closeMobileDrawer();
-              }}
-              sx={{
-                borderRadius: 2,
-                mx: 0.5,
-                my: 0.5,
-                '&.Mui-selected': {
-                  bgcolor: 'action.selected',
-                  '&:hover': { bgcolor: 'action.selected' }
-                },
-                '& .MuiListItemIcon-root': {
-                  color: selected ? 'text.primary' : 'text.secondary'
-                }
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{ fontWeight: selected ? 700 : 500 }}
-              />
-            </ListItemButton>
-          );
-        })}
-      </List>
+            <List sx={{ px: 1, pt: section.heading ? 0.5 : 0 }}>
+              {section.items.map(renderNavItem)}
+            </List>
+          </Box>
+        ))}
+      </Box>
 
       <Box sx={{ flex: 1 }} />
 
       <Divider />
 
       <List sx={{ px: 1, py: 1 }}>
+        {bottomNavItems.map(renderNavItem)}
+
         <ListItemButton
           onClick={() => {
             handleLogout();
