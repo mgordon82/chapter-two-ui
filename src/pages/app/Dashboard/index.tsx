@@ -6,6 +6,7 @@ import { Box, Stack, Card, CardContent, Typography } from '@mui/material';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import StatCard from '../../../components/sections/statCard';
@@ -330,7 +331,7 @@ const Dashboard = () => {
                   title='Steps Today'
                   value={stepsCardValue}
                   helper={latestStepsHelper}
-                  icon={<TimelineIcon fontSize='small' />}
+                  icon={<DirectionsWalkIcon fontSize='small' />}
                   tone='primary'
                   progress={stepGoalDaily ? stepProgressPct : null}
                 />
