@@ -6,7 +6,8 @@ const StatCard = ({
   helper,
   icon,
   chipLabel,
-  tone = 'neutral'
+  tone = 'neutral',
+  progress
 }: {
   title: string;
   value: string;
@@ -14,6 +15,7 @@ const StatCard = ({
   icon?: React.ReactNode;
   chipLabel?: string;
   tone?: 'good' | 'bad' | 'neutral' | 'goal' | 'warn' | 'primary';
+  progress?: number | null;
 }) => {
   const toneStyles =
     tone === 'good'
@@ -81,7 +83,6 @@ const StatCard = ({
         }
       : tone === 'primary'
       ? {
-          border: '1px solid',
           borderColor: 'primary.light',
           background:
             'linear-gradient(135deg, rgba(99,102,241,0.16), rgba(99,102,241,0.04))'
@@ -90,6 +91,18 @@ const StatCard = ({
           backgroundColor: 'rgba(255,255,255,0.6)',
           borderColor: 'divider'
         };
+
+  const normalizedProgress =
+    progress == null ? null : Math.max(0, Math.min(100, progress));
+
+  const ringSize = 44;
+  const strokeWidth = 4;
+  const radius = (ringSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset =
+    normalizedProgress == null
+      ? circumference
+      : circumference - (normalizedProgress / 100) * circumference;
 
   return (
     <Card
@@ -112,17 +125,104 @@ const StatCard = ({
         >
           <Box
             sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
+              width: 44,
+              height: 44,
+              position: 'relative',
               display: 'grid',
               placeItems: 'center',
-              border: '1px solid',
-              flexShrink: 0,
-              ...iconToneStyles
+              flexShrink: 0
             }}
           >
-            {icon}
+            {normalizedProgress != null ? (
+              <>
+                <Box
+                  component='svg'
+                  viewBox={`0 0 ${ringSize} ${ringSize}`}
+                  sx={{
+                    width: ringSize,
+                    height: ringSize,
+                    position: 'absolute',
+                    inset: 0,
+                    transform: 'rotate(-90deg)'
+                  }}
+                >
+                  <circle
+                    cx={ringSize / 2}
+                    cy={ringSize / 2}
+                    r={radius}
+                    fill='none'
+                    stroke='rgba(255,255,255,0.16)'
+                    strokeWidth={strokeWidth}
+                  />
+                  <circle
+                    cx={ringSize / 2}
+                    cy={ringSize / 2}
+                    r={radius}
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth={strokeWidth}
+                    strokeLinecap='round'
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
+                    style={{
+                      transition: 'stroke-dashoffset 650ms ease'
+                    }}
+                  />
+                </Box>
+
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 2,
+                    display: 'grid',
+                    placeItems: 'center',
+                    border: '1px solid',
+                    color:
+                      tone === 'good'
+                        ? 'success.main'
+                        : tone === 'bad'
+                        ? 'error.main'
+                        : tone === 'warn'
+                        ? 'warning.main'
+                        : tone === 'goal'
+                        ? 'info.main'
+                        : tone === 'primary'
+                        ? 'primary.main'
+                        : 'text.primary',
+                    ...iconToneStyles
+                  }}
+                >
+                  {icon}
+                </Box>
+              </>
+            ) : (
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px solid',
+                  color:
+                    tone === 'good'
+                      ? 'success.main'
+                      : tone === 'bad'
+                      ? 'error.main'
+                      : tone === 'warn'
+                      ? 'warning.main'
+                      : tone === 'goal'
+                      ? 'info.main'
+                      : tone === 'primary'
+                      ? 'primary.main'
+                      : 'text.primary',
+                  ...iconToneStyles
+                }}
+              >
+                {icon}
+              </Box>
+            )}
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>

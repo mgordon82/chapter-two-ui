@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Link as RouterLink } from 'react-router-dom';
 import { Box, Stack, Card, CardContent, Typography } from '@mui/material';
 
@@ -6,21 +7,114 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
-import { useAppSelector } from '../../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import StatCard from '../../../components/sections/statCard';
 import TrendAnalysisCard from '../../../features/trend';
 import WeightOverTimeChartCard from '../../../components/sections/weightOverTimeCard';
 import type { WeightUnitPref } from '../../../types/units';
 import { toDisplayWeight } from '../../../features/checkIns/helpers';
+import { fetchDailyMetricsRequested } from '../../../features/healthMetrics/redux/healthMetricsSlice';
+import { healthKitSyncRequested } from '../../../features/healthKit/redux/healthKitSlice';
 
 const Dashboard = () => {
+  const dispatch = useAppDispatch();
+
   const trend = useAppSelector((s) => s.trend);
+  const healthMetricsDaily = useAppSelector((s) => s.healthMetrics.daily);
 
   const profileData = useAppSelector(
     (state) => state.nutritionCalculator?.loadedProfile?.profile ?? null
   );
 
   const checkIns = useAppSelector((state) => state.checkIns.items);
+
+  const healthKit = useAppSelector((s) => s.healthKit);
+  const hasAutoSyncedRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      !healthMetricsDaily.loading &&
+      (healthMetricsDaily.loadedMetricType !== 'steps' ||
+        healthMetricsDaily.loadedRange !== '30D')
+    ) {
+      dispatch(
+        fetchDailyMetricsRequested({
+          metricType: 'steps',
+          range: '30D'
+        })
+      );
+    }
+  }, [
+    dispatch,
+    healthMetricsDaily.loading,
+    healthMetricsDaily.loadedMetricType,
+    healthMetricsDaily.loadedRange
+  ]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (hasAutoSyncedRef.current) return;
+    if (healthKit.syncing) return;
+
+    hasAutoSyncedRef.current = true;
+    dispatch(healthKitSyncRequested());
+  }, [dispatch, healthKit.syncing]);
+
+  const latestStepsItem = useMemo(() => {
+    const stepItems = healthMetricsDaily.items.filter(
+      (item) => item.metricType === 'steps' && !item.isDeleted
+    );
+
+    if (!stepItems.length) return null;
+
+    return [...stepItems].sort((a, b) => b.date.localeCompare(a.date))[0];
+  }, [healthMetricsDaily.items]);
+
+  const latestStepsValue = latestStepsItem?.value ?? null;
+  const stepGoalDaily = profileData?.stepGoalDaily ?? null;
+
+  const stepsCardValue =
+    latestStepsValue == null
+      ? '—'
+      : stepGoalDaily && stepGoalDaily > 0
+      ? `${latestStepsValue.toLocaleString()} / ${stepGoalDaily.toLocaleString()}`
+      : latestStepsValue.toLocaleString();
+
+  const latestStepsHelper = useMemo(() => {
+    if (!latestStepsItem) return 'No step data yet';
+
+    const sourceLabel =
+      latestStepsItem.source?.type === 'manual' ? 'Manual' : 'Apple Health';
+
+    const updatedAt = new Date(latestStepsItem.updatedAt);
+    const now = new Date();
+
+    const isToday =
+      updatedAt.getFullYear() === now.getFullYear() &&
+      updatedAt.getMonth() === now.getMonth() &&
+      updatedAt.getDate() === now.getDate();
+
+    const timeText = updatedAt.toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    if (isToday) {
+      return `${sourceLabel} • Updated ${timeText}`;
+    }
+
+    const dateText = updatedAt.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    });
+
+    return `${sourceLabel} • Updated ${dateText} • ${timeText}`;
+  }, [latestStepsItem]);
+
+  const stepProgressPct =
+    latestStepsValue != null && stepGoalDaily && stepGoalDaily > 0
+      ? Math.min(100, (latestStepsValue / stepGoalDaily) * 100)
+      : 0;
 
   const pickWeightUnitPref = (value: unknown): WeightUnitPref | null => {
     if (!value || typeof value !== 'object') return null;
@@ -213,6 +307,19 @@ const Dashboard = () => {
               tone={avgTone}
             />
           </Box>
+
+          {latestStepsItem || stepGoalDaily ? (
+            <Box sx={{ flex: 1, display: 'flex' }}>
+              <StatCard
+                title='Steps Today'
+                value={stepsCardValue}
+                helper={latestStepsHelper}
+                icon={<TimelineIcon fontSize='small' />}
+                tone='primary'
+                progress={stepGoalDaily ? stepProgressPct : null}
+              />
+            </Box>
+          ) : null}
         </Stack>
 
         <WeightOverTimeChartCard />
@@ -260,7 +367,6 @@ const Dashboard = () => {
 
                 <Box sx={{ flex: 1 }} />
 
-                {/* Progress Bar */}
                 {(() => {
                   const clampedPct = Math.max(0, Math.min(100, progressPct));
                   const thumbPct = Math.max(2, Math.min(98, clampedPct));
@@ -277,7 +383,6 @@ const Dashboard = () => {
                         }
                       }}
                     >
-                      {/* Floating % pill (NOT inside the overflow-hidden track) */}
                       <Box
                         data-pctp
                         sx={{
@@ -311,7 +416,6 @@ const Dashboard = () => {
                         </Box>
                       </Box>
 
-                      {/* Track (overflow hidden stays here) */}
                       <Box
                         role='progressbar'
                         aria-valuemin={0}
@@ -343,7 +447,6 @@ const Dashboard = () => {
                           }}
                         />
 
-                        {/* Thumb */}
                         <Box
                           sx={{
                             position: 'absolute',
@@ -363,7 +466,6 @@ const Dashboard = () => {
                         />
                       </Box>
 
-                      {/* Labels (keep only ONE set — you currently have two) */}
                       <Stack
                         direction='row'
                         justifyContent='space-between'

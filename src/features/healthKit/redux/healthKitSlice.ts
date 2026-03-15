@@ -1,10 +1,16 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export type HealthKitSyncSummary = {
+export type HealthKitMetricSyncSummary = {
   total: number;
   createdCount: number;
+  updatedCount: number;
   duplicateCount: number;
   conflictCount: number;
+};
+
+export type HealthKitSyncSummary = {
+  weight: HealthKitMetricSyncSummary;
+  steps: HealthKitMetricSyncSummary;
 };
 
 type HealthKitState = {
@@ -12,6 +18,14 @@ type HealthKitState = {
   lastSummary: HealthKitSyncSummary | null;
   error: string | null;
 };
+
+const emptyMetricSummary = (): HealthKitMetricSyncSummary => ({
+  total: 0,
+  createdCount: 0,
+  updatedCount: 0,
+  duplicateCount: 0,
+  conflictCount: 0
+});
 
 const initialState: HealthKitState = {
   syncing: false,
@@ -40,8 +54,18 @@ const healthKitSlice = createSlice({
     },
     clearHealthKitSummary(state) {
       state.lastSummary = null;
+    },
+    clearHealthKitState(state) {
+      state.syncing = false;
+      state.error = null;
+      state.lastSummary = null;
     }
   }
+});
+
+export const buildEmptyHealthKitSyncSummary = (): HealthKitSyncSummary => ({
+  weight: emptyMetricSummary(),
+  steps: emptyMetricSummary()
 });
 
 export const {
@@ -49,7 +73,8 @@ export const {
   healthKitSyncSucceeded,
   healthKitSyncFailed,
   clearHealthKitError,
-  clearHealthKitSummary
+  clearHealthKitSummary,
+  clearHealthKitState
 } = healthKitSlice.actions;
 
 export default healthKitSlice.reducer;

@@ -83,6 +83,7 @@ const buildHydratedForm = (
     weightKg: p.weightKg != null ? String(p.weightKg) : '',
     goalWeight,
     goalWeightKg: p.goalWeightKg != null ? String(p.goalWeightKg) : '',
+    stepGoalDaily: p.stepGoalDaily != null ? String(p.stepGoalDaily) : '',
     measurementUnitPref,
     weightUnitPref
   };
@@ -141,6 +142,7 @@ const ClientNutritionCalculator = () => {
       heightCm: form.heightCm ? Number(form.heightCm) : null,
       weightKg: form.weightKg ? Number(form.weightKg) : null,
       goalWeightKg: form.goalWeightKg ? Number(form.goalWeightKg) : null,
+      stepGoalDaily: form.stepGoalDaily ? Number(form.stepGoalDaily) : null,
       age: form.age ? Number(form.age) : null
     };
   }, [form]);
@@ -264,6 +266,7 @@ const ClientNutritionCalculator = () => {
         heightCm: inputs.heightCm,
         weightKg: inputs.weightKg,
         goalWeightKg: inputs.goalWeightKg,
+        stepGoalDaily: inputs.stepGoalDaily,
         activityLevel: inputs.activityLevel,
         goal: inputs.goal,
         rateLevel: inputs.rateLevel,

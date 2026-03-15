@@ -30,6 +30,18 @@ export type WeightSamplesResult = {
   items: WeightSample[];
 };
 
+export type DailyStepTotal = {
+  date: string;
+  steps: number;
+  source: {
+    integration: 'apple_health';
+  };
+};
+
+export type DailyStepTotalsResult = {
+  items: DailyStepTotal[];
+};
+
 type HealthKitPlugin = {
   requestHealthPermissions: () => Promise<HealthPermissionResult>;
   getLatestWeight: () => Promise<LatestWeightResult>;
@@ -37,6 +49,10 @@ type HealthKitPlugin = {
     startDate?: string;
     limit?: number;
   }) => Promise<WeightSamplesResult>;
+  getDailyStepTotals: (options?: {
+    startDate?: string;
+    limit?: number;
+  }) => Promise<DailyStepTotalsResult>;
 };
 
 export const HealthKit = registerPlugin<HealthKitPlugin>('HealthKit');

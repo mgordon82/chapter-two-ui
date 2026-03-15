@@ -23,6 +23,7 @@ export type UserProfileUpsertPayload = {
     heightCm: number | null;
     weightKg: number | null;
     goalWeightKg: number | null;
+    stepGoalDaily: number | null;
     activityLevel: string | null;
     goal: string | null;
     rateLevel: string | null;

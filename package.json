@@ -9,6 +9,7 @@
     "build:prod": "vite build --mode production",
     "build:ios": "vite build --mode production && npx cap sync ios",
     "build:ios:open": "vite build --mode production && npx cap sync ios && npx cap open ios",
+    "ios:sync": "npx cap sync ios",
     "ios": "npx cap open ios"
   },
   "dependencies": {

@@ -19,7 +19,46 @@ const HealthKitPanel = () => {
   } else if (error) {
     tooltipTitle = `Apple Health sync failed: ${error}`;
   } else if (lastSummary) {
-    tooltipTitle = `Apple Health synced • ${lastSummary.createdCount} new, ${lastSummary.duplicateCount} duplicates`;
+    const weightParts: string[] = [];
+    const stepsParts: string[] = [];
+
+    if (lastSummary.weight.createdCount > 0) {
+      weightParts.push(`${lastSummary.weight.createdCount} new`);
+    }
+    if (lastSummary.weight.duplicateCount > 0) {
+      weightParts.push(`${lastSummary.weight.duplicateCount} duplicates`);
+    }
+    if (lastSummary.weight.conflictCount > 0) {
+      weightParts.push(`${lastSummary.weight.conflictCount} conflicts`);
+    }
+    if (weightParts.length === 0 && lastSummary.weight.total > 0) {
+      weightParts.push(`${lastSummary.weight.total} checked`);
+    }
+
+    if (lastSummary.steps.createdCount > 0) {
+      stepsParts.push(`${lastSummary.steps.createdCount} new`);
+    }
+    if (lastSummary.steps.updatedCount > 0) {
+      stepsParts.push(`${lastSummary.steps.updatedCount} updated`);
+    }
+    if (stepsParts.length === 0 && lastSummary.steps.total > 0) {
+      stepsParts.push(`${lastSummary.steps.total} checked`);
+    }
+
+    const summaryParts: string[] = [];
+
+    if (lastSummary.weight.total > 0) {
+      summaryParts.push(`Weight: ${weightParts.join(', ')}`);
+    }
+
+    if (lastSummary.steps.total > 0) {
+      summaryParts.push(`Steps: ${stepsParts.join(', ')}`);
+    }
+
+    tooltipTitle =
+      summaryParts.length > 0
+        ? `Apple Health synced • ${summaryParts.join(' • ')}`
+        : 'Apple Health synced';
   }
 
   return (

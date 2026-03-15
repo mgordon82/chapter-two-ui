@@ -9,7 +9,8 @@ public class HealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "requestHealthPermissions", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getLatestWeight", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getWeightSamples", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getWeightSamples", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getDailyStepTotals", returnType: CAPPluginReturnPromise)
     ]
 
     private let healthStore = HKHealthStore()
@@ -219,6 +220,102 @@ public class HealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
 
                 call.resolve([
                     "items": items
+                ])
+            }
+        }
+
+        healthStore.execute(query)
+    }
+    @objc func getDailyStepTotals(_ call: CAPPluginCall) {
+        guard let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) else {
+            call.reject("Step count type is unavailable.")
+            return
+        }
+
+        let startDateString = call.getString("startDate")
+        let limit = call.getInt("limit") ?? 30
+
+        let parseFormatter = ISO8601DateFormatter()
+        parseFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let outputFormatter = ISO8601DateFormatter()
+        outputFormatter.formatOptions = [.withFullDate]
+
+        let calendar = Calendar.current
+
+        let resolvedStartDate: Date
+        if let startDateString {
+            if let parsedDate = parseFormatter.date(from: startDateString) ??
+                ISO8601DateFormatter().date(from: startDateString) {
+                resolvedStartDate = parsedDate
+            } else {
+                guard let fallback = calendar.date(byAdding: .day, value: -30, to: Date()) else {
+                    call.reject("Could not determine fallback start date.")
+                    return
+                }
+                resolvedStartDate = fallback
+            }
+        } else {
+            guard let fallback = calendar.date(byAdding: .day, value: -30, to: Date()) else {
+                call.reject("Could not determine fallback start date.")
+                return
+            }
+            resolvedStartDate = fallback
+        }
+
+        let startOfDay = calendar.startOfDay(for: resolvedStartDate)
+        let endDate = Date()
+
+        var interval = DateComponents()
+        interval.day = 1
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startOfDay,
+            end: endDate,
+            options: .strictStartDate
+        )
+
+        let query = HKStatisticsCollectionQuery(
+            quantityType: stepType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum,
+            anchorDate: startOfDay,
+            intervalComponents: interval
+        )
+
+        query.initialResultsHandler = { _, results, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    call.reject("Failed to fetch daily step totals: \(error.localizedDescription)")
+                    return
+                }
+
+                guard let results = results else {
+                    call.resolve(["items": []])
+                    return
+                }
+
+                var items: [[String: Any]] = []
+
+                results.enumerateStatistics(from: startOfDay, to: endDate) { statistics, _ in
+                    let stepCount = statistics.sumQuantity()?.doubleValue(for: HKUnit.count()) ?? 0
+                    let roundedSteps = Int(stepCount.rounded())
+
+                    let item: [String: Any] = [
+                        "date": outputFormatter.string(from: statistics.startDate),
+                        "steps": roundedSteps,
+                        "source": [
+                            "integration": "apple_health"
+                        ]
+                    ]
+
+                    items.append(item)
+                }
+
+                let limitedItems = Array(items.suffix(limit))
+
+                call.resolve([
+                    "items": limitedItems
                 ])
             }
         }

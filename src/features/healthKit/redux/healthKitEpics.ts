@@ -11,10 +11,30 @@ import { getAccessToken } from '../../../auth/helpers/getAccessToken';
 import { fetchCheckInsRequested } from '../../checkIns/redux/checkInsSlice';
 
 import {
+  buildEmptyHealthKitSyncSummary,
   healthKitSyncRequested,
   healthKitSyncSucceeded,
   healthKitSyncFailed
 } from './healthKitSlice';
+import { fetchDailyMetricsRequested } from '../../healthMetrics/redux/healthMetricsSlice';
+
+const readErrorMessage = async (response: Response) => {
+  let message = `HTTP_${response.status}`;
+
+  try {
+    const json = await response.json();
+    if (json?.message) message = json.message;
+  } catch {
+    try {
+      const text = await response.text();
+      if (text) message = text;
+    } catch {
+      // ignore
+    }
+  }
+
+  return message;
+};
 
 const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
   action$.pipe(
@@ -48,19 +68,7 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
           );
 
           if (!integrationRes.ok) {
-            let message = `HTTP_${integrationRes.status}`;
-            try {
-              const json = await integrationRes.json();
-              if (json?.message) message = json.message;
-            } catch {
-              try {
-                const text = await integrationRes.text();
-                if (text) message = text;
-              } catch {
-                // ignore
-              }
-            }
-            throw new Error(message);
+            throw new Error(await readErrorMessage(integrationRes));
           }
 
           const integrationData = (await integrationRes.json()) as {
@@ -68,32 +76,35 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
             integration: {
               lastSync?: {
                 weightRecordedAt?: string | null;
+                stepsDate?: string | null;
               } | null;
             } | null;
           };
 
+          const summary = buildEmptyHealthKitSyncSummary();
+
           const lastWeightRecordedAt =
             integrationData?.integration?.lastSync?.weightRecordedAt ?? null;
 
-          let nextStartDate: string;
+          let nextWeightStartDate: string;
 
           if (lastWeightRecordedAt) {
             const lastDate = new Date(lastWeightRecordedAt);
-            nextStartDate = new Date(lastDate.getTime() + 1000).toISOString();
+            nextWeightStartDate = new Date(
+              lastDate.getTime() + 1000
+            ).toISOString();
           } else {
             const oneYearAgo = new Date();
             oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-            nextStartDate = oneYearAgo.toISOString();
+            nextWeightStartDate = oneYearAgo.toISOString();
           }
 
           const weightSamples = await HealthKit.getWeightSamples({
-            startDate: nextStartDate,
+            startDate: nextWeightStartDate,
             limit: 500
           });
 
-          let createdCount = 0;
-          let duplicateCount = 0;
-          let conflictCount = 0;
+          summary.weight.total = weightSamples.items.length;
 
           for (const sample of weightSamples.items) {
             const response = await fetch(
@@ -119,19 +130,7 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
             );
 
             if (!response.ok) {
-              let message = `HTTP_${response.status}`;
-              try {
-                const json = await response.json();
-                if (json?.message) message = json.message;
-              } catch {
-                try {
-                  const text = await response.text();
-                  if (text) message = text;
-                } catch {
-                  // ignore
-                }
-              }
-              throw new Error(message);
+              throw new Error(await readErrorMessage(response));
             }
 
             const data = (await response.json()) as {
@@ -139,20 +138,83 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
               status?: 'created' | 'duplicate' | 'conflict_existing_checkin';
             };
 
-            if (data?.status === 'created') createdCount += 1;
-            else if (data?.status === 'duplicate') duplicateCount += 1;
-            else if (data?.status === 'conflict_existing_checkin')
-              conflictCount += 1;
+            if (data?.status === 'created') {
+              summary.weight.createdCount += 1;
+            } else if (data?.status === 'duplicate') {
+              summary.weight.duplicateCount += 1;
+            } else if (data?.status === 'conflict_existing_checkin') {
+              summary.weight.conflictCount += 1;
+            }
+          }
+
+          const lastStepsDate =
+            integrationData?.integration?.lastSync?.stepsDate ?? null;
+
+          let nextStepsStartDate: string;
+
+          if (lastStepsDate) {
+            nextStepsStartDate = new Date(
+              `${lastStepsDate}T00:00:00`
+            ).toISOString();
+          } else {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            nextStepsStartDate = thirtyDaysAgo.toISOString();
+          }
+
+          const dailyStepTotals = await HealthKit.getDailyStepTotals({
+            startDate: nextStepsStartDate,
+            limit: 30
+          });
+
+          summary.steps.total = dailyStepTotals.items.length;
+
+          for (const item of dailyStepTotals.items) {
+            const response = await fetch(
+              `${API_URL}/api/health-metrics/current-user/import/apple-health/steps`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  date: item.date,
+                  metricType: 'steps',
+                  value: item.steps,
+                  source: {
+                    type: 'apple_health',
+                    integration: item.source.integration,
+                    appSourceName: null,
+                    deviceSourceName: null
+                  }
+                })
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(await readErrorMessage(response));
+            }
+
+            const data = (await response.json()) as {
+              ok: true;
+              status?: 'created' | 'updated';
+            };
+
+            if (data?.status === 'created') {
+              summary.steps.createdCount += 1;
+            } else if (data?.status === 'updated') {
+              summary.steps.updatedCount += 1;
+            }
           }
 
           return [
-            healthKitSyncSucceeded({
-              total: weightSamples.items.length,
-              createdCount,
-              duplicateCount,
-              conflictCount
-            }),
-            fetchCheckInsRequested({ range: '3M' })
+            healthKitSyncSucceeded(summary),
+            fetchCheckInsRequested({ range: '3M' }),
+            fetchDailyMetricsRequested({
+              metricType: 'steps',
+              range: '30D'
+            })
           ];
         })()
       ).pipe(

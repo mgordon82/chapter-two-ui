@@ -91,7 +91,56 @@ const CheckInsPanel = () => {
     : healthKit.error
     ? 'Apple Health sync failed'
     : healthKit.lastSummary
-    ? `Apple Health synced • ${healthKit.lastSummary.createdCount} new`
+    ? (() => {
+        const weightParts: string[] = [];
+        const stepsParts: string[] = [];
+
+        if (healthKit.lastSummary.weight.createdCount > 0) {
+          weightParts.push(`${healthKit.lastSummary.weight.createdCount} new`);
+        }
+        if (healthKit.lastSummary.weight.duplicateCount > 0) {
+          weightParts.push(
+            `${healthKit.lastSummary.weight.duplicateCount} duplicates`
+          );
+        }
+        if (healthKit.lastSummary.weight.conflictCount > 0) {
+          weightParts.push(
+            `${healthKit.lastSummary.weight.conflictCount} conflicts`
+          );
+        }
+        if (
+          weightParts.length === 0 &&
+          healthKit.lastSummary.weight.total > 0
+        ) {
+          weightParts.push(`${healthKit.lastSummary.weight.total} checked`);
+        }
+
+        if (healthKit.lastSummary.steps.createdCount > 0) {
+          stepsParts.push(`${healthKit.lastSummary.steps.createdCount} new`);
+        }
+        if (healthKit.lastSummary.steps.updatedCount > 0) {
+          stepsParts.push(
+            `${healthKit.lastSummary.steps.updatedCount} updated`
+          );
+        }
+        if (stepsParts.length === 0 && healthKit.lastSummary.steps.total > 0) {
+          stepsParts.push(`${healthKit.lastSummary.steps.total} checked`);
+        }
+
+        const summaryParts: string[] = [];
+
+        if (healthKit.lastSummary.weight.total > 0) {
+          summaryParts.push(`Weight: ${weightParts.join(', ')}`);
+        }
+
+        if (healthKit.lastSummary.steps.total > 0) {
+          summaryParts.push(`Steps: ${stepsParts.join(', ')}`);
+        }
+
+        return summaryParts.length > 0
+          ? `Apple Health synced • ${summaryParts.join(' • ')}`
+          : 'Apple Health synced';
+      })()
     : 'Apple Health available';
 
   const [view, setView] = useState<ViewMode>('chart');

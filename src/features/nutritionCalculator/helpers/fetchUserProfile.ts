@@ -18,6 +18,7 @@ export type UserProfileResponse = {
     heightCm: number | null;
     weightKg: number | null;
     goalWeightKg: number | null;
+    stepGoalDaily: number | null;
 
     activityLevel: ActivityLevel | null;
     goal: Goal | null;

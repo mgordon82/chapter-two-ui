@@ -243,6 +243,21 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
               <MenuItem value='extreme'>Extreme</MenuItem>
             </TextField>
           </Stack>
+          <Stack direction='row' gap={2}>
+            <TextField
+              type='number'
+              fullWidth
+              label='Daily Step Goal'
+              value={form.stepGoalDaily}
+              onChange={handleChange('stepGoalDaily')}
+              inputProps={{ min: 0, step: 1 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position='end'>steps</InputAdornment>
+                )
+              }}
+            />
+          </Stack>
         </Stack>
       </Paper>
     </Box>
