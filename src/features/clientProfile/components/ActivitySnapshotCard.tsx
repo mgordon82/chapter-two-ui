@@ -68,6 +68,7 @@ const ActivitySnapshotCard: React.FC<ActivitySnapshotCardProps> = ({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
+            justifyContent='space-between'
             useFlexGap
             flexWrap='wrap'
           >
@@ -94,6 +95,7 @@ const ActivitySnapshotCard: React.FC<ActivitySnapshotCardProps> = ({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
+            justifyContent='space-between'
             useFlexGap
             flexWrap='wrap'
           >
@@ -115,6 +117,7 @@ const ActivitySnapshotCard: React.FC<ActivitySnapshotCardProps> = ({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
+            justifyContent='space-around'
             useFlexGap
             flexWrap='wrap'
           >

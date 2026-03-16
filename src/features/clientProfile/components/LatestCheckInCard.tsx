@@ -93,6 +93,7 @@ const LatestCheckInCard: React.FC<LatestCheckInCardProps> = ({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
+            justifyContent='space-between'
             useFlexGap
             flexWrap='wrap'
           >
@@ -132,6 +133,7 @@ const LatestCheckInCard: React.FC<LatestCheckInCardProps> = ({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
+            justifyContent='space-between'
             useFlexGap
             flexWrap='wrap'
           >

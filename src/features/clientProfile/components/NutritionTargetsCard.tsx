@@ -163,7 +163,10 @@ const NutritionTargetsCard: React.FC<NutritionTargetsCardProps> = ({
             label='Meal Style'
             value={nutrition.mealPlanStyle || '—'}
           />
-          <MetricItem label='Phase' value={nutrition.phase || '—'} />
+          <MetricItem
+            label='Phase'
+            value={formatGoalType(nutrition.phase) || '—'}
+          />
           <MetricItem
             label='Water Target'
             value={

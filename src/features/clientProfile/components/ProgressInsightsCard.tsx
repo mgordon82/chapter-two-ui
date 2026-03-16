@@ -100,6 +100,7 @@ const ProgressInsightsCard: React.FC<ProgressInsightsCardProps> = ({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
+            justifyContent='space-between'
             useFlexGap
             flexWrap='wrap'
           >
