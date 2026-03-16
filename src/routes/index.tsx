@@ -18,25 +18,28 @@ import InviteUser from '../features/users/InviteUser';
 import { useAppSelector } from '../app/hooks';
 import ForgotPassword from '../pages/public/ForgotPassword';
 import AdminUsersPage from '../features/users/AdminUsers';
+import {
+  getEffectiveRoles,
+  type AppRole
+} from '../components/navigation/navConfig';
+import ClientProfilePage from '../pages/app/ClientProfile';
 
-type AppRole = 'client' | 'coach' | 'admin' | 'staff';
-
-const isAppRole = (value: unknown): value is AppRole => {
-  return (
-    value === 'client' ||
-    value === 'coach' ||
-    value === 'admin' ||
-    value === 'staff'
-  );
+const getCurrentUserRoles = (
+  currentUser: { role?: unknown; roles?: unknown } | null | undefined
+): AppRole[] => {
+  return getEffectiveRoles(currentUser);
 };
 
 const RequireRole: React.FC<{
   allowed: AppRole[];
   children: React.ReactElement;
 }> = ({ allowed, children }) => {
-  const roleRaw = useAppSelector((s) => s.auth.currentUser?.role);
+  const currentUser = useAppSelector((s) => s.auth.currentUser);
+  const userRoles = getCurrentUserRoles(currentUser);
 
-  if (!isAppRole(roleRaw) || !allowed.includes(roleRaw)) {
+  const hasAllowedRole = userRoles.some((role) => allowed.includes(role));
+
+  if (!hasAllowedRole) {
     return <Navigate to='/app' replace />;
   }
 
@@ -85,7 +88,7 @@ const AppRoutes: React.FC = () => {
               <Route
                 index
                 element={
-                  <RequireRole allowed={['admin', 'staff']}>
+                  <RequireRole allowed={['admin', 'staff', 'coach']}>
                     <AdminUsersPage />
                   </RequireRole>
                 }
@@ -95,6 +98,14 @@ const AppRoutes: React.FC = () => {
                 element={
                   <RequireRole allowed={['admin', 'staff', 'coach']}>
                     <InviteUser />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path=':userId'
+                element={
+                  <RequireRole allowed={['admin', 'staff', 'coach']}>
+                    <ClientProfilePage />
                   </RequireRole>
                 }
               />

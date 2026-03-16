@@ -1,10 +1,13 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
+export type RoleField = 'client' | 'coach' | 'admin' | 'staff';
+
 export type UserListItem = {
   id: string;
   displayName: string | null;
   email: string;
-  role: string | null;
+  role: RoleField | string | null;
+  roles: (RoleField | string)[];
   status: string | null;
   createdAt: string | null;
   updatedAt: string | null;

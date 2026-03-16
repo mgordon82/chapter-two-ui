@@ -36,7 +36,12 @@ export const inviteUserEpic: Epic<AnyAction, AnyAction, RootState> = (
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              email: payload.email,
+              roles: payload.roles,
+              coachId: payload.coachId ?? null,
+              displayName: payload.displayName
+            })
           });
 
           if (res.status === 409) throw new Error('USER_EXISTS');

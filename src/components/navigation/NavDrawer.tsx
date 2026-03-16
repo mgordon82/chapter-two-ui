@@ -19,8 +19,8 @@ import { logoutRequested } from '../../auth/authSlice';
 import { useLocation, useNavigate, matchPath } from 'react-router-dom';
 import {
   bottomNavItems,
-  getNavSectionsForRole,
-  isAppRole,
+  getEffectiveRoles,
+  getNavSectionsForRoles,
   type AppRole,
   type NavItem
 } from './navConfig';
@@ -38,8 +38,11 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
   const currentUser = useAppSelector((s) => s.auth.currentUser);
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
 
-  const roleRaw = currentUser?.role;
-  const role: AppRole = isAppRole(roleRaw) ? roleRaw : 'client';
+  const navRoles: AppRole[] = getEffectiveRoles(currentUser);
+
+  const navSections = getNavSectionsForRoles(
+    navRoles.length > 0 ? navRoles : ['client']
+  );
 
   const profileFirstName = loadedProfile?.profile.firstName?.trim() ?? '';
   const profileLastName = loadedProfile?.profile.lastName?.trim() ?? '';
@@ -53,7 +56,6 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
 
   const displayName = profileDisplayName || currentUserDisplayName || email;
   const greeting = displayName || 'Welcome';
-  const navSections = getNavSectionsForRole(role);
 
   const closeMobileDrawer = () => setMobileOpen(false);
 

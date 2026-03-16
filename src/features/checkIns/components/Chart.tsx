@@ -27,6 +27,7 @@ type ChartTypes = {
 
 type ChartPoint = {
   id: string;
+  xValue: string;
   recordedAt: string;
   weight: number;
   hasPhotos: boolean;
@@ -68,12 +69,7 @@ function getCheckInSourceLabel(ci: CheckIn): string | null {
   return null;
 }
 
-const CheckInTooltip = ({
-  active,
-  label,
-  payload,
-  unit
-}: CheckInTooltipProps) => {
+const CheckInTooltip = ({ active, payload, unit }: CheckInTooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
 
   const firstEntry = payload[0] as
@@ -89,7 +85,7 @@ const CheckInTooltip = ({
   const n =
     typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
 
-  const dateLabel = typeof label === 'string' ? formatDateTimeLabel(label) : '';
+  const dateLabel = point ? formatDateTimeLabel(point.recordedAt) : '';
 
   return (
     <Box
@@ -160,6 +156,7 @@ const CheckInsChart = ({ filteredItems, weightUnitPref }: ChartTypes) => {
   const chartData = useMemo<ChartPoint[]>(() => {
     return [...filteredItems].map((ci) => ({
       id: ci._id,
+      xValue: `${ci.recordedAt}__${ci._id}`,
       recordedAt: ci.recordedAt,
       weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref),
       hasPhotos: Boolean(ci.hasPhotos && ci.photos?.photos?.length),
@@ -265,16 +262,22 @@ const CheckInsChart = ({ filteredItems, weightUnitPref }: ChartTypes) => {
               margin={{ top: 12, right: 20, left: 0, bottom: 0 }}
             >
               <XAxis
-                dataKey='recordedAt'
+                dataKey='xValue'
                 tick={{ fontSize: 12 }}
-                tickFormatter={(iso) => formatDateLabel(String(iso))}
+                tickFormatter={(value, index) =>
+                  formatDateLabel(
+                    String(filteredChartData[index]?.recordedAt ?? value)
+                  )
+                }
                 minTickGap={40}
               />
               <YAxis tick={{ fontSize: 12 }} width={52} domain={yDomain} />
               <Tooltip
                 content={<CheckInTooltip unit={weightUnitPref} />}
                 cursor={{ strokeDasharray: '4 4' }}
-                labelFormatter={(iso) => formatDateTimeLabel(String(iso))}
+                labelFormatter={(value) =>
+                  formatDateTimeLabel(String(value).split('__')[0])
+                }
               />
 
               {goalWeightDisplay != null ? (

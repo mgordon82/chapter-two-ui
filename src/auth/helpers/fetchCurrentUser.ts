@@ -1,10 +1,13 @@
 import { getAccessToken } from './getAccessToken';
 
+export type AppRole = 'client' | 'coach' | 'admin' | 'staff';
+
 export type CurrentUser = {
   id: string;
   email: string | null;
   displayName: string | null;
-  role: string | null;
+  role: AppRole | null;
+  roles: AppRole[];
   status: string | null;
 };
 
@@ -22,7 +25,6 @@ export async function fetchCurrentUser(): Promise<CurrentUser> {
   });
 
   if (res.status === 403) {
-    // important: this is your "must exist in Mongo" rule
     throw new Error('NO_ACCESS');
   }
 
@@ -31,5 +33,43 @@ export async function fetchCurrentUser(): Promise<CurrentUser> {
     throw new Error(msg);
   }
 
-  return (await res.json()) as CurrentUser;
+  const data = (await res.json()) as {
+    id: string;
+    email: string | null;
+    displayName: string | null;
+    role?: string | null;
+    roles?: string[] | null;
+    status: string | null;
+  };
+
+  const validRoles: AppRole[] = ['client', 'coach', 'admin', 'staff'];
+
+  const normalizedRoles = Array.isArray(data.roles)
+    ? data.roles.filter((role): role is AppRole =>
+        validRoles.includes(role as AppRole)
+      )
+    : [];
+
+  const normalizedLegacyRole =
+    typeof data.role === 'string' && validRoles.includes(data.role as AppRole)
+      ? (data.role as AppRole)
+      : null;
+
+  const roles =
+    normalizedRoles.length > 0
+      ? normalizedRoles
+      : normalizedLegacyRole
+      ? [normalizedLegacyRole]
+      : [];
+
+  const role = roles[0] ?? normalizedLegacyRole ?? null;
+
+  return {
+    id: data.id,
+    email: data.email,
+    displayName: data.displayName,
+    role,
+    roles,
+    status: data.status
+  };
 }

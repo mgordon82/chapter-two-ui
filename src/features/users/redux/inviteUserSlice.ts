@@ -1,17 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 export type RoleField = 'client' | 'coach' | 'admin' | 'staff';
 
 export type InviteUserRequest = {
   email: string;
-  role: RoleField; // make required since the UI always picks one
+  roles: RoleField[];
+  coachId?: string | null;
   displayName?: string;
 };
 
 export type InviteUserResponse = {
   id: string | null;
   email: string;
-  role: RoleField | string; // keep flexible if backend returns broader values
+  role: RoleField | string | null;
+  roles: (RoleField | string)[];
+  coachId?: string | null;
   status: string;
   cognitoSub: string;
 };
@@ -34,7 +38,6 @@ const inviteUserSlice = createSlice({
   name: 'inviteUser',
   initialState,
   reducers: {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     inviteUserRequested(state, _action: PayloadAction<InviteUserRequest>) {
       state.error = null;
       state.isInviting = true;

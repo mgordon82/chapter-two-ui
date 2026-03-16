@@ -15,6 +15,8 @@ import {
   Paper,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -26,9 +28,35 @@ import {
   assignCoachCleared,
   assignCoachRequested
 } from './redux/assignCoachSlice';
+import {
+  manageUserRolesCleared,
+  manageUserRolesRequested
+} from './redux/manageUserRolesSlice';
+import { getEffectiveRoles } from '../../components/navigation/navConfig';
+import { useNavigate } from 'react-router-dom';
 
 type RoleFilter = 'all' | 'admin' | 'staff' | 'coach' | 'client';
 type StatusFilter = 'all' | 'active' | 'invited';
+type AppRole = 'client' | 'coach' | 'admin' | 'staff';
+
+const VALID_ROLES: AppRole[] = ['client', 'coach', 'admin', 'staff'];
+
+const isAppRole = (value: unknown): value is AppRole => {
+  return typeof value === 'string' && VALID_ROLES.includes(value as AppRole);
+};
+
+const getUserRoles = (user: UserListItem): AppRole[] => {
+  if (Array.isArray(user.roles)) {
+    const normalized = user.roles.filter(isAppRole);
+    if (normalized.length > 0) return normalized;
+  }
+
+  if (isAppRole(user.role)) {
+    return [user.role];
+  }
+
+  return [];
+};
 
 const formatDate = (value: string | null) => {
   if (!value) return '—';
@@ -98,6 +126,8 @@ const AdminUsersPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
   const [assignCoachOpen, setAssignCoachOpen] = useState(false);
   const [selectedCoachId, setSelectedCoachId] = useState('');
+  const [manageRolesOpen, setManageRolesOpen] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
 
   const {
     items: coachOptions,
@@ -107,6 +137,17 @@ const AdminUsersPage: React.FC = () => {
 
   const { isSaving: isAssigningCoach, error: assignCoachError } =
     useAppSelector((s) => s.assignCoach);
+
+  const { isSaving: isSavingRoles, error: manageRolesError } = useAppSelector(
+    (s) => s.manageUserRoles
+  );
+
+  const currentUser = useAppSelector((s) => s.auth.currentUser);
+  const viewerRoles = getEffectiveRoles(currentUser);
+
+  const isAdminLike =
+    viewerRoles.includes('admin') || viewerRoles.includes('staff');
+  const isCoachOnly = viewerRoles.includes('coach') && !isAdminLike;
 
   const handleOpenAssignCoach = () => {
     if (!selectedUser) return;
@@ -143,6 +184,37 @@ const AdminUsersPage: React.FC = () => {
     );
   };
 
+  const handleOpenManageRoles = () => {
+    if (!selectedUser) return;
+
+    setSelectedRoles(getUserRoles(selectedUser));
+    setManageRolesOpen(true);
+    dispatch(manageUserRolesCleared());
+    closeMenu();
+  };
+
+  const handleCloseManageRoles = () => {
+    setManageRolesOpen(false);
+    setSelectedRoles([]);
+    setSelectedUser(null);
+    dispatch(manageUserRolesCleared());
+  };
+
+  const handleSaveRoles = () => {
+    if (!selectedUser || selectedRoles.length === 0) return;
+
+    dispatch(
+      manageUserRolesRequested({
+        userId: selectedUser.id,
+        roles: selectedRoles
+      })
+    );
+
+    setManageRolesOpen(false);
+    setSelectedRoles([]);
+    setSelectedUser(null);
+  };
+
   const openMenu = (
     event: React.MouseEvent<HTMLElement>,
     user: UserListItem
@@ -165,17 +237,20 @@ const AdminUsersPage: React.FC = () => {
     return items.filter((user) => {
       const name = (user.displayName ?? '').toLowerCase();
       const email = user.email.toLowerCase();
-      const role = (user.role ?? '').toLowerCase();
+      const roles = getUserRoles(user);
+      const rolesText = roles.join(' ').toLowerCase();
       const status = (user.status ?? '').toLowerCase();
 
       const matchesSearch =
         !q ||
         name.includes(q) ||
         email.includes(q) ||
-        role.includes(q) ||
+        rolesText.includes(q) ||
         status.includes(q);
 
-      const matchesRole = roleFilter === 'all' || role === roleFilter;
+      const matchesRole =
+        roleFilter === 'all' || roles.includes(roleFilter as AppRole);
+
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
 
       return matchesSearch && matchesRole && matchesStatus;
@@ -188,8 +263,11 @@ const AdminUsersPage: React.FC = () => {
     setStatusFilter('all');
   };
 
+  const navigate = useNavigate();
+
   const handleViewProfile = (user: UserListItem | null) => {
-    console.log('hey there', user);
+    if (!user) return;
+    navigate(`/app/users/${user.id}`);
     closeMenu();
   };
 
@@ -206,10 +284,21 @@ const AdminUsersPage: React.FC = () => {
         <MenuItem onClick={() => handleViewProfile(selectedUser)}>
           View Profile
         </MenuItem>
-        <MenuItem onClick={handleOpenAssignCoach}>Assign Coach</MenuItem>
-        <MenuItem onClick={closeMenu}>Change Role</MenuItem>
-        <MenuItem onClick={closeMenu}>Resend Invite</MenuItem>
-        <MenuItem onClick={closeMenu}>Deactivate User</MenuItem>
+
+        {isAdminLike ? (
+          <MenuItem onClick={handleOpenAssignCoach}>Assign Coach</MenuItem>
+        ) : null}
+
+        {isAdminLike ? (
+          <MenuItem onClick={handleOpenManageRoles}>Manage Roles</MenuItem>
+        ) : null}
+
+        {isAdminLike ? (
+          <MenuItem onClick={closeMenu}>Resend Invite</MenuItem>
+        ) : null}
+        {isAdminLike ? (
+          <MenuItem onClick={closeMenu}>Deactivate User</MenuItem>
+        ) : null}
       </Menu>
       <Dialog
         open={assignCoachOpen}
@@ -274,14 +363,84 @@ const AdminUsersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Dialog
+        open={manageRolesOpen}
+        onClose={handleCloseManageRoles}
+        fullWidth
+        maxWidth='xs'
+      >
+        <DialogTitle>Manage Roles</DialogTitle>
 
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant='body2' color='text.secondary'>
+              {selectedUser?.displayName || selectedUser?.email || 'User'}
+            </Typography>
+
+            <Box>
+              <Typography variant='body2' sx={{ mb: 1 }}>
+                Roles
+              </Typography>
+
+              <ToggleButtonGroup
+                value={selectedRoles}
+                onChange={(_, nextRoles: AppRole[]) => {
+                  if (nextRoles.length > 0) {
+                    setSelectedRoles(nextRoles);
+                  }
+                }}
+                fullWidth
+                disabled={isSavingRoles}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: 1,
+                  '& .MuiToggleButtonGroup-grouped': {
+                    borderRadius: '8px !important',
+                    border: (theme) =>
+                      `1px solid ${theme.palette.divider} !important`
+                  },
+                  '& .MuiToggleButton-root': {
+                    textTransform: 'none',
+                    py: 1.2
+                  }
+                }}
+              >
+                <ToggleButton value='client'>Client</ToggleButton>
+                <ToggleButton value='coach'>Coach</ToggleButton>
+                <ToggleButton value='admin'>Admin</ToggleButton>
+                <ToggleButton value='staff'>Staff</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {manageRolesError ? (
+              <Typography variant='body2' color='error'>
+                {manageRolesError}
+              </Typography>
+            ) : null}
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleCloseManageRoles}>Cancel</Button>
+          <Button
+            onClick={handleSaveRoles}
+            variant='contained'
+            disabled={isSavingRoles || selectedRoles.length === 0}
+          >
+            {isSavingRoles ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Stack spacing={2.5}>
         <Box>
           <Typography variant='h4' fontWeight={700}>
-            User Management
+            {isCoachOnly ? 'My Clients' : 'User Management'}
           </Typography>
           <Typography variant='body2' color='text.secondary' sx={{ mt: 0.5 }}>
-            View and manage all invited and active users.
+            {isCoachOnly
+              ? 'View users who are currently assigned to you.'
+              : 'View and manage all invited and active users.'}
           </Typography>
         </Box>
 
@@ -377,141 +536,163 @@ const AdminUsersPage: React.FC = () => {
               gap: 2
             }}
           >
-            {filteredUsers.map((user: UserListItem) => (
-              <Paper
-                key={user.id}
-                variant='outlined'
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  borderColor: 'divider',
-                  bgcolor: 'background.paper',
-                  transition: 'transform 160ms ease, box-shadow 160ms ease',
-                  '&:hover': {
-                    transform: 'translateY(-1px)',
-                    boxShadow: 2
-                  }
-                }}
-              >
-                <Stack spacing={1.75}>
-                  <Stack
-                    direction='row'
-                    justifyContent='space-between'
-                    alignItems='flex-start'
-                    spacing={1.5}
-                  >
+            {filteredUsers.map((user: UserListItem) => {
+              const userRoles = getUserRoles(user);
+
+              return (
+                <Paper
+                  key={user.id}
+                  variant='outlined'
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                    transition: 'transform 160ms ease, box-shadow 160ms ease',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: 2
+                    }
+                  }}
+                >
+                  <Stack spacing={1.75}>
                     <Stack
                       direction='row'
-                      spacing={1.25}
+                      justifyContent='space-between'
                       alignItems='flex-start'
-                      sx={{ minWidth: 0, flex: 1 }}
+                      spacing={1.5}
                     >
-                      <Avatar
+                      <Stack
+                        direction='row'
+                        spacing={1.25}
+                        alignItems='flex-start'
+                        sx={{ minWidth: 0, flex: 1 }}
+                      >
+                        <Avatar
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            bgcolor: 'action.selected',
+                            color: 'text.primary'
+                          }}
+                        >
+                          {getInitials(user)}
+                        </Avatar>
+
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography
+                            fontWeight={700}
+                            sx={{
+                              lineHeight: 1.2,
+                              pr: 1
+                            }}
+                          >
+                            {user.displayName ?? 'No name yet'}
+                          </Typography>
+
+                          <Typography
+                            variant='body2'
+                            color='text.secondary'
+                            sx={{
+                              mt: 0.4,
+                              wordBreak: 'break-word'
+                            }}
+                          >
+                            {user.email}
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <IconButton
+                        size='small'
+                        onClick={(e) => openMenu(e, user)}
                         sx={{
-                          width: 40,
-                          height: 40,
-                          fontSize: '0.9rem',
-                          fontWeight: 700,
-                          bgcolor: 'action.selected',
-                          color: 'text.primary'
+                          width: 34,
+                          height: 34,
+                          borderRadius: '50%',
+                          color: 'text.secondary',
+                          flexShrink: 0,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          bgcolor: 'background.default',
+                          '&:hover': {
+                            bgcolor: 'action.hover'
+                          }
                         }}
                       >
-                        {getInitials(user)}
-                      </Avatar>
-
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography
-                          fontWeight={700}
-                          sx={{
-                            lineHeight: 1.2,
-                            pr: 1
-                          }}
-                        >
-                          {user.displayName ?? 'No name yet'}
-                        </Typography>
-
-                        <Typography
-                          variant='body2'
-                          color='text.secondary'
-                          sx={{
-                            mt: 0.4,
-                            wordBreak: 'break-word'
-                          }}
-                        >
-                          {user.email}
-                        </Typography>
-                      </Box>
+                        <MoreVertIcon fontSize='small' />
+                      </IconButton>
                     </Stack>
 
-                    <IconButton
-                      size='small'
-                      onClick={(e) => openMenu(e, user)}
-                      sx={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: '50%',
-                        color: 'text.secondary',
-                        flexShrink: 0,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        bgcolor: 'background.default',
-                        '&:hover': {
-                          bgcolor: 'action.hover'
-                        }
-                      }}
-                    >
-                      <MoreVertIcon fontSize='small' />
-                    </IconButton>
-                  </Stack>
-
-                  <Stack direction='row' spacing={1} flexWrap='wrap' useFlexGap>
-                    <Chip
-                      size='small'
-                      label={toTitleCase(user.role)}
-                      color={getRoleChipColor(user.role)}
-                      variant='outlined'
-                    />
-                    <Chip
-                      size='small'
-                      label={toTitleCase(user.status)}
-                      color={getStatusChipColor(user.status)}
-                      variant='outlined'
-                    />
-                  </Stack>
-
-                  <Box>
-                    <Typography variant='caption' color='text.secondary'>
-                      Coach:{' '}
-                      {user.assignedCoach
-                        ? user.assignedCoach.displayName ||
-                          user.assignedCoach.email
-                        : 'Unassigned'}
-                    </Typography>
-                  </Box>
-
-                  <Box
-                    sx={{
-                      pt: 1.25,
-                      borderTop: '1px solid',
-                      borderColor: 'divider'
-                    }}
-                  >
                     <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={{ xs: 0.5, sm: 2 }}
+                      direction='row'
+                      spacing={1}
+                      flexWrap='wrap'
                       useFlexGap
                     >
-                      <Typography variant='caption' color='text.secondary'>
-                        Created: {formatDate(user.createdAt)}
-                      </Typography>
-                      <Typography variant='caption' color='text.secondary'>
-                        Updated: {formatDate(user.updatedAt)}
-                      </Typography>
+                      {userRoles.length > 0 ? (
+                        userRoles.map((role) => (
+                          <Chip
+                            key={`${user.id}-${role}`}
+                            size='small'
+                            label={toTitleCase(role)}
+                            color={getRoleChipColor(role)}
+                            variant='outlined'
+                          />
+                        ))
+                      ) : (
+                        <Chip
+                          size='small'
+                          label='Unknown'
+                          color='default'
+                          variant='outlined'
+                        />
+                      )}
+
+                      <Chip
+                        size='small'
+                        label={toTitleCase(user.status)}
+                        color={getStatusChipColor(user.status)}
+                        variant='outlined'
+                      />
                     </Stack>
-                  </Box>
-                </Stack>
-              </Paper>
-            ))}
+
+                    <Box>
+                      <Typography variant='caption' color='text.secondary'>
+                        Coach:{' '}
+                        {user.assignedCoach
+                          ? user.assignedCoach.displayName ||
+                            user.assignedCoach.email
+                          : 'Unassigned'}
+                      </Typography>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        pt: 1.25,
+                        borderTop: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                    >
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={{ xs: 0.5, sm: 2 }}
+                        useFlexGap
+                      >
+                        <Typography variant='caption' color='text.secondary'>
+                          Created: {formatDate(user.createdAt)}
+                        </Typography>
+                        <Typography variant='caption' color='text.secondary'>
+                          Updated: {formatDate(user.updatedAt)}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                </Paper>
+              );
+            })}
           </Box>
         )}
       </Stack>
