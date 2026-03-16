@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Avatar,
+  Box,
   Button,
   Card,
   CardContent,
@@ -102,9 +103,18 @@ const ClientProfileHeader: React.FC<ClientProfileHeaderProps> = ({
             spacing={2}
           >
             <Stack direction='row' spacing={2} alignItems='center'>
-              <Avatar sx={{ width: 64, height: 64, fontWeight: 700 }}>
-                {getInitials(displayName)}
-              </Avatar>
+              <Box
+                sx={{
+                  borderRadius: 5,
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px solid'
+                }}
+              >
+                <Avatar sx={{ width: 64, height: 64, fontWeight: 700 }}>
+                  {getInitials(displayName)}
+                </Avatar>
+              </Box>
 
               <Stack spacing={0.75}>
                 <Typography

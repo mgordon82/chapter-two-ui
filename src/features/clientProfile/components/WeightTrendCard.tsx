@@ -244,7 +244,18 @@ const WeightTrendCard: React.FC<WeightTrendCardProps> = ({
             spacing={1.5}
           >
             <Stack direction='row' spacing={1} alignItems='center'>
-              <TrendingUpOutlinedIcon fontSize='small' />
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 2,
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px solid'
+                }}
+              >
+                <TrendingUpOutlinedIcon fontSize='small' />
+              </Box>
               <Box>
                 <Typography variant='h6' fontWeight={700}>
                   Weight Trend

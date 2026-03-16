@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Box,
   Card,
   CardContent,
   Divider,
@@ -103,7 +104,18 @@ const NutritionTargetsCard: React.FC<NutritionTargetsCardProps> = ({
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 2 }}>
-          <RestaurantMenuOutlinedIcon fontSize='small' />
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid'
+            }}
+          >
+            <RestaurantMenuOutlinedIcon fontSize='small' />
+          </Box>
           <Typography variant='h6' fontWeight={700}>
             Nutrition Targets
           </Typography>

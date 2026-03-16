@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, Stack, Typography } from '@mui/material';
+import { Box, Card, CardContent, Stack, Typography } from '@mui/material';
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import type { ClientOverview } from '../types';
 
@@ -65,7 +65,18 @@ const ClientOverviewCard: React.FC<ClientOverviewCardProps> = ({
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 2 }}>
-          <FlagOutlinedIcon fontSize='small' />
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid'
+            }}
+          >
+            <FlagOutlinedIcon fontSize='small' />
+          </Box>
           <Typography variant='h6' fontWeight={700}>
             Client Overview
           </Typography>

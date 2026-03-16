@@ -1,5 +1,12 @@
 import React from 'react';
-import { Button, Card, CardContent, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Stack,
+  Typography
+} from '@mui/material';
 import FitnessCenterOutlinedIcon from '@mui/icons-material/FitnessCenterOutlined';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import MonitorWeightOutlinedIcon from '@mui/icons-material/MonitorWeightOutlined';
@@ -23,7 +30,18 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 2 }}>
-          <FitnessCenterOutlinedIcon fontSize='small' />
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid'
+            }}
+          >
+            <FitnessCenterOutlinedIcon fontSize='small' />
+          </Box>
           <Typography variant='h6' fontWeight={700}>
             Quick Actions
           </Typography>

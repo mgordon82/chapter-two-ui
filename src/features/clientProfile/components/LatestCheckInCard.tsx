@@ -1,5 +1,12 @@
 import React from 'react';
-import { Card, CardContent, Divider, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardContent,
+  Divider,
+  Stack,
+  Typography
+} from '@mui/material';
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
 import type { LatestCheckIn } from '../types';
 
@@ -65,7 +72,18 @@ const LatestCheckInCard: React.FC<LatestCheckInCardProps> = ({
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 2 }}>
-          <TrendingUpOutlinedIcon fontSize='small' />
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid'
+            }}
+          >
+            <TrendingUpOutlinedIcon fontSize='small' />
+          </Box>
           <Typography variant='h6' fontWeight={700}>
             Latest Check-In
           </Typography>

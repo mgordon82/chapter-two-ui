@@ -87,7 +87,18 @@ const ProgressPhotosCard: React.FC<ProgressPhotosCardProps> = ({ photos }) => {
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 2 }}>
-          <CameraAltOutlinedIcon fontSize='small' />
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid'
+            }}
+          >
+            <CameraAltOutlinedIcon fontSize='small' />
+          </Box>
           <Typography variant='h6' fontWeight={700}>
             Progress Photos
           </Typography>

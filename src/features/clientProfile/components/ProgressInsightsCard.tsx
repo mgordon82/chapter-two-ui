@@ -1,5 +1,12 @@
 import React from 'react';
-import { Card, CardContent, Paper, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardContent,
+  Paper,
+  Stack,
+  Typography
+} from '@mui/material';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import type { ProgressInsights } from '../types';
 
@@ -72,7 +79,18 @@ const ProgressInsightsCard: React.FC<ProgressInsightsCardProps> = ({
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
         <Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 2 }}>
-          <InsightsOutlinedIcon fontSize='small' />
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid'
+            }}
+          >
+            <InsightsOutlinedIcon fontSize='small' />
+          </Box>
           <Typography variant='h6' fontWeight={700}>
             Progress Insights
           </Typography>
