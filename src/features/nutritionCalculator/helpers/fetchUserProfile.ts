@@ -1,6 +1,7 @@
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
 
 import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
+import type { VolumeUnit } from '../../../components/units/VolumeUnit';
 import type { WeightUnit } from '../../../components/units/WeightUnit';
 
 import type { ActivityLevel } from '../types/activityLevel';
@@ -19,6 +20,7 @@ export type UserProfileResponse = {
     weightKg: number | null;
     goalWeightKg: number | null;
     stepGoalDaily: number | null;
+    waterGoalDailyMl: number | null;
 
     activityLevel: ActivityLevel | null;
     goal: Goal | null;
@@ -27,6 +29,7 @@ export type UserProfileResponse = {
     preferences?: {
       measurementUnitPref?: MeasurementUnit | null;
       weightUnitPref?: WeightUnit | null;
+      volumeUnitPref?: VolumeUnit | null;
     } | null;
   };
   calculated: {

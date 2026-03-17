@@ -1,4 +1,5 @@
 import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
+import type { VolumeUnit } from '../../../components/units/VolumeUnit';
 import type { WeightUnit } from '../../../components/units/WeightUnit';
 import type { ActivityLevel } from './activityLevel';
 import type { Gender } from './gender';
@@ -15,6 +16,7 @@ export type FormState = {
   weight: string;
   goalWeight: string;
   stepGoalDaily: string;
+  waterGoalDailyDisplay: string;
 
   heightCm: string;
   weightKg: string;
@@ -27,6 +29,7 @@ export type FormState = {
 
   measurementUnitPref: MeasurementUnit;
   weightUnitPref: WeightUnit;
+  volumeUnitPref: VolumeUnit;
 };
 
 export const initialFormState: FormState = {
@@ -39,6 +42,7 @@ export const initialFormState: FormState = {
   weight: '',
   goalWeight: '',
   stepGoalDaily: '',
+  waterGoalDailyDisplay: '',
 
   heightCm: '',
   weightKg: '',
@@ -50,5 +54,6 @@ export const initialFormState: FormState = {
   rateLevel: '' as RateLevel,
 
   measurementUnitPref: 'cm' as MeasurementUnit,
-  weightUnitPref: 'kg' as WeightUnit
+  weightUnitPref: 'kg' as WeightUnit,
+  volumeUnitPref: 'ml' as VolumeUnit
 };

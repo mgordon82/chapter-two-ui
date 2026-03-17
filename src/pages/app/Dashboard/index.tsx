@@ -7,6 +7,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import FlagIcon from '@mui/icons-material/Flag';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
 
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import StatCard from '../../../components/sections/statCard';
@@ -18,6 +19,7 @@ import { fetchDailyMetricsRequested } from '../../../features/healthMetrics/redu
 import { healthKitSyncRequested } from '../../../features/healthKit/redux/healthKitSlice';
 import { fetchCheckInsRequested } from '../../../features/checkIns/redux/checkInsSlice';
 import PullToRefresh from '../../../components/mobile/PullToRefresh';
+import { mlToLiters, mlToOz } from '../../../utils/conversions/volume';
 
 const Dashboard = () => {
   const dispatch = useAppDispatch();
@@ -36,9 +38,8 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (
-      !healthMetricsDaily.loading &&
-      (healthMetricsDaily.loadedMetricType !== 'steps' ||
-        healthMetricsDaily.loadedRange !== '30D')
+      !healthMetricsDaily.steps.loading &&
+      healthMetricsDaily.steps.loadedRange !== '30D'
     ) {
       dispatch(
         fetchDailyMetricsRequested({
@@ -49,9 +50,26 @@ const Dashboard = () => {
     }
   }, [
     dispatch,
-    healthMetricsDaily.loading,
-    healthMetricsDaily.loadedMetricType,
-    healthMetricsDaily.loadedRange
+    healthMetricsDaily.steps.loading,
+    healthMetricsDaily.steps.loadedRange
+  ]);
+
+  useEffect(() => {
+    if (
+      !healthMetricsDaily.water.loading &&
+      healthMetricsDaily.water.loadedRange !== '30D'
+    ) {
+      dispatch(
+        fetchDailyMetricsRequested({
+          metricType: 'water',
+          range: '30D'
+        })
+      );
+    }
+  }, [
+    dispatch,
+    healthMetricsDaily.water.loading,
+    healthMetricsDaily.water.loadedRange
   ]);
 
   useEffect(() => {
@@ -64,14 +82,24 @@ const Dashboard = () => {
   }, [dispatch, healthKit.syncing]);
 
   const latestStepsItem = useMemo(() => {
-    const stepItems = healthMetricsDaily.items.filter(
+    const stepItems = healthMetricsDaily.steps.items.filter(
       (item) => item.metricType === 'steps' && !item.isDeleted
     );
 
     if (!stepItems.length) return null;
 
     return [...stepItems].sort((a, b) => b.date.localeCompare(a.date))[0];
-  }, [healthMetricsDaily.items]);
+  }, [healthMetricsDaily.steps.items]);
+
+  const latestWaterItem = useMemo(() => {
+    const waterItems = healthMetricsDaily.water.items.filter(
+      (item) => item.metricType === 'water' && !item.isDeleted
+    );
+
+    if (!waterItems.length) return null;
+
+    return [...waterItems].sort((a, b) => b.date.localeCompare(a.date))[0];
+  }, [healthMetricsDaily.water.items]);
 
   const latestStepsValue = latestStepsItem?.value ?? null;
   const stepGoalDaily = profileData?.stepGoalDaily ?? null;
@@ -119,6 +147,75 @@ const Dashboard = () => {
       ? Math.min(100, (latestStepsValue / stepGoalDaily) * 100)
       : 0;
 
+  const latestWaterMl = latestWaterItem?.value ?? null;
+  const waterGoalDailyMl = profileData?.waterGoalDailyMl ?? null;
+  const volumeUnitPref = profileData?.preferences?.volumeUnitPref ?? 'ml';
+
+  const latestWaterDisplay =
+    latestWaterMl == null
+      ? null
+      : volumeUnitPref === 'oz'
+      ? mlToOz(latestWaterMl)
+      : mlToLiters(latestWaterMl);
+
+  const waterGoalDisplay =
+    waterGoalDailyMl == null
+      ? null
+      : volumeUnitPref === 'oz'
+      ? mlToOz(waterGoalDailyMl)
+      : mlToLiters(waterGoalDailyMl);
+
+  const waterUnitLabel = volumeUnitPref === 'oz' ? 'oz' : 'L';
+
+  const waterCardValue =
+    latestWaterDisplay == null
+      ? '—'
+      : waterGoalDisplay != null && waterGoalDisplay > 0
+      ? `${latestWaterDisplay.toFixed(
+          volumeUnitPref === 'oz' ? 0 : 1
+        )} / ${waterGoalDisplay.toFixed(
+          volumeUnitPref === 'oz' ? 0 : 1
+        )} ${waterUnitLabel}`
+      : `${latestWaterDisplay.toFixed(
+          volumeUnitPref === 'oz' ? 0 : 1
+        )} ${waterUnitLabel}`;
+
+  const waterProgressPct =
+    latestWaterMl != null && waterGoalDailyMl && waterGoalDailyMl > 0
+      ? Math.min(100, (latestWaterMl / waterGoalDailyMl) * 100)
+      : 0;
+
+  const latestWaterHelper = useMemo(() => {
+    if (!latestWaterItem) return 'No water data yet';
+
+    const sourceLabel =
+      latestWaterItem.source?.type === 'manual' ? 'Manual' : 'Apple Health';
+
+    const updatedAt = new Date(latestWaterItem.updatedAt);
+    const now = new Date();
+
+    const isToday =
+      updatedAt.getFullYear() === now.getFullYear() &&
+      updatedAt.getMonth() === now.getMonth() &&
+      updatedAt.getDate() === now.getDate();
+
+    const timeText = updatedAt.toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    if (isToday) {
+      return `${sourceLabel} • Updated ${timeText}`;
+    }
+
+    const dateText = updatedAt.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    });
+
+    return `${sourceLabel} • Updated ${dateText} • ${timeText}`;
+  }, [latestWaterItem]);
+
   const pickWeightUnitPref = (value: unknown): WeightUnitPref | null => {
     if (!value || typeof value !== 'object') return null;
     const obj = value as Record<string, unknown>;
@@ -148,7 +245,7 @@ const Dashboard = () => {
     authWeightUnitPref ?? profileData?.preferences?.weightUnitPref ?? null;
   const unitReady = unitPrefRaw === 'kg' || unitPrefRaw === 'lbs';
 
-  const unitPref = unitReady ? unitPrefRaw : 'kg';
+  const unitPref: WeightUnitPref = unitReady ? unitPrefRaw : 'kg';
   const displayUnitLabel = unitPref === 'lbs' ? 'lb' : 'kg';
 
   const nonDeleted = useMemo(
@@ -249,6 +346,12 @@ const Dashboard = () => {
         range: '30D'
       })
     );
+    dispatch(
+      fetchDailyMetricsRequested({
+        metricType: 'water',
+        range: '30D'
+      })
+    );
   };
 
   return (
@@ -261,83 +364,92 @@ const Dashboard = () => {
             unitPref={unitPref}
           />
 
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2}
-            alignItems='stretch'
-            sx={{ width: '100%' }}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                md: 'repeat(3, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))'
+              },
+              gap: 2,
+              width: '100%',
+              alignItems: 'stretch'
+            }}
           >
-            <Box sx={{ flex: 1, display: 'flex' }}>
+            <StatCard
+              title='Current Weight'
+              value={unitReady ? `${currentWeight} ${displayUnitLabel}` : '—'}
+              helper={`Last check-in: ${lastCheckInLabel}`}
+              icon={<TrendingDownIcon fontSize='small' />}
+              tone='primary'
+            />
+
+            <StatCard
+              title='Goal Weight'
+              value={
+                hasGoal && unitReady ? `${goalWeight} ${displayUnitLabel}` : '—'
+              }
+              helper={
+                <>
+                  {hasGoal ? 'Goal set in ' : 'Set a goal weight in '}
+                  <Typography
+                    component={RouterLink}
+                    to='/app/nutrition-profile'
+                    sx={{
+                      display: 'inline',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      color: 'primary.main',
+                      '&:hover': { textDecoration: 'underline' }
+                    }}
+                  >
+                    profile
+                  </Typography>
+                </>
+              }
+              icon={<FlagIcon fontSize='small' />}
+              tone='goal'
+            />
+
+            <StatCard
+              title='Avg Weekly Change'
+              value={
+                !unitReady || serverAvgChange == null
+                  ? '—'
+                  : `${serverAvgChange > 0 ? '+' : ''}${serverAvgChange.toFixed(
+                      1
+                    )} ${displayUnitLabel}/week`
+              }
+              helper={avgHelper}
+              chipLabel={avgChip}
+              icon={<TimelineIcon fontSize='small' />}
+              tone={avgTone}
+            />
+
+            {(latestStepsItem || stepGoalDaily) && (
               <StatCard
-                title='Current Weight'
-                value={unitReady ? `${currentWeight} ${displayUnitLabel}` : '—'}
-                helper={`Last check-in: ${lastCheckInLabel}`}
-                icon={<TrendingDownIcon fontSize='small' />}
+                title='Steps Today'
+                value={stepsCardValue}
+                helper={latestStepsHelper}
+                icon={<DirectionsWalkIcon fontSize='small' />}
                 tone='primary'
+                progress={stepGoalDaily ? stepProgressPct : null}
               />
-            </Box>
+            )}
 
-            <Box sx={{ flex: 1, display: 'flex' }}>
+            {latestWaterItem && (
               <StatCard
-                title='Goal Weight'
-                value={
-                  hasGoal && unitReady
-                    ? `${goalWeight} ${displayUnitLabel}`
-                    : '—'
-                }
-                helper={
-                  <>
-                    {hasGoal ? 'Goal set in ' : 'Set a goal weight in '}
-                    <Typography
-                      component={RouterLink}
-                      to='/app/nutrition-profile'
-                      sx={{
-                        display: 'inline',
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        color: 'primary.main',
-                        '&:hover': { textDecoration: 'underline' }
-                      }}
-                    >
-                      profile
-                    </Typography>
-                  </>
-                }
-                icon={<FlagIcon fontSize='small' />}
-                tone='goal'
+                title='Water Today'
+                value={waterCardValue}
+                helper={latestWaterHelper}
+                icon={<WaterDropIcon fontSize='small' />}
+                tone='primary'
+                progress={waterGoalDailyMl ? waterProgressPct : null}
               />
-            </Box>
-
-            <Box sx={{ flex: 1, display: 'flex' }}>
-              <StatCard
-                title='Avg Change / Week'
-                value={
-                  !unitReady || serverAvgChange == null
-                    ? '—'
-                    : `${
-                        serverAvgChange > 0 ? '+' : ''
-                      }${serverAvgChange.toFixed(1)} ${displayUnitLabel}/week`
-                }
-                helper={avgHelper}
-                chipLabel={avgChip}
-                icon={<TimelineIcon fontSize='small' />}
-                tone={avgTone}
-              />
-            </Box>
-
-            {latestStepsItem || stepGoalDaily ? (
-              <Box sx={{ flex: 1, display: 'flex' }}>
-                <StatCard
-                  title='Steps Today'
-                  value={stepsCardValue}
-                  helper={latestStepsHelper}
-                  icon={<DirectionsWalkIcon fontSize='small' />}
-                  tone='primary'
-                  progress={stepGoalDaily ? stepProgressPct : null}
-                />
-              </Box>
-            ) : null}
-          </Stack>
+            )}
+          </Box>
 
           <WeightOverTimeChartCard />
 

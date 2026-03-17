@@ -10,10 +10,12 @@ import {
 import MeasurementUnitSwitch, {
   type MeasurementUnit
 } from '../../../components/units/MeasurementUnit';
-
 import WeightUnitSwitch, {
   type WeightUnit
 } from '../../../components/units/WeightUnit';
+import VolumeUnitSwitch, {
+  type VolumeUnit
+} from '../../../components/units/VolumeUnit';
 
 import type { FormState } from '../types/formState';
 
@@ -29,6 +31,7 @@ type ProfileDetailsProps = {
     handleHeightInchesChange: (value: string) => void;
     handleMeasurementUnitPrefChange: (unit: MeasurementUnit) => void;
     handleWeightUnitPrefChange: (unit: WeightUnit) => void;
+    handleVolumeUnitPrefChange: (unit: VolumeUnit) => void;
   };
 };
 
@@ -40,7 +43,8 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
     handleHeightFeetChange,
     handleHeightInchesChange,
     handleMeasurementUnitPrefChange,
-    handleWeightUnitPrefChange
+    handleWeightUnitPrefChange,
+    handleVolumeUnitPrefChange
   } = actions;
 
   const handleChange =
@@ -51,13 +55,14 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
 
   return (
     <Box>
-      {/* Unit Switches */}
       <Stack
         flexGrow={1}
         direction='row'
         gap={3}
         pr={2}
         justifyContent='flex-end'
+        flexWrap='wrap'
+        sx={{ mb: 1.5 }}
       >
         <MeasurementUnitSwitch
           value={form.measurementUnitPref}
@@ -68,9 +73,13 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
           value={form.weightUnitPref}
           onChange={handleWeightUnitPrefChange}
         />
+
+        <VolumeUnitSwitch
+          value={form.volumeUnitPref}
+          onChange={handleVolumeUnitPrefChange}
+        />
       </Stack>
 
-      {/* Profile Section */}
       <Paper
         elevation={1}
         sx={{
@@ -89,6 +98,7 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
               value={form.firstName}
               onChange={handleChange('firstName')}
             />
+
             <TextField
               fullWidth
               label='Last Name'
@@ -144,6 +154,7 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
                   onChange={(e) => handleHeightFeetChange(e.target.value)}
                   inputProps={{ min: 0 }}
                 />
+
                 <TextField
                   type='number'
                   fullWidth
@@ -174,7 +185,6 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
         </Stack>
       </Paper>
 
-      {/* Goal Section */}
       <Paper
         elevation={1}
         sx={{
@@ -243,6 +253,7 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
               <MenuItem value='extreme'>Extreme</MenuItem>
             </TextField>
           </Stack>
+
           <Stack direction='row' gap={2}>
             <TextField
               type='number'
@@ -254,6 +265,25 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position='end'>steps</InputAdornment>
+                )
+              }}
+            />
+
+            <TextField
+              type='number'
+              fullWidth
+              label='Daily Water Goal'
+              value={form.waterGoalDailyDisplay}
+              onChange={handleChange('waterGoalDailyDisplay')}
+              inputProps={{
+                min: 0,
+                step: form.volumeUnitPref === 'oz' ? 1 : 0.1
+              }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position='end'>
+                    {form.volumeUnitPref === 'oz' ? 'oz' : 'L'}
+                  </InputAdornment>
                 )
               }}
             />

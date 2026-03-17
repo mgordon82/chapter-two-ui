@@ -10,7 +10,9 @@ import {
   fetchDailyMetricsRequested,
   fetchDailyMetricsSucceeded,
   fetchDailyMetricsFailed,
-  type HealthMetricDailyItem
+  type HealthMetricDailyItem,
+  type HealthMetricType,
+  type HealthMetricRange
 } from './healthMetricsSlice';
 
 const readErrorMessage = async (response: Response) => {
@@ -64,8 +66,8 @@ const fetchDailyMetricsEpic: Epic<AnyAction, AnyAction, RootState> = (
 
           const data = (await response.json()) as {
             ok: true;
-            metricType: 'steps';
-            range: '7D' | '30D' | '90D' | '180D' | '365D';
+            metricType: HealthMetricType;
+            range: HealthMetricRange;
             items: HealthMetricDailyItem[];
           };
 
@@ -82,7 +84,12 @@ const fetchDailyMetricsEpic: Epic<AnyAction, AnyAction, RootState> = (
               ? 'Please sign in again.'
               : err?.message ?? 'Failed to fetch health metrics';
 
-          return of(fetchDailyMetricsFailed(msg));
+          return of(
+            fetchDailyMetricsFailed({
+              metricType,
+              message: msg
+            })
+          );
         })
       );
     })

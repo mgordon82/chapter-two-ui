@@ -8,8 +8,15 @@ import {
   feetInchesToCm,
   cmToFeetInchesRounded
 } from '../../../utils/conversions/measurement';
+import {
+  mlToOz,
+  ozToMl,
+  mlToLiters,
+  litersToMl
+} from '../../../utils/conversions/volume';
 import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
 import type { WeightUnit } from '../../../components/units/WeightUnit';
+import type { VolumeUnit } from '../../../components/units/VolumeUnit';
 
 export const useClientProfileForm = () => {
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -31,10 +38,12 @@ export const useClientProfileForm = () => {
     setForm((prev) => {
       const next: FormState = { ...prev, weight: value };
       const n = toNumberOrNaN(value);
+
       if (Number.isNaN(n)) {
         next.weightKg = '';
         return next;
       }
+
       const kg = prev.weightUnitPref === 'lbs' ? lbsToKg(n) : n;
       next.weightKg = String(round(kg, 2));
       return next;
@@ -45,10 +54,12 @@ export const useClientProfileForm = () => {
     setForm((prev) => {
       const next: FormState = { ...prev, goalWeight: value };
       const n = toNumberOrNaN(value);
+
       if (Number.isNaN(n)) {
         next.goalWeightKg = '';
         return next;
       }
+
       const kg = prev.weightUnitPref === 'lbs' ? lbsToKg(n) : n;
       next.goalWeightKg = String(round(kg, 2));
       return next;
@@ -144,6 +155,31 @@ export const useClientProfileForm = () => {
     });
   };
 
+  const handleVolumeUnitPrefChange = (unit: VolumeUnit) => {
+    setForm((prev) => {
+      if (unit === prev.volumeUnitPref) return prev;
+
+      const next: FormState = { ...prev, volumeUnitPref: unit };
+
+      const displayValue = toNumberOrNaN(prev.waterGoalDailyDisplay);
+      if (Number.isNaN(displayValue) || displayValue <= 0) {
+        return next;
+      }
+
+      const currentMl =
+        prev.volumeUnitPref === 'oz'
+          ? ozToMl(displayValue)
+          : litersToMl(displayValue);
+
+      next.waterGoalDailyDisplay =
+        unit === 'oz'
+          ? String(round(mlToOz(currentMl), 1))
+          : String(round(mlToLiters(currentMl), 1));
+
+      return next;
+    });
+  };
+
   return {
     form,
     setField,
@@ -155,6 +191,7 @@ export const useClientProfileForm = () => {
     handleHeightFeetChange,
     handleHeightInchesChange,
     handleMeasurementUnitPrefChange,
-    handleWeightUnitPrefChange
+    handleWeightUnitPrefChange,
+    handleVolumeUnitPrefChange
   };
 };

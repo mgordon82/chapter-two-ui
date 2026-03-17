@@ -29,6 +29,12 @@ import { createCheckInRequested } from '../checkIns/redux/checkInsSlice';
 import type { FormState } from './types/formState';
 import StarterPhotosSection from '../photos/components/StarterPhotosSection';
 import ChangePasswordSection from '../account/components/ChangePasswordSection';
+import {
+  litersToMl,
+  mlToLiters,
+  mlToOz,
+  ozToMl
+} from '../../utils/conversions/volume';
 
 const KG_TO_LBS = 2.2046226218;
 const CM_PER_INCH = 2.54;
@@ -38,7 +44,7 @@ const buildHydratedForm = (
   unitPrefs: ReturnType<typeof selectUserUnitPrefs>
 ): FormState => {
   const p = loadedProfile.profile;
-  const { measurementUnitPref, weightUnitPref } = unitPrefs;
+  const { measurementUnitPref, weightUnitPref, volumeUnitPref } = unitPrefs;
 
   let weight = '';
   let goalWeight = '';
@@ -84,8 +90,15 @@ const buildHydratedForm = (
     goalWeight,
     goalWeightKg: p.goalWeightKg != null ? String(p.goalWeightKg) : '',
     stepGoalDaily: p.stepGoalDaily != null ? String(p.stepGoalDaily) : '',
+    waterGoalDailyDisplay:
+      p.waterGoalDailyMl != null
+        ? volumeUnitPref === 'oz'
+          ? String(mlToOz(p.waterGoalDailyMl).toFixed(0))
+          : String(mlToLiters(p.waterGoalDailyMl).toFixed(1))
+        : '',
     measurementUnitPref,
-    weightUnitPref
+    weightUnitPref,
+    volumeUnitPref
   };
 };
 
@@ -112,7 +125,8 @@ const ClientNutritionCalculator = () => {
     handleHeightFeetChange,
     handleHeightInchesChange,
     handleMeasurementUnitPrefChange,
-    handleWeightUnitPrefChange
+    handleWeightUnitPrefChange,
+    handleVolumeUnitPrefChange
   } = useClientProfileForm();
 
   useEffect(() => {
@@ -143,6 +157,13 @@ const ClientNutritionCalculator = () => {
       weightKg: form.weightKg ? Number(form.weightKg) : null,
       goalWeightKg: form.goalWeightKg ? Number(form.goalWeightKg) : null,
       stepGoalDaily: form.stepGoalDaily ? Number(form.stepGoalDaily) : null,
+      waterGoalDailyMl: form.waterGoalDailyDisplay
+        ? Math.round(
+            form.volumeUnitPref === 'oz'
+              ? ozToMl(Number(form.waterGoalDailyDisplay))
+              : litersToMl(Number(form.waterGoalDailyDisplay))
+          )
+        : null,
       age: form.age ? Number(form.age) : null
     };
   }, [form]);
@@ -247,7 +268,8 @@ const ClientNutritionCalculator = () => {
       macros,
       preferences: {
         measurementUnitPref: form.measurementUnitPref,
-        weightUnitPref: form.weightUnitPref
+        weightUnitPref: form.weightUnitPref,
+        volumeUnitPref: form.volumeUnitPref
       }
     };
 
@@ -267,12 +289,14 @@ const ClientNutritionCalculator = () => {
         weightKg: inputs.weightKg,
         goalWeightKg: inputs.goalWeightKg,
         stepGoalDaily: inputs.stepGoalDaily,
+        waterGoalDailyMl: inputs.waterGoalDailyMl,
         activityLevel: inputs.activityLevel,
         goal: inputs.goal,
         rateLevel: inputs.rateLevel,
         preferences: {
           measurementUnitPref: form.measurementUnitPref,
-          weightUnitPref: form.weightUnitPref
+          weightUnitPref: form.weightUnitPref,
+          volumeUnitPref: form.volumeUnitPref
         }
       },
       calculated: {
@@ -328,7 +352,8 @@ const ClientNutritionCalculator = () => {
               handleHeightFeetChange,
               handleHeightInchesChange,
               handleMeasurementUnitPrefChange,
-              handleWeightUnitPrefChange
+              handleWeightUnitPrefChange,
+              handleVolumeUnitPrefChange
             }}
           />
 

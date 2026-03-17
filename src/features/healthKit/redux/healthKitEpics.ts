@@ -77,6 +77,7 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
               lastSync?: {
                 weightRecordedAt?: string | null;
                 stepsDate?: string | null;
+                waterDate?: string | null;
               } | null;
             } | null;
           };
@@ -208,11 +209,76 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
             }
           }
 
+          const lastWaterDate =
+            integrationData?.integration?.lastSync?.waterDate ?? null;
+
+          let nextWaterStartDate: string;
+
+          if (lastWaterDate) {
+            nextWaterStartDate = new Date(
+              `${lastWaterDate}T00:00:00`
+            ).toISOString();
+          } else {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            nextWaterStartDate = thirtyDaysAgo.toISOString();
+          }
+
+          const dailyWaterTotals = await HealthKit.getDailyWaterTotals({
+            startDate: nextWaterStartDate,
+            limit: 30
+          });
+
+          summary.water.total = dailyWaterTotals.items.length;
+
+          for (const item of dailyWaterTotals.items) {
+            const response = await fetch(
+              `${API_URL}/api/health-metrics/current-user/import/apple-health/water`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  date: item.date,
+                  metricType: 'water',
+                  value: item.milliliters,
+                  source: {
+                    type: 'apple_health',
+                    integration: item.source.integration,
+                    appSourceName: null,
+                    deviceSourceName: null
+                  }
+                })
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(await readErrorMessage(response));
+            }
+
+            const data = (await response.json()) as {
+              ok: true;
+              status?: 'created' | 'updated';
+            };
+
+            if (data?.status === 'created') {
+              summary.water.createdCount += 1;
+            } else if (data?.status === 'updated') {
+              summary.water.updatedCount += 1;
+            }
+          }
+
           return [
             healthKitSyncSucceeded(summary),
             fetchCheckInsRequested({ range: '3M' }),
             fetchDailyMetricsRequested({
               metricType: 'steps',
+              range: '30D'
+            }),
+            fetchDailyMetricsRequested({
+              metricType: 'water',
               range: '30D'
             })
           ];

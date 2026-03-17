@@ -11,6 +11,7 @@ export type HealthKitMetricSyncSummary = {
 export type HealthKitSyncSummary = {
   weight: HealthKitMetricSyncSummary;
   steps: HealthKitMetricSyncSummary;
+  water: HealthKitMetricSyncSummary;
 };
 
 type HealthKitState = {
@@ -65,7 +66,8 @@ const healthKitSlice = createSlice({
 
 export const buildEmptyHealthKitSyncSummary = (): HealthKitSyncSummary => ({
   weight: emptyMetricSummary(),
-  steps: emptyMetricSummary()
+  steps: emptyMetricSummary(),
+  water: emptyMetricSummary()
 });
 
 export const {

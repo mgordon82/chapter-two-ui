@@ -95,7 +95,7 @@ const StatCard = ({
   const normalizedProgress =
     progress == null ? null : Math.max(0, Math.min(100, progress));
 
-  const ringSize = 44;
+  const ringSize = 40;
   const strokeWidth = 4;
   const radius = (ringSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -113,20 +113,29 @@ const StatCard = ({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        width: '100%'
+        width: '100%',
+        minWidth: 0
       }}
     >
-      <CardContent sx={{ p: 2.25, flex: 1, display: 'flex', width: '100%' }}>
+      <CardContent
+        sx={{
+          p: 1.75,
+          '&:last-child': { pb: 1.75 },
+          flex: 1,
+          display: 'flex',
+          width: '100%'
+        }}
+      >
         <Stack
           direction='row'
-          spacing={1.5}
+          spacing={1.25}
           alignItems='flex-start'
-          sx={{ width: '100%' }}
+          sx={{ width: '100%', minWidth: 0 }}
         >
           <Box
             sx={{
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               position: 'relative',
               display: 'grid',
               placeItems: 'center',
@@ -172,8 +181,8 @@ const StatCard = ({
 
                 <Box
                   sx={{
-                    width: 34,
-                    height: 34,
+                    width: 30,
+                    height: 30,
                     borderRadius: 2,
                     display: 'grid',
                     placeItems: 'center',
@@ -190,7 +199,10 @@ const StatCard = ({
                         : tone === 'primary'
                         ? 'primary.main'
                         : 'text.primary',
-                    ...iconToneStyles
+                    ...iconToneStyles,
+                    '& .MuiSvgIcon-root': {
+                      fontSize: 18
+                    }
                   }}
                 >
                   {icon}
@@ -199,8 +211,8 @@ const StatCard = ({
             ) : (
               <Box
                 sx={{
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   borderRadius: 2,
                   display: 'grid',
                   placeItems: 'center',
@@ -217,7 +229,10 @@ const StatCard = ({
                       : tone === 'primary'
                       ? 'primary.main'
                       : 'text.primary',
-                  ...iconToneStyles
+                  ...iconToneStyles,
+                  '& .MuiSvgIcon-root': {
+                    fontSize: 18
+                  }
                 }}
               >
                 {icon}
@@ -228,11 +243,19 @@ const StatCard = ({
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack
               direction='row'
-              alignItems='center'
+              alignItems='flex-start'
               justifyContent='space-between'
               gap={1}
+              sx={{ minWidth: 0 }}
             >
-              <Typography variant='overline' sx={{ letterSpacing: 0.8 }}>
+              <Typography
+                variant='overline'
+                sx={{
+                  letterSpacing: 0.7,
+                  lineHeight: 1.1,
+                  minWidth: 0
+                }}
+              >
                 {title}
               </Typography>
 
@@ -241,15 +264,28 @@ const StatCard = ({
                   size='small'
                   label={chipLabel}
                   sx={{
-                    height: 22,
-                    fontSize: 12,
-                    backgroundColor: 'rgba(255,255,255,0.55)'
+                    height: 20,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    backgroundColor: 'rgba(255,255,255,0.55)',
+                    flexShrink: 0,
+                    '& .MuiChip-label': {
+                      px: 0.75
+                    }
                   }}
                 />
               ) : null}
             </Stack>
 
-            <Typography variant='h4' sx={{ mt: 0.25, fontWeight: 700 }}>
+            <Typography
+              sx={{
+                mt: 0.35,
+                fontSize: { xs: '1.5rem', sm: '1.6rem' },
+                lineHeight: 1.1,
+                fontWeight: 700,
+                wordBreak: 'break-word'
+              }}
+            >
               {value}
             </Typography>
 
@@ -257,7 +293,11 @@ const StatCard = ({
               <Typography
                 variant='body2'
                 color='text.secondary'
-                sx={{ mt: 0.5 }}
+                sx={{
+                  mt: 0.4,
+                  fontSize: '0.82rem',
+                  lineHeight: 1.35
+                }}
               >
                 {helper}
               </Typography>

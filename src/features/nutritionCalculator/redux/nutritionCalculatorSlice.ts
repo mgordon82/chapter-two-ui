@@ -13,6 +13,7 @@ import type { UserProfileResponse } from '../helpers/fetchUserProfile';
 
 import type { MeasurementUnit } from '../../../components/units/MeasurementUnit';
 import type { WeightUnit } from '../../../components/units/WeightUnit';
+import type { VolumeUnit } from '../../../components/units/VolumeUnit';
 
 export type UserProfileUpsertPayload = {
   profile: {
@@ -24,12 +25,14 @@ export type UserProfileUpsertPayload = {
     weightKg: number | null;
     goalWeightKg: number | null;
     stepGoalDaily: number | null;
+    waterGoalDailyMl: number | null;
     activityLevel: string | null;
     goal: string | null;
     rateLevel: string | null;
     preferences: {
       measurementUnitPref: MeasurementUnit;
       weightUnitPref: WeightUnit;
+      volumeUnitPref: VolumeUnit;
     };
   };
   calculated: {
@@ -50,6 +53,7 @@ export type UserProfileUpsertPayload = {
 export type PersistUserPreferencesPayload = {
   measurementUnitPref: MeasurementUnit;
   weightUnitPref: WeightUnit;
+  volumeUnitPref: VolumeUnit;
 };
 
 export type NutritionCalculatorSavePayload = {
@@ -63,6 +67,7 @@ export type NutritionCalculatorSavePayload = {
   preferences: {
     measurementUnitPref: MeasurementUnit;
     weightUnitPref: WeightUnit;
+    volumeUnitPref: VolumeUnit;
   };
 };
 
@@ -111,7 +116,8 @@ const normalizeUserProfile = (
       preferences: {
         measurementUnitPref: (prefs?.measurementUnitPref ??
           'cm') as MeasurementUnit,
-        weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit
+        weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit,
+        volumeUnitPref: (prefs?.volumeUnitPref ?? 'ml') as VolumeUnit
       }
     }
   };
@@ -155,7 +161,8 @@ const nutritionCalculatorSlice = createSlice({
           ...state.loadedProfile.profile,
           preferences: {
             measurementUnitPref: action.payload.measurementUnitPref,
-            weightUnitPref: action.payload.weightUnitPref
+            weightUnitPref: action.payload.weightUnitPref,
+            volumeUnitPref: action.payload.volumeUnitPref
           }
         }
       };
@@ -258,7 +265,8 @@ export const selectUserUnitPrefs = createSelector(
   (prefs) => ({
     measurementUnitPref: (prefs?.measurementUnitPref ??
       'cm') as MeasurementUnit,
-    weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit
+    weightUnitPref: (prefs?.weightUnitPref ?? 'kg') as WeightUnit,
+    volumeUnitPref: (prefs?.volumeUnitPref ?? 'ml') as VolumeUnit
   })
 );
 

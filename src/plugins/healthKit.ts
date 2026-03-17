@@ -42,6 +42,18 @@ export type DailyStepTotalsResult = {
   items: DailyStepTotal[];
 };
 
+export type DailyWaterTotal = {
+  date: string;
+  milliliters: number;
+  source: {
+    integration: 'apple_health';
+  };
+};
+
+export type DailyWaterTotalsResult = {
+  items: DailyWaterTotal[];
+};
+
 type HealthKitPlugin = {
   requestHealthPermissions: () => Promise<HealthPermissionResult>;
   getLatestWeight: () => Promise<LatestWeightResult>;
@@ -53,6 +65,10 @@ type HealthKitPlugin = {
     startDate?: string;
     limit?: number;
   }) => Promise<DailyStepTotalsResult>;
+  getDailyWaterTotals: (options?: {
+    startDate?: string;
+    limit?: number;
+  }) => Promise<DailyWaterTotalsResult>;
 };
 
 export const HealthKit = registerPlugin<HealthKitPlugin>('HealthKit');

@@ -21,6 +21,7 @@ const HealthKitPanel = () => {
   } else if (lastSummary) {
     const weightParts: string[] = [];
     const stepsParts: string[] = [];
+    const waterParts: string[] = [];
 
     if (lastSummary.weight.createdCount > 0) {
       weightParts.push(`${lastSummary.weight.createdCount} new`);
@@ -45,6 +46,16 @@ const HealthKitPanel = () => {
       stepsParts.push(`${lastSummary.steps.total} checked`);
     }
 
+    if (lastSummary.water.createdCount > 0) {
+      waterParts.push(`${lastSummary.water.createdCount} new`);
+    }
+    if (lastSummary.water.updatedCount > 0) {
+      waterParts.push(`${lastSummary.water.updatedCount} updated`);
+    }
+    if (waterParts.length === 0 && lastSummary.water.total > 0) {
+      waterParts.push(`${lastSummary.water.total} checked`);
+    }
+
     const summaryParts: string[] = [];
 
     if (lastSummary.weight.total > 0) {
@@ -53,6 +64,10 @@ const HealthKitPanel = () => {
 
     if (lastSummary.steps.total > 0) {
       summaryParts.push(`Steps: ${stepsParts.join(', ')}`);
+    }
+
+    if (lastSummary.water.total > 0) {
+      summaryParts.push(`Water: ${waterParts.join(', ')}`);
     }
 
     tooltipTitle =

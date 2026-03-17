@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export type HealthMetricType = 'steps';
+export type HealthMetricType = 'steps' | 'water';
 export type HealthMetricRange = '7D' | '30D' | '90D' | '180D' | '365D';
 
 export type HealthMetricDailyItem = {
@@ -33,23 +32,28 @@ type FetchDailyMetricsSucceededPayload = {
   items: HealthMetricDailyItem[];
 };
 
-type HealthMetricsState = {
-  daily: {
-    items: HealthMetricDailyItem[];
-    loading: boolean;
-    error: string | null;
-    loadedMetricType: HealthMetricType | null;
-    loadedRange: HealthMetricRange | null;
-  };
+type HealthMetricDailyBucket = {
+  items: HealthMetricDailyItem[];
+  loading: boolean;
+  error: string | null;
+  loadedRange: HealthMetricRange | null;
 };
+
+type HealthMetricsState = {
+  daily: Record<HealthMetricType, HealthMetricDailyBucket>;
+};
+
+const createDailyBucket = (): HealthMetricDailyBucket => ({
+  items: [],
+  loading: false,
+  error: null,
+  loadedRange: null
+});
 
 const initialState: HealthMetricsState = {
   daily: {
-    items: [],
-    loading: false,
-    error: null,
-    loadedMetricType: null,
-    loadedRange: null
+    steps: createDailyBucket(),
+    water: createDailyBucket()
   }
 };
 
@@ -59,26 +63,31 @@ const healthMetricsSlice = createSlice({
   reducers: {
     fetchDailyMetricsRequested(
       state,
-      _action: PayloadAction<FetchDailyMetricsRequestedPayload>
+      action: PayloadAction<FetchDailyMetricsRequestedPayload>
     ) {
-      state.daily.loading = true;
-      state.daily.error = null;
+      const { metricType } = action.payload;
+      state.daily[metricType].loading = true;
+      state.daily[metricType].error = null;
     },
     fetchDailyMetricsSucceeded(
       state,
       action: PayloadAction<FetchDailyMetricsSucceededPayload>
     ) {
-      state.daily.loading = false;
-      state.daily.items = action.payload.items;
-      state.daily.loadedMetricType = action.payload.metricType;
-      state.daily.loadedRange = action.payload.range;
+      const { metricType, range, items } = action.payload;
+      state.daily[metricType].loading = false;
+      state.daily[metricType].items = items;
+      state.daily[metricType].loadedRange = range;
     },
-    fetchDailyMetricsFailed(state, action: PayloadAction<string>) {
-      state.daily.loading = false;
-      state.daily.error = action.payload;
+    fetchDailyMetricsFailed(
+      state,
+      action: PayloadAction<{ metricType: HealthMetricType; message: string }>
+    ) {
+      const { metricType, message } = action.payload;
+      state.daily[metricType].loading = false;
+      state.daily[metricType].error = message;
     },
-    clearDailyMetricsError(state) {
-      state.daily.error = null;
+    clearDailyMetricsError(state, action: PayloadAction<HealthMetricType>) {
+      state.daily[action.payload].error = null;
     }
   }
 });
