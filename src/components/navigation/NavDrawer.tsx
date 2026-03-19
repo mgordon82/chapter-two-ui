@@ -117,7 +117,7 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
         <Stack direction='row' alignItems='center'>
           <Button
             onClick={() => {
-              navigate('/app/nutrition-profile');
+              navigate('/app/my-profile');
               closeMobileDrawer();
             }}
           >
@@ -130,7 +130,7 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
             <Button
               variant='text'
               onClick={() => {
-                navigate('/app/nutrition-profile');
+                navigate('/app/my-profile');
                 closeMobileDrawer();
               }}
             >

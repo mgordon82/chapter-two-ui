@@ -183,7 +183,7 @@ export const getNavSectionsForRoles = (roles: AppRole[]): NavSection[] => {
 export const bottomNavItems: NavItem[] = [
   {
     label: 'Profile',
-    path: '/app/nutrition-profile',
+    path: '/app/my-profile',
     icon: <PersonOutlineIcon />
   }
 ];
