@@ -12,7 +12,7 @@ import Login from '../pages/public/Login';
 
 import Dashboard from '../pages/app/Dashboard';
 import MealGenerator from '../pages/app/MealGenerator';
-import ClientNutritionCalculator from '../pages/app/ClientNutritionCalculator';
+import MyProfile from '../pages/app/MyProfile';
 import InviteUser from '../features/users/InviteUser';
 
 import { useAppSelector } from '../app/hooks';
@@ -78,10 +78,7 @@ const AppRoutes: React.FC = () => {
         <Route element={<RequireAuth />}>
           <Route path='/app' element={<PrivateLayout />}>
             <Route index element={<Dashboard />} />
-            <Route
-              path='nutrition-profile'
-              element={<ClientNutritionCalculator />}
-            />
+            <Route path='my-profile' element={<MyProfile />} />
             <Route path='meal-generator' element={<MealGenerator />} />
 
             <Route path='users'>

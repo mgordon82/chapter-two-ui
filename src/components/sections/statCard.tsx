@@ -1,4 +1,55 @@
+import * as React from 'react';
 import { Box, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { keyframes } from '@mui/material/styles';
+
+type StatCardProps = {
+  title: string;
+  value: string;
+  helper?: React.ReactNode;
+  icon?: React.ReactNode;
+  chipLabel?: string;
+  tone?: 'good' | 'bad' | 'neutral' | 'goal' | 'warn' | 'primary';
+  progress?: number | null;
+};
+
+const completeSweep = keyframes`
+  0% {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+`;
+
+const completeGlow = keyframes`
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(46,125,50,0.45),
+      0 0 8px 2px rgba(46,125,50,0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 14px rgba(46,125,50,0.12),
+      0 0 18px 6px rgba(46,125,50,0.28);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(46,125,50,0),
+      0 0 8px 2px rgba(46,125,50,0.25);
+  }
+`;
+
+const completePop = keyframes`
+  0% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+`;
 
 const StatCard = ({
   title,
@@ -8,45 +59,43 @@ const StatCard = ({
   chipLabel,
   tone = 'neutral',
   progress
-}: {
-  title: string;
-  value: string;
-  helper?: React.ReactNode;
-  icon?: React.ReactNode;
-  chipLabel?: string;
-  tone?: 'good' | 'bad' | 'neutral' | 'goal' | 'warn' | 'primary';
-  progress?: number | null;
-}) => {
+}: StatCardProps) => {
+  const normalizedProgress =
+    progress == null ? null : Math.max(0, Math.min(100, progress));
+
+  const isComplete = progress != null && progress >= 100;
+  const displayTone = isComplete ? 'good' : tone;
+
   const toneStyles =
-    tone === 'good'
+    displayTone === 'good'
       ? {
           border: '1px solid',
           borderColor: 'success.light',
           background:
             'linear-gradient(135deg, rgba(46,125,50,0.14), rgba(46,125,50,0.03))'
         }
-      : tone === 'bad'
+      : displayTone === 'bad'
       ? {
           border: '1px solid',
           borderColor: 'error.light',
           background:
             'linear-gradient(135deg, rgba(211,47,47,0.14), rgba(211,47,47,0.03))'
         }
-      : tone === 'warn'
+      : displayTone === 'warn'
       ? {
           border: '1px solid',
           borderColor: 'warning.light',
           background:
             'linear-gradient(135deg, rgba(255,193,7,0.14), rgba(255,193,7,0.03))'
         }
-      : tone === 'goal'
+      : displayTone === 'goal'
       ? {
           border: '1px solid',
           borderColor: 'info.light',
           background:
             'linear-gradient(135deg, rgba(2,136,209,0.14), rgba(2,136,209,0.03))'
         }
-      : tone === 'primary'
+      : displayTone === 'primary'
       ? {
           border: '1px solid',
           borderColor: 'primary.light',
@@ -61,27 +110,27 @@ const StatCard = ({
         };
 
   const iconToneStyles =
-    tone === 'good'
+    displayTone === 'good'
       ? {
-          backgroundColor: 'rgba(46,125,50,0.14)',
+          backgroundColor: 'rgba(46,125,50,0.18)',
           borderColor: 'success.light'
         }
-      : tone === 'bad'
+      : displayTone === 'bad'
       ? {
           backgroundColor: 'rgba(211,47,47,0.14)',
           borderColor: 'error.light'
         }
-      : tone === 'warn'
+      : displayTone === 'warn'
       ? {
           backgroundColor: 'rgba(255,193,7,0.16)',
           borderColor: 'warning.light'
         }
-      : tone === 'goal'
+      : displayTone === 'goal'
       ? {
           backgroundColor: 'rgba(2,136,209,0.14)',
           borderColor: 'info.light'
         }
-      : tone === 'primary'
+      : displayTone === 'primary'
       ? {
           borderColor: 'primary.light',
           background:
@@ -92,9 +141,6 @@ const StatCard = ({
           borderColor: 'divider'
         };
 
-  const normalizedProgress =
-    progress == null ? null : Math.max(0, Math.min(100, progress));
-
   const ringSize = 40;
   const strokeWidth = 4;
   const radius = (ringSize - strokeWidth) / 2;
@@ -103,6 +149,32 @@ const StatCard = ({
     normalizedProgress == null
       ? circumference
       : circumference - (normalizedProgress / 100) * circumference;
+
+  const progressStrokeColor =
+    displayTone === 'good'
+      ? '#2e7d32'
+      : displayTone === 'bad'
+      ? '#d32f2f'
+      : displayTone === 'warn'
+      ? '#ed6c02'
+      : displayTone === 'goal'
+      ? '#0288d1'
+      : displayTone === 'primary'
+      ? '#6366f1'
+      : '#6366f1';
+
+  const iconColor =
+    displayTone === 'good'
+      ? 'success.main'
+      : displayTone === 'bad'
+      ? 'error.main'
+      : displayTone === 'warn'
+      ? 'warning.main'
+      : displayTone === 'goal'
+      ? 'info.main'
+      : displayTone === 'primary'
+      ? 'primary.main'
+      : 'text.primary';
 
   return (
     <Card
@@ -144,6 +216,21 @@ const StatCard = ({
           >
             {normalizedProgress != null ? (
               <>
+                {isComplete ? (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: -6,
+                      borderRadius: '50%',
+                      background:
+                        'radial-gradient(circle, rgba(46,125,50,0.25) 0%, transparent 70%)',
+                      filter: 'blur(4px)',
+                      zIndex: 0,
+                      pointerEvents: 'none'
+                    }}
+                  />
+                ) : null}
+
                 <Box
                   component='svg'
                   viewBox={`0 0 ${ringSize} ${ringSize}`}
@@ -152,7 +239,9 @@ const StatCard = ({
                     height: ringSize,
                     position: 'absolute',
                     inset: 0,
-                    transform: 'rotate(-90deg)'
+                    transform: 'rotate(-90deg)',
+                    zIndex: 1,
+                    '--ring-circumference': `${circumference}`
                   }}
                 >
                   <circle
@@ -168,13 +257,18 @@ const StatCard = ({
                     cy={ringSize / 2}
                     r={radius}
                     fill='none'
-                    stroke='currentColor'
+                    stroke={progressStrokeColor}
                     strokeWidth={strokeWidth}
                     strokeLinecap='round'
                     strokeDasharray={circumference}
                     strokeDashoffset={dashOffset}
                     style={{
-                      transition: 'stroke-dashoffset 650ms ease'
+                      transition: isComplete
+                        ? 'none'
+                        : 'stroke 250ms ease, stroke-dashoffset 650ms ease',
+                      animation: isComplete
+                        ? `${completeSweep} 600ms ease-out`
+                        : undefined
                     }}
                   />
                 </Box>
@@ -187,19 +281,24 @@ const StatCard = ({
                     display: 'grid',
                     placeItems: 'center',
                     border: '1px solid',
-                    color:
-                      tone === 'good'
-                        ? 'success.main'
-                        : tone === 'bad'
-                        ? 'error.main'
-                        : tone === 'warn'
-                        ? 'warning.main'
-                        : tone === 'goal'
-                        ? 'info.main'
-                        : tone === 'primary'
-                        ? 'primary.main'
-                        : 'text.primary',
+                    color: iconColor,
+                    zIndex: 2,
                     ...iconToneStyles,
+                    ...(isComplete
+                      ? {
+                          backgroundColor: 'success.main',
+                          color: 'common.white',
+                          borderColor: 'success.light',
+                          boxShadow: `
+                            0 0 10px rgba(46,125,50,0.6),
+                            0 0 20px rgba(46,125,50,0.35)
+                          `,
+                          animation: `
+                            ${completePop} 300ms ease-out,
+                            ${completeGlow} 1.6s ease-in-out 300ms infinite
+                          `
+                        }
+                      : null),
                     '& .MuiSvgIcon-root': {
                       fontSize: 18
                     }
@@ -217,18 +316,7 @@ const StatCard = ({
                   display: 'grid',
                   placeItems: 'center',
                   border: '1px solid',
-                  color:
-                    tone === 'good'
-                      ? 'success.main'
-                      : tone === 'bad'
-                      ? 'error.main'
-                      : tone === 'warn'
-                      ? 'warning.main'
-                      : tone === 'goal'
-                      ? 'info.main'
-                      : tone === 'primary'
-                      ? 'primary.main'
-                      : 'text.primary',
+                  color: iconColor,
                   ...iconToneStyles,
                   '& .MuiSvgIcon-root': {
                     fontSize: 18

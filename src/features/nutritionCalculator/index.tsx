@@ -329,10 +329,6 @@ const ClientNutritionCalculator = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography component='h2' variant='h5' sx={{ mb: 2 }}>
-        Client Nutrition Profile
-      </Typography>
-
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         alignItems='stretch'
