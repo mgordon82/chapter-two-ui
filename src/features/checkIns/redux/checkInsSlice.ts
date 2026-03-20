@@ -1,50 +1,140 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RangeKey } from '../types';
 
-export type CheckIn = {
-  _id: string;
+export type MappedCheckIn = {
+  id: string;
   userId: string;
-  recordedAt: string;
-  metrics: {
+
+  periodType: 'day' | 'week' | 'month' | 'quarter' | 'year' | null;
+  periodKey: string | null;
+  representedDate: string | null;
+  recordedAt: string | null;
+  displayDate: string | null;
+
+  status: 'open' | 'closed' | null;
+  manualEditWindowEndsAt: string | null;
+  isEditable: boolean;
+  lifecycleState: 'open' | 'closed' | 'expired';
+
+  weightKg: number | null;
+  weightSource: 'manual' | 'apple_health' | 'legacy' | null;
+  hasWeightConflict: boolean;
+  alternateWeights?: Array<{
+    source: 'manual' | 'apple_health' | 'legacy';
     weightKg: number;
-    notes?: string;
+  }>;
+  energyLevel: number | null;
+  calories: number | null;
+  proteinGrams: number | null;
+  restingHeartRate: number | null;
+  steps: number | null;
+  totalExerciseMinutes: number | null;
+  standGoal: number | null;
+  notes: string | null;
+
+  suggestedExerciseSessionIds: string[];
+  includedExerciseSessionIds: string[];
+  excludedExerciseSessionIds: string[];
+  hasExerciseSelections: boolean;
+  includedExerciseSessionCount: number;
+  excludedExerciseSessionCount: number;
+
+  hasNutrition: boolean;
+  hasCoreDailyMetrics: boolean;
+  hasAnyContent: boolean;
+
+  photoSetId: string | null;
+  hasPhotoSet: boolean;
+  hasPhotos: boolean;
+  photos: Array<{
+    position: string | null;
+    storageKey: string | null;
+    mimeType: string | null;
+    originalFileName: string | null;
+    sizeBytes: number | null;
+    uploadedAt: string | null;
+    viewUrl?: string | null;
+  }>;
+
+  coachFeedback: {
+    coachUserId: string;
+    feedback: string;
+    createdAt: string | null;
+    updatedAt: string | null;
+    visibleToUser: boolean;
+  } | null;
+  hasCoachFeedback: boolean;
+
+  raw: unknown;
+};
+
+export type MappedExerciseSession = {
+  id: string;
+  userId: string;
+
+  performedAt: string | null;
+  localDateKey: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+
+  source: {
+    type: string | null;
+    integration: string | null;
+    externalId: string | null;
+    importedAt: string | null;
   };
-  hasPhotos?: boolean;
-  photos?: {
-    photos: Array<{
-      position: 'front' | 'side' | 'back';
-      storageKey: string;
-      mimeType: string;
-      originalFileName?: string | null;
-      sizeBytes?: number | null;
-      uploadedAt?: string;
-      viewUrl?: string;
-    }>;
+
+  sessionType: string | null;
+  name: string | null;
+  notes: string | null;
+
+  metrics: {
+    durationMinutes: number | null;
+    caloriesBurned: number | null;
+    distanceMeters: number | null;
+    stepCount: number | null;
   };
-  createdAt: string;
-  createdByUserId: string;
-  isDeleted: boolean;
-  source?: {
-    type?: 'apple_health' | 'manual';
-    integration?: 'apple_health';
-    appSourceName?: string | null;
-    deviceSourceName?: string | null;
-    externalSampleId?: string | null;
-    importedAt?: string | null;
+
+  links: {
+    plannedWorkoutId: string | null;
+    completedWorkoutId: string | null;
   };
+
+  createdAt: string | null;
+  updatedAt: string | null;
+
+  raw: unknown;
 };
 
 export type CreateCheckInInput = {
+  representedDate: string;
   recordedAt?: string;
   weightKg: number;
   notes?: string;
   progressPhotoSetId?: string;
 };
 
+export type SaveExerciseSelectionInput = {
+  id: string;
+  autoSuggestedExerciseSessionIds: string[];
+  includedExerciseSessionIds: string[];
+  excludedExerciseSessionIds: string[];
+};
+
 type CheckInsState = {
-  items: CheckIn[];
+  items: MappedCheckIn[];
   loading: boolean;
+
+  selectedDate: string | null;
+  selectedDateItem: MappedCheckIn | null;
+  selectedDateSuggestedExerciseSessions: MappedExerciseSession[];
+  loadingSelectedDate: boolean;
+  selectedDateError: string | null;
+
   creating: boolean;
+  updatingLifecycle: boolean;
+  savingExerciseSelection: boolean;
   lastCreatedCheckInId: string | null;
   error: string | null;
   loadedRange: RangeKey | null;
@@ -53,7 +143,16 @@ type CheckInsState = {
 const initialState: CheckInsState = {
   items: [],
   loading: false,
+
+  selectedDate: null,
+  selectedDateItem: null,
+  selectedDateSuggestedExerciseSessions: [],
+  loadingSelectedDate: false,
+  selectedDateError: null,
+
   creating: false,
+  updatingLifecycle: false,
+  savingExerciseSelection: false,
   lastCreatedCheckInId: null,
   error: null,
   loadedRange: null
@@ -63,17 +162,13 @@ const checkInsSlice = createSlice({
   name: 'checkIns',
   initialState,
   reducers: {
-    fetchCheckInsRequested(
-      state,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      _action: PayloadAction<{ range: RangeKey }>
-    ) {
+    fetchCheckInsRequested(state, _action: PayloadAction<{ range: RangeKey }>) {
       state.loading = true;
       state.error = null;
     },
     fetchCheckInsSucceeded(
       state,
-      action: PayloadAction<{ items: CheckIn[]; range: RangeKey }>
+      action: PayloadAction<{ items: MappedCheckIn[]; range: RangeKey }>
     ) {
       state.loading = false;
       state.items = action.payload.items;
@@ -84,7 +179,51 @@ const checkInsSlice = createSlice({
       state.error = action.payload;
     },
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    fetchCheckInByDateRequested(
+      state,
+      action: PayloadAction<{ date: string }>
+    ) {
+      state.loadingSelectedDate = true;
+      state.selectedDateError = null;
+      state.selectedDate = action.payload.date;
+    },
+    fetchCheckInByDateSucceeded(
+      state,
+      action: PayloadAction<{
+        date: string;
+        item: MappedCheckIn | null;
+        suggestedExerciseSessions: MappedExerciseSession[];
+      }>
+    ) {
+      if (state.selectedDate !== action.payload.date) {
+        return;
+      }
+
+      state.loadingSelectedDate = false;
+      state.selectedDateItem = action.payload.item;
+      state.selectedDateSuggestedExerciseSessions =
+        action.payload.suggestedExerciseSessions;
+    },
+    fetchCheckInByDateFailed(
+      state,
+      action: PayloadAction<{ date: string; message: string }>
+    ) {
+      if (state.selectedDate !== action.payload.date) {
+        return;
+      }
+
+      state.loadingSelectedDate = false;
+      state.selectedDateError = action.payload.message;
+    },
+
+    clearSelectedDateCheckIn(state) {
+      state.selectedDate = null;
+      state.selectedDateItem = null;
+      state.selectedDateSuggestedExerciseSessions = [];
+      state.loadingSelectedDate = false;
+      state.selectedDateError = null;
+    },
+
     createCheckInRequested(state, _action: PayloadAction<CreateCheckInInput>) {
       state.creating = true;
       state.lastCreatedCheckInId = null;
@@ -100,12 +239,55 @@ const checkInsSlice = createSlice({
       state.error = action.payload;
     },
 
+    closeCheckInRequested(state, _action: PayloadAction<{ id: string }>) {
+      state.updatingLifecycle = true;
+      state.error = null;
+    },
+    closeCheckInSucceeded(state) {
+      state.updatingLifecycle = false;
+    },
+    closeCheckInFailed(state, action: PayloadAction<string>) {
+      state.updatingLifecycle = false;
+      state.error = action.payload;
+    },
+
+    reopenCheckInRequested(state, _action: PayloadAction<{ id: string }>) {
+      state.updatingLifecycle = true;
+      state.error = null;
+    },
+    reopenCheckInSucceeded(state) {
+      state.updatingLifecycle = false;
+    },
+    reopenCheckInFailed(state, action: PayloadAction<string>) {
+      state.updatingLifecycle = false;
+      state.error = action.payload;
+    },
+
+    saveExerciseSelectionRequested(
+      state,
+      _action: PayloadAction<SaveExerciseSelectionInput>
+    ) {
+      state.savingExerciseSelection = true;
+      state.error = null;
+    },
+    saveExerciseSelectionSucceeded(state) {
+      state.savingExerciseSelection = false;
+    },
+    saveExerciseSelectionFailed(state, action: PayloadAction<string>) {
+      state.savingExerciseSelection = false;
+      state.error = action.payload;
+    },
+
     clearLastCreatedCheckInId(state) {
       state.lastCreatedCheckInId = null;
     },
 
     clearCheckInsError(state) {
       state.error = null;
+    },
+
+    clearSelectedDateError(state) {
+      state.selectedDateError = null;
     }
   }
 });
@@ -114,11 +296,25 @@ export const {
   fetchCheckInsRequested,
   fetchCheckInsSucceeded,
   fetchCheckInsFailed,
+  fetchCheckInByDateRequested,
+  fetchCheckInByDateSucceeded,
+  fetchCheckInByDateFailed,
+  clearSelectedDateCheckIn,
   createCheckInRequested,
   createCheckInSucceeded,
   createCheckInFailed,
+  closeCheckInRequested,
+  closeCheckInSucceeded,
+  closeCheckInFailed,
+  reopenCheckInRequested,
+  reopenCheckInSucceeded,
+  reopenCheckInFailed,
+  saveExerciseSelectionRequested,
+  saveExerciseSelectionSucceeded,
+  saveExerciseSelectionFailed,
   clearLastCreatedCheckInId,
-  clearCheckInsError
+  clearCheckInsError,
+  clearSelectedDateError
 } = checkInsSlice.actions;
 
 export default checkInsSlice.reducer;

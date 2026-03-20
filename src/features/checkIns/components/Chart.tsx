@@ -17,11 +17,11 @@ import {
   formatDateTimeLabel,
   toDisplayWeight
 } from '../helpers';
-import type { CheckIn } from '../redux/checkInsSlice';
+import type { MappedCheckIn } from '../redux/checkInsSlice';
 import CheckInPhotosDialog from './CheckInPhotosDialog';
 
 type ChartTypes = {
-  filteredItems: CheckIn[];
+  filteredItems: MappedCheckIn[];
   weightUnitPref: UnitPrefType;
 };
 
@@ -31,7 +31,7 @@ type ChartPoint = {
   recordedAt: string;
   weight: number;
   hasPhotos: boolean;
-  sourceCheckIn: CheckIn;
+  sourceCheckIn: MappedCheckIn;
   sourceLabel: string | null;
 };
 
@@ -63,9 +63,19 @@ function useElementSize<T extends HTMLElement>() {
   return { ref, size };
 }
 
-function getCheckInSourceLabel(ci: CheckIn): string | null {
-  if (ci.source?.appSourceName) return ci.source.appSourceName;
-  if (ci.source?.type === 'apple_health') return 'Apple Health';
+function getCheckInSourceLabel(ci: MappedCheckIn): string | null {
+  if (!ci.raw || typeof ci.raw !== 'object') return null;
+
+  const raw = ci.raw as {
+    source?: {
+      appSourceName?: string | null;
+      type?: string | null;
+    };
+  };
+
+  if (raw.source?.appSourceName) return raw.source.appSourceName;
+  if (raw.source?.type === 'apple_health') return 'Apple Health';
+
   return null;
 }
 
@@ -151,18 +161,25 @@ const CheckInTooltip = ({ active, payload, unit }: CheckInTooltipProps) => {
 
 const CheckInsChart = ({ filteredItems, weightUnitPref }: ChartTypes) => {
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
-  const [selectedCheckIn, setSelectedCheckIn] = useState<CheckIn | null>(null);
+  const [selectedCheckIn, setSelectedCheckIn] = useState<MappedCheckIn | null>(
+    null
+  );
 
   const chartData = useMemo<ChartPoint[]>(() => {
-    return [...filteredItems].map((ci) => ({
-      id: ci._id,
-      xValue: `${ci.recordedAt}__${ci._id}`,
-      recordedAt: ci.recordedAt,
-      weight: toDisplayWeight(ci.metrics.weightKg, weightUnitPref),
-      hasPhotos: Boolean(ci.hasPhotos && ci.photos?.photos?.length),
-      sourceCheckIn: ci,
-      sourceLabel: getCheckInSourceLabel(ci)
-    }));
+    return filteredItems
+      .filter(
+        (ci): ci is MappedCheckIn & { recordedAt: string; weightKg: number } =>
+          ci.recordedAt != null && ci.weightKg != null
+      )
+      .map((ci) => ({
+        id: ci.id,
+        xValue: `${ci.recordedAt}__${ci.id}`,
+        recordedAt: ci.recordedAt,
+        weight: toDisplayWeight(ci.weightKg, weightUnitPref),
+        hasPhotos: Boolean(ci.hasPhotos && ci.photos?.length),
+        sourceCheckIn: ci,
+        sourceLabel: getCheckInSourceLabel(ci)
+      }));
   }, [filteredItems, weightUnitPref]);
 
   const filteredChartData = useMemo(() => {

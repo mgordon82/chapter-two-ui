@@ -4,34 +4,56 @@ import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined';
 
 import { formatWeight } from '../helpers';
 import type { UnitPrefType } from '../types';
-import type { CheckIn } from '../redux/checkInsSlice';
+import type { MappedCheckIn } from '../redux/checkInsSlice';
 import CheckInPhotosDialog from './CheckInPhotosDialog';
 
 type CheckInListTypes = {
-  filteredItems: CheckIn[];
+  filteredItems: MappedCheckIn[];
   weightUnitPref: UnitPrefType;
+  onOpenCheckIn: (date: string) => void;
 };
 
-type CheckInWithOptionalNotes = CheckIn & {
-  notes?: string;
-  metrics?: CheckIn['metrics'] & { notes?: string };
-};
-
-function getCheckInNotes(ci: CheckIn): string {
-  const c = ci as CheckInWithOptionalNotes;
-  const n1 = typeof c.notes === 'string' ? c.notes : '';
-  const n2 = typeof c.metrics?.notes === 'string' ? c.metrics.notes : '';
-  return (n1 || n2 || '').trim();
+function getCheckInNotes(ci: MappedCheckIn): string {
+  return typeof ci.notes === 'string' ? ci.notes.trim() : '';
 }
 
-function getCheckInSourceLabel(ci: CheckIn): string | null {
-  if (ci.source?.appSourceName) return ci.source.appSourceName;
-  if (ci.source?.type === 'apple_health') return 'Apple Health';
+function getCheckInSourceLabel(ci: MappedCheckIn): string | null {
+  if (!ci.raw || typeof ci.raw !== 'object') return null;
+
+  const raw = ci.raw as {
+    source?: {
+      appSourceName?: string | null;
+      type?: string | null;
+    };
+  };
+
+  if (raw.source?.appSourceName) return raw.source.appSourceName;
+  if (raw.source?.type === 'apple_health') return 'Apple Health';
+
   return null;
 }
 
-const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
-  const [selectedCheckIn, setSelectedCheckIn] = useState<CheckIn | null>(null);
+function formatRepresentedDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-');
+  if (!year || !month || !day) return dateStr;
+
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+const CheckInList = ({
+  filteredItems,
+  weightUnitPref,
+  onOpenCheckIn
+}: CheckInListTypes) => {
+  const [selectedCheckIn, setSelectedCheckIn] = useState<MappedCheckIn | null>(
+    null
+  );
 
   if (filteredItems.length === 0) {
     return (
@@ -41,7 +63,10 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
     );
   }
 
-  const items = filteredItems;
+  const items = filteredItems.filter(
+    (ci): ci is MappedCheckIn & { representedDate: string; weightKg: number } =>
+      ci.representedDate != null && ci.weightKg != null
+  );
 
   return (
     <>
@@ -57,22 +82,13 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
         {items.map((ci, idx) => {
           const notes = getCheckInNotes(ci);
           const hasNotes = notes.length > 0;
-          const hasPhotos = Boolean(ci.hasPhotos && ci.photos?.photos?.length);
+          const hasPhotos = Boolean(ci.hasPhotos && ci.photos?.length);
           const sourceLabel = getCheckInSourceLabel(ci);
 
-          const date = new Date(ci.recordedAt);
-          const dateText = date.toLocaleString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
-          });
+          const dateText = formatRepresentedDate(ci.representedDate);
 
           const next = idx < items.length - 1 ? items[idx + 1] : null;
-          const deltaKg = next
-            ? ci.metrics.weightKg - next.metrics.weightKg
-            : null;
+          const deltaKg = next ? ci.weightKg - next.weightKg : null;
 
           const deltaText =
             deltaKg == null
@@ -83,9 +99,25 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
 
           const deltaSign = deltaKg == null ? '' : deltaKg > 0 ? '+' : '';
 
+          const handleOpen = () => {
+            if (!ci.representedDate) return;
+
+            console.log('[CheckInList] clicked', {
+              id: ci.id,
+              representedDate: ci.representedDate,
+              recordedAt: ci.recordedAt,
+              weightKg: ci.weightKg,
+              weightSource: ci.weightSource,
+              hasWeightConflict: ci.hasWeightConflict
+            });
+
+            onOpenCheckIn(ci.representedDate);
+          };
+
           return (
             <Box
-              key={ci._id}
+              key={ci.id}
+              onClick={handleOpen}
               sx={{
                 px: 1.5,
                 py: 1.15,
@@ -96,6 +128,7 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
                 borderTop:
                   idx === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
                 position: 'relative',
+                cursor: 'pointer',
                 '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' }
               }}
             >
@@ -139,27 +172,70 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
                     </Typography>
                   ) : null}
 
-                  {sourceLabel ? (
-                    <Typography
-                      variant='caption'
-                      sx={{
-                        px: 0.75,
-                        py: 0.15,
-                        borderRadius: 999,
-                        backgroundColor: 'rgba(255,255,255,0.08)',
-                        color: 'rgba(255,255,255,0.7)',
-                        fontWeight: 700
-                      }}
-                    >
-                      {sourceLabel}
-                    </Typography>
+                  {sourceLabel || ci.weightSource || ci.hasWeightConflict ? (
+                    <Stack direction='row' spacing={0.75} alignItems='center'>
+                      {sourceLabel ? (
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            px: 0.75,
+                            py: 0.15,
+                            borderRadius: 999,
+                            backgroundColor: 'rgba(255,255,255,0.08)',
+                            color: 'rgba(255,255,255,0.7)',
+                            fontWeight: 700
+                          }}
+                        >
+                          {sourceLabel}
+                        </Typography>
+                      ) : null}
+
+                      {ci.weightSource ? (
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            px: 0.75,
+                            py: 0.15,
+                            borderRadius: 999,
+                            backgroundColor: 'rgba(99,102,241,0.16)',
+                            color: 'rgba(255,255,255,0.78)',
+                            fontWeight: 700
+                          }}
+                        >
+                          {ci.weightSource === 'manual'
+                            ? 'Manual'
+                            : ci.weightSource === 'apple_health'
+                            ? 'Apple Weight'
+                            : 'Legacy'}
+                        </Typography>
+                      ) : null}
+
+                      {ci.hasWeightConflict ? (
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            px: 0.75,
+                            py: 0.15,
+                            borderRadius: 999,
+                            backgroundColor: 'rgba(245,158,11,0.16)',
+                            color: 'rgba(255,255,255,0.82)',
+                            fontWeight: 700
+                          }}
+                        >
+                          Conflict
+                        </Typography>
+                      ) : null}
+                    </Stack>
                   ) : null}
 
                   {hasPhotos ? (
                     <IconButton
                       size='small'
                       aria-label='view progress photos'
-                      onClick={() => setSelectedCheckIn(ci)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCheckIn(ci);
+                      }}
                       sx={{
                         ml: 0.5,
                         border: '1px solid rgba(42,201,184,0.35)',
@@ -217,7 +293,7 @@ const CheckInList = ({ filteredItems, weightUnitPref }: CheckInListTypes) => {
                 }}
               >
                 <Typography variant='body2' sx={{ fontWeight: 800 }}>
-                  {formatWeight(ci.metrics.weightKg, weightUnitPref)}{' '}
+                  {formatWeight(ci.weightKg, weightUnitPref)}{' '}
                   <Box
                     component='span'
                     sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}

@@ -14,7 +14,10 @@ import {
 import InsightsIcon from '@mui/icons-material/Insights';
 
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { fetchCheckInsRequested } from './redux/checkInsSlice';
+import {
+  fetchCheckInsRequested,
+  type MappedCheckIn
+} from './redux/checkInsSlice';
 import { selectUserUnitPrefs } from '../nutritionCalculator/redux/nutritionCalculatorSlice';
 
 import type { RangeKey, ViewMode } from './types';
@@ -31,6 +34,11 @@ const rangeRank: Record<RangeKey, number> = {
   '3M': 3,
   '6M': 4,
   '12M': 5
+};
+
+const parseRepresentedDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
 };
 
 const doesLoadedRangeCoverRequestedRange = (
@@ -146,6 +154,8 @@ const CheckInsPanel = () => {
   const [view, setView] = useState<ViewMode>('chart');
   const [range, setRange] = useState<RangeKey>('3M');
   const [open, setOpen] = useState(false);
+  const [selectedDialogItem, setSelectedDialogItem] =
+    useState<MappedCheckIn | null>(null);
 
   useEffect(() => {
     if (!loadedRange) {
@@ -160,10 +170,16 @@ const CheckInsPanel = () => {
 
   const latest = useMemo(() => {
     if (!items?.length) return null;
-    return [...items].sort(
-      (a, b) =>
-        new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
-    )[0];
+
+    return (
+      [...items]
+        .filter((ci) => typeof ci.representedDate === 'string')
+        .sort(
+          (a, b) =>
+            parseRepresentedDate(b.representedDate as string).getTime() -
+            parseRepresentedDate(a.representedDate as string).getTime()
+        )[0] ?? null
+    );
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -174,25 +190,120 @@ const CheckInsPanel = () => {
 
     return [...items]
       .filter((ci) => {
-        const recordedAt = new Date(ci.recordedAt);
-        return recordedAt >= start && recordedAt <= end;
+        if (!ci.representedDate) {
+          console.warn('[CheckInsPanel] missing representedDate', ci);
+          return false;
+        }
+
+        const representedDate = parseRepresentedDate(ci.representedDate);
+        return representedDate >= start && representedDate <= end;
       })
       .sort(
         (a, b) =>
-          new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
+          parseRepresentedDate(a.representedDate as string).getTime() -
+          parseRepresentedDate(b.representedDate as string).getTime()
       );
   }, [items, range]);
 
   const listItems = useMemo(() => {
-    return [...filteredItems].sort(
-      (a, b) =>
-        new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
-    );
+    const byDate = new Map<string, MappedCheckIn[]>();
+
+    for (const item of filteredItems) {
+      if (!item.representedDate || item.weightKg == null) continue;
+
+      const existing = byDate.get(item.representedDate) ?? [];
+      existing.push(item);
+      byDate.set(item.representedDate, existing);
+    }
+
+    const pickMostRecentOfSource = (
+      items: MappedCheckIn[],
+      source: 'manual' | 'apple_health' | 'legacy'
+    ) => {
+      return (
+        [...items]
+          .filter((item) => item.weightSource === source)
+          .sort((a, b) => {
+            const aTime = a.recordedAt ? new Date(a.recordedAt).getTime() : 0;
+            const bTime = b.recordedAt ? new Date(b.recordedAt).getTime() : 0;
+            return bTime - aTime;
+          })[0] ?? null
+      );
+    };
+
+    return [...byDate.entries()]
+      .map(([representedDate, itemsForDay]) => {
+        const manualItem = pickMostRecentOfSource(itemsForDay, 'manual');
+        const appleItem = pickMostRecentOfSource(itemsForDay, 'apple_health');
+        const legacyItem = pickMostRecentOfSource(itemsForDay, 'legacy');
+
+        const effectiveItem = manualItem ?? appleItem ?? legacyItem;
+        if (!effectiveItem) return null;
+
+        const hasWeightConflict =
+          Boolean(manualItem && appleItem) ||
+          itemsForDay.filter((item) => item.weightSource != null).length > 1;
+
+        const alternateWeights = itemsForDay
+          .filter((item) => item.weightKg != null && item.weightSource != null)
+          .map((item) => ({
+            source: item.weightSource as 'manual' | 'apple_health' | 'legacy',
+            weightKg: item.weightKg as number,
+            recordedAt: item.recordedAt ?? null
+          }))
+          .sort((a, b) => {
+            const aTime = a.recordedAt ? new Date(a.recordedAt).getTime() : 0;
+            const bTime = b.recordedAt ? new Date(b.recordedAt).getTime() : 0;
+            return bTime - aTime;
+          })
+          .map(({ source, weightKg }) => ({ source, weightKg }));
+
+        return {
+          ...effectiveItem,
+          representedDate,
+          hasWeightConflict,
+          alternateWeights
+        };
+      })
+      .filter(
+        (
+          item
+        ): item is MappedCheckIn & {
+          representedDate: string;
+          alternateWeights: Array<{
+            source: 'manual' | 'apple_health' | 'legacy';
+            weightKg: number;
+          }>;
+        } => item != null
+      )
+      .sort(
+        (a, b) =>
+          parseRepresentedDate(b.representedDate as string).getTime() -
+          parseRepresentedDate(a.representedDate as string).getTime()
+      );
   }, [filteredItems]);
+
+  const chartItems = useMemo(() => {
+    return [...listItems].sort(
+      (a, b) =>
+        parseRepresentedDate(a.representedDate as string).getTime() -
+        parseRepresentedDate(b.representedDate as string).getTime()
+    );
+  }, [listItems]);
 
   const handleViewChange = (_: unknown, next: ViewMode | null) => {
     if (!next) return;
     setView(next);
+  };
+
+  const handleOpenNewCheckIn = () => {
+    setSelectedDialogItem(null);
+    setOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpen(false);
+    setSelectedDialogItem(null);
   };
 
   return (
@@ -220,7 +331,7 @@ const CheckInsPanel = () => {
             alignItems='center'
             gap={2}
           >
-            <Typography variant='h6'>Check-ins</Typography>
+            <Typography variant='h6'>Weigh-ins</Typography>
             {loading ? <CircularProgress size={18} /> : null}
             <Stack direction='row' gap={1}>
               <HealthKitPanel />
@@ -233,7 +344,7 @@ const CheckInsPanel = () => {
               </IconButton>
               <Button
                 variant='outlined'
-                onClick={() => setOpen(true)}
+                onClick={handleOpenNewCheckIn}
                 disabled={loading}
               >
                 + Add
@@ -316,16 +427,13 @@ const CheckInsPanel = () => {
 
         {!loading && items.length > 0 && latest ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
-            Latest:{' '}
-            {new Date(latest.recordedAt).toLocaleString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            })}{' '}
-            — {formatWeight(latest.metrics.weightKg, weightUnitPref)}{' '}
-            {weightUnitPref}
+            Latest: {latest.representedDate ?? '--'} —{' '}
+            {latest.weightKg != null
+              ? `${formatWeight(
+                  latest.weightKg,
+                  weightUnitPref
+                )} ${weightUnitPref}`
+              : '--'}
           </Typography>
         ) : null}
 
@@ -410,11 +518,11 @@ const CheckInsPanel = () => {
         {!loading && items.length > 0 ? (
           <Box sx={{ mt: 1, minWidth: 0, minHeight: 0 }}>
             <Typography variant='caption' sx={{ display: 'block', mt: 1 }}>
-              Range: {range} • Showing {filteredItems.length} item(s)
+              Range: {range} • Showing {listItems.length} day(s)
             </Typography>
             {view === 'chart' ? (
               <CheckInsChart
-                filteredItems={filteredItems}
+                filteredItems={chartItems}
                 weightUnitPref={weightUnitPref}
               />
             ) : (
@@ -422,6 +530,13 @@ const CheckInsPanel = () => {
                 <CheckInList
                   filteredItems={listItems}
                   weightUnitPref={weightUnitPref}
+                  onOpenCheckIn={(date) => {
+                    const clickedItem =
+                      listItems.find((ci) => ci.representedDate === date) ??
+                      null;
+                    setSelectedDialogItem(clickedItem);
+                    setOpen(true);
+                  }}
                 />
               </Box>
             )}
@@ -429,7 +544,12 @@ const CheckInsPanel = () => {
         ) : null}
       </Paper>
 
-      <AddCheckInDialog open={open} onClose={() => setOpen(false)} />
+      <AddCheckInDialog
+        open={open}
+        onClose={handleCloseDialog}
+        initialDate={selectedDialogItem?.representedDate ?? null}
+        initialItem={selectedDialogItem}
+      />
     </Box>
   );
 };

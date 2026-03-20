@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -18,12 +19,21 @@ import {
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
-import { lbsToKgRounded } from '../../../utils/conversions/weight';
-import { toIsoDateInputValue } from '../helpers';
+import {
+  kgToLbsRounded,
+  lbsToKgRounded
+} from '../../../utils/conversions/weight';
+import { formatWeight, toIsoDateInputValue } from '../helpers';
 import {
   clearLastCreatedCheckInId,
+  clearSelectedDateCheckIn,
+  closeCheckInRequested,
   createCheckInRequested,
-  type CreateCheckInInput
+  fetchCheckInByDateRequested,
+  reopenCheckInRequested,
+  saveExerciseSelectionRequested,
+  type CreateCheckInInput,
+  type MappedCheckIn
 } from '../redux/checkInsSlice';
 import { selectUserUnitPrefs } from '../../nutritionCalculator/redux/nutritionCalculatorSlice';
 import {
@@ -39,6 +49,8 @@ import { Capacitor } from '@capacitor/core';
 type AddCheckInDialogProps = {
   open: boolean;
   onClose: () => void;
+  initialDate?: string | null;
+  initialItem?: MappedCheckIn | null;
 };
 
 type UploadStep = {
@@ -86,30 +98,51 @@ const createPhotoFileName = (position: PhotoPosition) => {
   return `checkin-${position}-${stamp}.jpeg`;
 };
 
-const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
+const AddCheckInDialog = ({
+  open,
+  onClose,
+  initialDate,
+  initialItem
+}: AddCheckInDialogProps) => {
   const dispatch = useAppDispatch();
   const isNative = Capacitor.isNativePlatform();
+  const previousUpdatingLifecycleRef = useRef(false);
+  const previousSavingExerciseSelectionRef = useRef(false);
 
   const { weightUnitPref } = useAppSelector(selectUserUnitPrefs);
   const {
     creating,
+    updatingLifecycle,
+    savingExerciseSelection,
     error: checkInError,
-    lastCreatedCheckInId
+    lastCreatedCheckInId,
+    selectedDateItem,
+    selectedDateSuggestedExerciseSessions,
+    loadingSelectedDate,
+    selectedDateError
   } = useAppSelector((s) => s.checkIns);
 
   const {
     creatingProgressUploadSession,
     progressUploadSession,
     finalizingProgressPhotos,
-    error: photosError
+    progressError: photosError
   } = useAppSelector((s) => s.photos);
 
   const today = useMemo(() => toIsoDateInputValue(new Date()), []);
+  const startingDate = initialDate ?? today;
 
-  const [dateValue, setDateValue] = useState<string>(today);
+  const [dateValue, setDateValue] = useState<string>(startingDate);
   const [weightDisplay, setWeightDisplay] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [includeProgressPhotos, setIncludeProgressPhotos] = useState(false);
+
+  const [includedExerciseSessionIds, setIncludedExerciseSessionIds] = useState<
+    string[]
+  >([]);
+  const [excludedExerciseSessionIds, setExcludedExerciseSessionIds] = useState<
+    string[]
+  >([]);
 
   const [activeStep, setActiveStep] = useState(0);
   const [frontPhoto, setFrontPhoto] =
@@ -133,10 +166,12 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     useState(false);
 
   const resetForm = useCallback(() => {
-    setDateValue(toIsoDateInputValue(new Date()));
+    setDateValue(initialDate ?? toIsoDateInputValue(new Date()));
     setWeightDisplay('');
     setNotes('');
     setIncludeProgressPhotos(false);
+    setIncludedExerciseSessionIds([]);
+    setExcludedExerciseSessionIds([]);
     setActiveStep(0);
     setFrontPhoto(null);
     setSidePhoto(null);
@@ -149,13 +184,83 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     setCheckInRequestedAfterFinalize(false);
     dispatch(clearLastCreatedCheckInId());
     dispatch(clearProgressUploadSession());
-  }, [dispatch]);
+    dispatch(clearSelectedDateCheckIn());
+  }, [dispatch, initialDate]);
 
   useEffect(() => {
     if (!open) {
       resetForm();
     }
   }, [open, resetForm]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!initialDate) return;
+
+    setDateValue(initialDate);
+  }, [initialDate, open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const fetchDate = initialDate ?? dateValue;
+    if (!fetchDate) return;
+
+    dispatch(fetchCheckInByDateRequested({ date: fetchDate }));
+  }, [dateValue, dispatch, initialDate, open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const sourceItem = selectedDateItem ?? initialItem ?? null;
+
+    const displayWeight =
+      sourceItem?.weightKg != null
+        ? weightUnitPref === 'lbs'
+          ? String(kgToLbsRounded(sourceItem.weightKg, 1))
+          : String(sourceItem.weightKg)
+        : '';
+
+    setWeightDisplay(displayWeight);
+    setNotes(sourceItem?.notes ?? '');
+    setIncludeProgressPhotos(Boolean(sourceItem?.hasPhotos));
+
+    setIncludedExerciseSessionIds(sourceItem?.includedExerciseSessionIds ?? []);
+    setExcludedExerciseSessionIds(sourceItem?.excludedExerciseSessionIds ?? []);
+  }, [initialItem, open, selectedDateItem, weightUnitPref]);
+
+  useEffect(() => {
+    const wasUpdatingLifecycle = previousUpdatingLifecycleRef.current;
+
+    if (
+      open &&
+      wasUpdatingLifecycle &&
+      !updatingLifecycle &&
+      dateValue &&
+      !checkInError
+    ) {
+      dispatch(fetchCheckInByDateRequested({ date: dateValue }));
+    }
+
+    previousUpdatingLifecycleRef.current = updatingLifecycle;
+  }, [checkInError, dateValue, dispatch, open, updatingLifecycle]);
+
+  useEffect(() => {
+    const wasSavingExerciseSelection =
+      previousSavingExerciseSelectionRef.current;
+
+    if (
+      open &&
+      wasSavingExerciseSelection &&
+      !savingExerciseSelection &&
+      dateValue &&
+      !checkInError
+    ) {
+      dispatch(fetchCheckInByDateRequested({ date: dateValue }));
+    }
+
+    previousSavingExerciseSelectionRef.current = savingExerciseSelection;
+  }, [checkInError, dateValue, dispatch, open, savingExerciseSelection]);
 
   const selectedPhotos = useMemo(
     () =>
@@ -296,7 +401,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
       return null;
     }
 
-    if (includeProgressPhotos && !frontPhoto) {
+    if (includeProgressPhotos && !frontPhoto && !selectedDateItem?.hasPhotos) {
       setLocalError(
         'Front photo is required when progress photos are included'
       );
@@ -329,6 +434,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
     })();
 
     return {
+      representedDate: dateValue,
       recordedAt: recordedAtIso,
       weightKg,
       notes: notes.trim() ? notes.trim() : undefined
@@ -341,7 +447,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
 
     setLocalError(null);
 
-    if (!includeProgressPhotos) {
+    if (!includeProgressPhotos || selectedPhotos.length === 0) {
       dispatch(createCheckInRequested(payload));
       return;
     }
@@ -359,6 +465,58 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
           originalFileName: photo.originalFileName ?? null,
           sizeBytes: photo.sizeBytes ?? null
         }))
+      })
+    );
+  };
+
+  const handleCloseCheckIn = () => {
+    if (!selectedDateItem?.id) return;
+    dispatch(closeCheckInRequested({ id: selectedDateItem.id }));
+  };
+
+  const handleReopenCheckIn = () => {
+    if (!selectedDateItem?.id) return;
+    dispatch(reopenCheckInRequested({ id: selectedDateItem.id }));
+  };
+
+  const toggleExerciseIncluded = (sessionId: string) => {
+    setLocalError(null);
+
+    setIncludedExerciseSessionIds((prev) =>
+      prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId]
+    );
+
+    setExcludedExerciseSessionIds((prev) =>
+      prev.filter((id) => id !== sessionId)
+    );
+  };
+
+  const toggleExerciseExcluded = (sessionId: string) => {
+    setLocalError(null);
+
+    setExcludedExerciseSessionIds((prev) =>
+      prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId]
+    );
+
+    setIncludedExerciseSessionIds((prev) =>
+      prev.filter((id) => id !== sessionId)
+    );
+  };
+
+  const handleSaveExerciseSelection = () => {
+    if (!selectedDateItem?.id) return;
+
+    dispatch(
+      saveExerciseSelectionRequested({
+        id: selectedDateItem.id,
+        autoSuggestedExerciseSessionIds:
+          selectedDateSuggestedExerciseSessions.map((session) => session.id),
+        includedExerciseSessionIds,
+        excludedExerciseSessionIds
       })
     );
   };
@@ -462,17 +620,16 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
 
   useEffect(() => {
     if (!open) return;
+    if (!lastCreatedCheckInId) return;
+    if (creating) return;
+    if (checkInError) return;
 
-    if (
-      includeProgressPhotos &&
-      lastCreatedCheckInId &&
-      !creating &&
-      !checkInError &&
-      !photosError &&
-      !localError
-    ) {
-      onClose();
+    if (includeProgressPhotos) {
+      if (photosError) return;
+      if (localError) return;
     }
+
+    onClose();
   }, [
     checkInError,
     creating,
@@ -485,26 +642,6 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
   ]);
 
   useEffect(() => {
-    if (!open) return;
-
-    if (
-      includeProgressPhotos &&
-      lastCreatedCheckInId &&
-      !creating &&
-      !checkInError
-    ) {
-      onClose();
-    }
-  }, [
-    checkInError,
-    creating,
-    includeProgressPhotos,
-    lastCreatedCheckInId,
-    onClose,
-    open
-  ]);
-
-  useEffect(() => {
     if (!finalizingProgressPhotos) {
       setIsUploadingFiles(false);
     }
@@ -512,6 +649,8 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
 
   const disableClose =
     creating ||
+    updatingLifecycle ||
+    savingExerciseSelection ||
     creatingProgressUploadSession ||
     finalizingProgressPhotos ||
     isUploadingFiles;
@@ -523,7 +662,9 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
       fullWidth
       maxWidth='sm'
     >
-      <DialogTitle>Add Check-in</DialogTitle>
+      <DialogTitle>
+        {selectedDateItem ? 'Edit Daily Check-in' : 'Add Check-in'}
+      </DialogTitle>
 
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -535,6 +676,179 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
             InputLabelProps={{ shrink: true }}
           />
 
+          {loadingSelectedDate ? (
+            <Stack direction='row' spacing={1} alignItems='center'>
+              <CircularProgress size={16} />
+              <Typography variant='body2' color='text.secondary'>
+                Loading check-in for selected date...
+              </Typography>
+            </Stack>
+          ) : null}
+
+          {selectedDateItem ? (
+            <Stack direction='row' spacing={1} alignItems='center'>
+              <Typography variant='caption' color='text.secondary'>
+                Status: {selectedDateItem.lifecycleState}
+              </Typography>
+
+              {selectedDateItem.lifecycleState === 'open' ? (
+                <Button
+                  size='small'
+                  variant='outlined'
+                  onClick={handleCloseCheckIn}
+                  disabled={disableClose}
+                >
+                  Close
+                </Button>
+              ) : (
+                <Button
+                  size='small'
+                  variant='outlined'
+                  onClick={handleReopenCheckIn}
+                  disabled={disableClose}
+                >
+                  Reopen
+                </Button>
+              )}
+            </Stack>
+          ) : null}
+
+          {selectedDateItem &&
+          selectedDateSuggestedExerciseSessions.length > 0 ? (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                border: '1px solid rgba(255,255,255,0.12)',
+                backgroundColor: 'rgba(255,255,255,0.03)'
+              }}
+            >
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                justifyContent='space-between'
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                spacing={1}
+                sx={{ mb: 1 }}
+              >
+                <Typography variant='subtitle2'>Suggested Activity</Typography>
+
+                {selectedDateItem.isEditable ? (
+                  <Button
+                    size='small'
+                    variant='outlined'
+                    onClick={handleSaveExerciseSelection}
+                    disabled={disableClose}
+                  >
+                    {savingExerciseSelection
+                      ? 'Saving...'
+                      : 'Save Activity Selection'}
+                  </Button>
+                ) : null}
+              </Stack>
+
+              <Stack spacing={0.75}>
+                {selectedDateSuggestedExerciseSessions.map((session) => {
+                  const time = session.performedAt
+                    ? new Date(session.performedAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })
+                    : null;
+
+                  const label = session.name ?? 'Exercise Session';
+                  const durationMinutes =
+                    session.metrics?.durationMinutes ?? null;
+
+                  const isIncluded = includedExerciseSessionIds.includes(
+                    session.id
+                  );
+                  const isExcluded = excludedExerciseSessionIds.includes(
+                    session.id
+                  );
+
+                  return (
+                    <Box
+                      key={session.id}
+                      sx={{
+                        px: 1,
+                        py: 0.9,
+                        borderRadius: 1,
+                        backgroundColor: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)'
+                      }}
+                    >
+                      <Stack spacing={1}>
+                        <Stack direction='row' justifyContent='space-between'>
+                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
+                            {label}
+                          </Typography>
+
+                          {time ? (
+                            <Typography
+                              variant='caption'
+                              sx={{ color: 'rgba(255,255,255,0.6)' }}
+                            >
+                              {time}
+                            </Typography>
+                          ) : null}
+                        </Stack>
+
+                        {durationMinutes ? (
+                          <Typography
+                            variant='caption'
+                            sx={{ color: 'rgba(255,255,255,0.6)' }}
+                          >
+                            {durationMinutes} min
+                          </Typography>
+                        ) : null}
+
+                        <Stack direction='row' spacing={1} flexWrap='wrap'>
+                          <Button
+                            size='small'
+                            variant={isIncluded ? 'contained' : 'outlined'}
+                            onClick={() => toggleExerciseIncluded(session.id)}
+                            disabled={
+                              disableClose ||
+                              Boolean(
+                                selectedDateItem && !selectedDateItem.isEditable
+                              )
+                            }
+                          >
+                            {isIncluded ? 'Included' : 'Include'}
+                          </Button>
+
+                          <Button
+                            size='small'
+                            color='inherit'
+                            variant={isExcluded ? 'contained' : 'outlined'}
+                            onClick={() => toggleExerciseExcluded(session.id)}
+                            disabled={
+                              disableClose ||
+                              Boolean(
+                                selectedDateItem && !selectedDateItem.isEditable
+                              )
+                            }
+                          >
+                            {isExcluded ? 'Excluded' : 'Exclude'}
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
+          ) : null}
+
+          {(selectedDateItem ?? initialItem)?.weightSource && (
+            <Typography variant='caption' color='text.secondary'>
+              Source: {(selectedDateItem ?? initialItem)?.weightSource}
+              {(selectedDateItem ?? initialItem)?.hasWeightConflict
+                ? ' • Multiple weights recorded this day'
+                : ''}
+            </Typography>
+          )}
+
           <TextField
             label={`Weight (${weightUnitPref})`}
             type='number'
@@ -542,7 +856,42 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
             onChange={(e) => setWeightDisplay(e.target.value)}
             inputProps={{ min: 0, step: '0.1' }}
             autoFocus
+            disabled={Boolean(
+              (selectedDateItem ?? initialItem) &&
+                (!(selectedDateItem ?? initialItem)?.isEditable ||
+                  (selectedDateItem ?? initialItem)?.weightSource ===
+                    'apple_health' ||
+                  (selectedDateItem ?? initialItem)?.weightSource === 'legacy')
+            )}
           />
+
+          {Boolean(
+            (selectedDateItem ?? initialItem)?.alternateWeights?.length
+          ) && (
+            <Stack spacing={0.5}>
+              <Typography variant='caption' color='text.secondary'>
+                Other weights recorded this day:
+              </Typography>
+
+              {(selectedDateItem ?? initialItem)?.alternateWeights?.map(
+                (weight, idx) => (
+                  <Typography
+                    key={`${weight.source}-${weight.weightKg}-${idx}`}
+                    variant='caption'
+                    color='text.secondary'
+                  >
+                    {weight.source === 'manual'
+                      ? 'Manual'
+                      : weight.source === 'apple_health'
+                      ? 'Apple Health'
+                      : 'Legacy'}
+                    : {formatWeight(weight.weightKg, weightUnitPref)}{' '}
+                    {weightUnitPref}
+                  </Typography>
+                )
+              )}
+            </Stack>
+          )}
 
           <TextField
             label='Notes (optional)'
@@ -550,6 +899,7 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
             onChange={(e) => setNotes(e.target.value)}
             multiline
             minRows={2}
+            disabled={Boolean(selectedDateItem && !selectedDateItem.isEditable)}
           />
 
           <FormControlLabel
@@ -560,6 +910,9 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
                   setIncludeProgressPhotos(e.target.checked);
                   setLocalError(null);
                 }}
+                disabled={Boolean(
+                  selectedDateItem && !selectedDateItem.isEditable
+                )}
               />
             }
             label='Include progress photos'
@@ -595,7 +948,12 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
                           onClick={() =>
                             handleTakePhoto(currentStep.key as PhotoPosition)
                           }
-                          disabled={disableClose}
+                          disabled={
+                            disableClose ||
+                            Boolean(
+                              selectedDateItem && !selectedDateItem.isEditable
+                            )
+                          }
                         >
                           {currentPhoto ? 'Retake Photo' : 'Take Photo'}
                         </Button>
@@ -607,7 +965,12 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
                               currentStep.key as PhotoPosition
                             )
                           }
-                          disabled={disableClose}
+                          disabled={
+                            disableClose ||
+                            Boolean(
+                              selectedDateItem && !selectedDateItem.isEditable
+                            )
+                          }
                         >
                           Choose From Library
                         </Button>
@@ -616,7 +979,12 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
                       <Button
                         variant='contained'
                         component='label'
-                        disabled={disableClose}
+                        disabled={
+                          disableClose ||
+                          Boolean(
+                            selectedDateItem && !selectedDateItem.isEditable
+                          )
+                        }
                       >
                         {currentPhoto ? 'Replace Photo' : 'Choose Photo'}
                         <input
@@ -825,9 +1193,9 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
             </Stack>
           ) : null}
 
-          {localError || checkInError || photosError ? (
+          {selectedDateError || localError || checkInError || photosError ? (
             <Typography variant='body2' color='error'>
-              {localError || checkInError || photosError}
+              {selectedDateError || localError || checkInError || photosError}
             </Typography>
           ) : null}
         </Stack>
@@ -865,7 +1233,10 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
               variant='contained'
               onClick={goNext}
               disabled={
-                currentStep.required && !currentPhoto ? true : disableClose
+                currentStep.required && !currentPhoto
+                  ? true
+                  : disableClose ||
+                    Boolean(selectedDateItem && !selectedDateItem.isEditable)
               }
             >
               Next
@@ -874,7 +1245,10 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
             <Button
               variant='contained'
               onClick={handleSave}
-              disabled={disableClose}
+              disabled={
+                disableClose ||
+                Boolean(selectedDateItem && !selectedDateItem.isEditable)
+              }
             >
               {disableClose ? 'Saving...' : 'Save'}
             </Button>
@@ -883,7 +1257,10 @@ const AddCheckInDialog = ({ open, onClose }: AddCheckInDialogProps) => {
           <Button
             variant='contained'
             onClick={handleSave}
-            disabled={disableClose}
+            disabled={
+              disableClose ||
+              Boolean(selectedDateItem && !selectedDateItem.isEditable)
+            }
           >
             {disableClose ? 'Saving...' : 'Save'}
           </Button>

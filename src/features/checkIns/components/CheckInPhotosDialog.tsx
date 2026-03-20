@@ -14,12 +14,12 @@ import {
 
 import { useAppSelector } from '../../../app/hooks';
 import { getAccessToken } from '../../../auth/helpers/getAccessToken';
-import type { CheckIn } from '../redux/checkInsSlice';
+import type { MappedCheckIn } from '../redux/checkInsSlice';
 
 type CheckInPhotosDialogProps = {
   open: boolean;
   onClose: () => void;
-  checkIn: CheckIn | null;
+  checkIn: MappedCheckIn | null;
 };
 
 type PhotoComparisonAnalysis = {
@@ -102,8 +102,8 @@ const CheckInPhotosDialog = ({
     useState<PhotoComparisonResponse | null>(null);
 
   const progressPhotos = useMemo(
-    () => checkIn?.photos?.photos ?? [],
-    [checkIn?.photos?.photos]
+    () => checkIn?.photos ?? [],
+    [checkIn?.photos]
   );
 
   const starterPhotos = useMemo(
@@ -125,7 +125,7 @@ const CheckInPhotosDialog = ({
   );
 
   const canAnalyzeVisibleProgress = Boolean(
-    checkIn?._id && starterFrontPhoto?.viewUrl && progressFrontPhoto?.viewUrl
+    checkIn?.id && starterFrontPhoto?.viewUrl && progressFrontPhoto?.viewUrl
   );
 
   const comparisonRows = useMemo(() => {
@@ -154,14 +154,14 @@ const CheckInPhotosDialog = ({
       .map((row) => ({
         position: row.position,
         starter: {
-          position: row.starter!.position,
+          position: row.starter!.position as 'front' | 'side' | 'back',
           storageKey: row.starter!.storageKey,
           mimeType: row.starter!.mimeType,
           viewUrl: row.starter!.viewUrl!,
           takenAt: row.starter!.takenAt ?? null
         },
         progress: {
-          position: row.progress!.position,
+          position: row.progress!.position as 'front' | 'side' | 'back',
           storageKey: row.progress!.storageKey,
           mimeType: row.progress!.mimeType,
           viewUrl: row.progress!.viewUrl!
@@ -174,7 +174,7 @@ const CheckInPhotosDialog = ({
     setAnalysisLoading(false);
     setAnalysisError(null);
     setAnalysisResult(null);
-  }, [checkIn?._id, open]);
+  }, [checkIn?.id, open]);
 
   const handleClose = () => {
     setCompareMode(false);
@@ -185,7 +185,7 @@ const CheckInPhotosDialog = ({
   };
 
   const handleAnalyzeVisibleProgress = async () => {
-    if (!checkIn?._id) return;
+    if (!checkIn?.id) return;
 
     try {
       setAnalysisLoading(true);
@@ -205,7 +205,7 @@ const CheckInPhotosDialog = ({
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          checkInId: checkIn._id
+          checkInId: checkIn.id
         })
       });
 
@@ -581,7 +581,7 @@ const CheckInPhotosDialog = ({
             <Stack direction='row' spacing={2} flexWrap='wrap'>
               {progressPhotos.map((photo) => (
                 <Box
-                  key={photo.position}
+                  key={photo.position ?? 'unknown'}
                   sx={{
                     width: 180,
                     display: 'flex',
@@ -604,7 +604,7 @@ const CheckInPhotosDialog = ({
                       <Box
                         component='img'
                         src={photo.viewUrl}
-                        alt={`${photo.position} progress`}
+                        alt={`${photo.position ?? 'progress'} progress`}
                         sx={{
                           width: '100%',
                           height: '100%',
@@ -627,7 +627,7 @@ const CheckInPhotosDialog = ({
                           color='text.secondary'
                           sx={{ textTransform: 'capitalize' }}
                         >
-                          {photo.position}
+                          {photo.position ?? 'photo'}
                         </Typography>
                       </Box>
                     )}
@@ -637,7 +637,7 @@ const CheckInPhotosDialog = ({
                     variant='caption'
                     sx={{ textTransform: 'capitalize', textAlign: 'center' }}
                   >
-                    {photo.position}
+                    {photo.position ?? 'photo'}
                   </Typography>
                 </Box>
               ))}
