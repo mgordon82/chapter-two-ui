@@ -102,15 +102,6 @@ const CheckInList = ({
           const handleOpen = () => {
             if (!ci.representedDate) return;
 
-            console.log('[CheckInList] clicked', {
-              id: ci.id,
-              representedDate: ci.representedDate,
-              recordedAt: ci.recordedAt,
-              weightKg: ci.weightKg,
-              weightSource: ci.weightSource,
-              hasWeightConflict: ci.hasWeightConflict
-            });
-
             onOpenCheckIn(ci.representedDate);
           };
 
