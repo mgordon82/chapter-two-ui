@@ -655,6 +655,47 @@ const AddCheckInDialog = ({
     finalizingProgressPhotos ||
     isUploadingFiles;
 
+  function formatWeightSourceLabel(
+    item: MappedCheckIn | null | undefined
+  ): string | null {
+    if (!item) return null;
+
+    if (item.raw && typeof item.raw === 'object') {
+      const raw = item.raw as {
+        source?: {
+          appSourceName?: string | null;
+          type?: string | null;
+        };
+        sections?: {
+          daily?: {
+            body?: {
+              weightKg?: {
+                appleHealth?: {
+                  appSourceName?: string | null;
+                } | null;
+              } | null;
+            } | null;
+          } | null;
+        };
+      };
+
+      const appleHealthSourceName =
+        raw.sections?.daily?.body?.weightKg?.appleHealth?.appSourceName;
+
+      if (appleHealthSourceName) return appleHealthSourceName;
+      if (raw.sections?.daily?.body?.weightKg?.appleHealth)
+        return 'Apple Health';
+      if (raw.source?.appSourceName) return raw.source.appSourceName;
+      if (raw.source?.type === 'apple_health') return 'Apple Health';
+    }
+
+    if (item.weightSource === 'manual') return 'Manual';
+    if (item.weightSource === 'apple_health') return 'Apple Health';
+    if (item.weightSource === 'legacy') return 'Legacy';
+
+    return null;
+  }
+
   return (
     <Dialog
       open={open}
@@ -840,14 +881,21 @@ const AddCheckInDialog = ({
             </Box>
           ) : null}
 
-          {(selectedDateItem ?? initialItem)?.weightSource && (
-            <Typography variant='caption' color='text.secondary'>
-              Source: {(selectedDateItem ?? initialItem)?.weightSource}
-              {(selectedDateItem ?? initialItem)?.hasWeightConflict
-                ? ' • Multiple weights recorded this day'
-                : ''}
-            </Typography>
-          )}
+          {(() => {
+            const item = selectedDateItem ?? initialItem;
+            const label = formatWeightSourceLabel(item);
+
+            if (!label) return null;
+
+            return (
+              <Typography variant='caption' color='text.secondary'>
+                Source: {label}
+                {item?.hasWeightConflict
+                  ? ' • Multiple weights recorded this day'
+                  : ''}
+              </Typography>
+            );
+          })()}
 
           <TextField
             label={`Weight (${weightUnitPref})`}

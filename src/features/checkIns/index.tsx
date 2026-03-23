@@ -173,7 +173,9 @@ const CheckInsPanel = () => {
 
     return (
       [...items]
-        .filter((ci) => typeof ci.representedDate === 'string')
+        .filter(
+          (ci) => typeof ci.representedDate === 'string' && ci.weightKg != null
+        )
         .sort(
           (a, b) =>
             parseRepresentedDate(b.representedDate as string).getTime() -
@@ -190,10 +192,7 @@ const CheckInsPanel = () => {
 
     return [...items]
       .filter((ci) => {
-        if (!ci.representedDate) {
-          console.warn('[CheckInsPanel] missing representedDate', ci);
-          return false;
-        }
+        if (!ci.representedDate) return false;
 
         const representedDate = parseRepresentedDate(ci.representedDate);
         return representedDate >= start && representedDate <= end;
@@ -240,12 +239,28 @@ const CheckInsPanel = () => {
         const effectiveItem = manualItem ?? appleItem ?? legacyItem;
         if (!effectiveItem) return null;
 
+        const distinctSources = new Set(
+          itemsForDay
+            .map((item) => item.weightSource)
+            .filter((s): s is 'manual' | 'apple_health' | 'legacy' =>
+              Boolean(s)
+            )
+        );
+
         const hasWeightConflict =
-          Boolean(manualItem && appleItem) ||
-          itemsForDay.filter((item) => item.weightSource != null).length > 1;
+          distinctSources.has('manual') && distinctSources.has('apple_health');
 
         const alternateWeights = itemsForDay
-          .filter((item) => item.weightKg != null && item.weightSource != null)
+          .filter(
+            (item) =>
+              item.weightKg != null &&
+              item.weightSource != null &&
+              !(
+                item.weightSource === effectiveItem.weightSource &&
+                item.weightKg === effectiveItem.weightKg &&
+                item.recordedAt === effectiveItem.recordedAt
+              )
+          )
           .map((item) => ({
             source: item.weightSource as 'manual' | 'apple_health' | 'legacy',
             weightKg: item.weightKg as number,
@@ -261,6 +276,7 @@ const CheckInsPanel = () => {
         return {
           ...effectiveItem,
           representedDate,
+          weightSource: effectiveItem.weightSource,
           hasWeightConflict,
           alternateWeights
         };
@@ -421,7 +437,7 @@ const CheckInsPanel = () => {
 
         {!loading && !error && items.length === 0 ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
-            No check-ins yet.
+            No weigh-ins yet.
           </Typography>
         ) : null}
 
@@ -520,6 +536,7 @@ const CheckInsPanel = () => {
             <Typography variant='caption' sx={{ display: 'block', mt: 1 }}>
               Range: {range} • Showing {listItems.length} day(s)
             </Typography>
+
             {view === 'chart' ? (
               <CheckInsChart
                 filteredItems={chartItems}

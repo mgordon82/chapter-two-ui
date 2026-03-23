@@ -25,11 +25,35 @@ function getCheckInSourceLabel(ci: MappedCheckIn): string | null {
       appSourceName?: string | null;
       type?: string | null;
     };
+    sections?: {
+      daily?: {
+        body?: {
+          weightKg?: {
+            appleHealth?: {
+              appSourceName?: string | null;
+            } | null;
+          } | null;
+        } | null;
+      } | null;
+    };
   };
+
+  const appleHealthSourceName =
+    raw.sections?.daily?.body?.weightKg?.appleHealth?.appSourceName;
+
+  if (appleHealthSourceName) return appleHealthSourceName;
+  if (raw.sections?.daily?.body?.weightKg?.appleHealth) return 'Apple Health';
 
   if (raw.source?.appSourceName) return raw.source.appSourceName;
   if (raw.source?.type === 'apple_health') return 'Apple Health';
 
+  return null;
+}
+
+function getGenericWeightSourceLabel(ci: MappedCheckIn): string | null {
+  if (ci.weightSource === 'manual') return 'Manual';
+  if (ci.weightSource === 'apple_health') return 'Apple Weight';
+  if (ci.weightSource === 'legacy') return 'Legacy';
   return null;
 }
 
@@ -84,6 +108,7 @@ const CheckInList = ({
           const hasNotes = notes.length > 0;
           const hasPhotos = Boolean(ci.hasPhotos && ci.photos?.length);
           const sourceLabel = getCheckInSourceLabel(ci);
+          const genericWeightSourceLabel = getGenericWeightSourceLabel(ci);
 
           const dateText = formatRepresentedDate(ci.representedDate);
 
@@ -101,7 +126,6 @@ const CheckInList = ({
 
           const handleOpen = () => {
             if (!ci.representedDate) return;
-
             onOpenCheckIn(ci.representedDate);
           };
 
@@ -163,7 +187,9 @@ const CheckInList = ({
                     </Typography>
                   ) : null}
 
-                  {sourceLabel || ci.weightSource || ci.hasWeightConflict ? (
+                  {sourceLabel ||
+                  genericWeightSourceLabel ||
+                  ci.hasWeightConflict ? (
                     <Stack direction='row' spacing={0.75} alignItems='center'>
                       {sourceLabel ? (
                         <Typography
@@ -179,9 +205,7 @@ const CheckInList = ({
                         >
                           {sourceLabel}
                         </Typography>
-                      ) : null}
-
-                      {ci.weightSource ? (
+                      ) : genericWeightSourceLabel ? (
                         <Typography
                           variant='caption'
                           sx={{
@@ -193,11 +217,7 @@ const CheckInList = ({
                             fontWeight: 700
                           }}
                         >
-                          {ci.weightSource === 'manual'
-                            ? 'Manual'
-                            : ci.weightSource === 'apple_health'
-                            ? 'Apple Weight'
-                            : 'Legacy'}
+                          {genericWeightSourceLabel}
                         </Typography>
                       ) : null}
 
