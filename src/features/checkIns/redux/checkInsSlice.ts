@@ -25,6 +25,7 @@ export type MappedCheckIn = {
     weightKg: number;
   }>;
   energyLevel: number | null;
+  onTrackLevel: number | null;
   calories: number | null;
   proteinGrams: number | null;
   restingHeartRate: number | null;
@@ -112,6 +113,9 @@ export type CreateCheckInInput = {
   recordedAt?: string;
   weightKg: number;
   notes?: string;
+  energyLevel?: number;
+  onTrackLevel?: number;
+  checkInType?: 'daily' | 'weekly';
   progressPhotoSetId?: string;
 };
 

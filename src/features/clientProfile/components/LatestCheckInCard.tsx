@@ -108,8 +108,12 @@ const LatestCheckInCard: React.FC<LatestCheckInCardProps> = ({
             />
 
             <MetricItem
-              label='Waist'
-              value={latestCheckIn.waistDisplay || '—'}
+              label='Water'
+              value={
+                latestCheckIn.waterMl != null
+                  ? `${latestCheckIn.waterMl} mL`
+                  : '—'
+              }
             />
 
             <MetricItem
@@ -164,7 +168,14 @@ const LatestCheckInCard: React.FC<LatestCheckInCardProps> = ({
               }
             />
 
-            <MetricItem label='Mood' value={latestCheckIn.mood || '—'} />
+            <MetricItem
+              label='On Track'
+              value={
+                latestCheckIn.onTrackLevel != null
+                  ? `${latestCheckIn.onTrackLevel}/10`
+                  : '—'
+              }
+            />
 
             <MetricItem
               label='Photos'

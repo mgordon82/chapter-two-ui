@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Box, Stack, Typography, IconButton } from '@mui/material';
 import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined';
+import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
+import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
 
 import { formatWeight } from '../helpers';
 import type { UnitPrefType } from '../types';
@@ -107,6 +109,9 @@ const CheckInList = ({
           const notes = getCheckInNotes(ci);
           const hasNotes = notes.length > 0;
           const hasPhotos = Boolean(ci.hasPhotos && ci.photos?.length);
+          const hasEnergyLevel = ci.energyLevel != null;
+          const hasOnTrackLevel = ci.onTrackLevel != null;
+          const hasCheckInSignals = hasEnergyLevel || hasOnTrackLevel;
           const sourceLabel = getCheckInSourceLabel(ci);
           const genericWeightSourceLabel = getGenericWeightSourceLabel(ci);
 
@@ -261,6 +266,86 @@ const CheckInList = ({
                     </IconButton>
                   ) : null}
                 </Stack>
+
+                {hasCheckInSignals ? (
+                  <Stack
+                    direction='row'
+                    spacing={1.5}
+                    alignItems='center'
+                    flexWrap='wrap'
+                    sx={{ mt: 0.5 }}
+                  >
+                    {hasEnergyLevel ? (
+                      <Stack
+                        direction='row'
+                        spacing={0.5}
+                        alignItems='center'
+                        aria-label={`Energy level ${ci.energyLevel} out of 10`}
+                        sx={{
+                          px: 0.8,
+                          py: 0.25,
+                          borderRadius: 999,
+                          backgroundColor: 'rgba(59,130,246,0.12)',
+                          border: '1px solid rgba(59,130,246,0.22)'
+                        }}
+                      >
+                        <BoltOutlinedIcon
+                          sx={{ fontSize: 14, color: 'rgba(96,165,250,0.95)' }}
+                        />
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            color: 'rgba(255,255,255,0.78)',
+                            fontWeight: 700
+                          }}
+                        >
+                          <Box
+                            component='span'
+                            sx={{ position: 'absolute', left: -9999 }}
+                          >
+                            Energy level
+                          </Box>
+                          {ci.energyLevel}
+                        </Typography>
+                      </Stack>
+                    ) : null}
+
+                    {hasOnTrackLevel ? (
+                      <Stack
+                        direction='row'
+                        spacing={0.5}
+                        alignItems='center'
+                        aria-label={`On track level ${ci.onTrackLevel} out of 10`}
+                        sx={{
+                          px: 0.8,
+                          py: 0.25,
+                          borderRadius: 999,
+                          backgroundColor: 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.22)'
+                        }}
+                      >
+                        <TrackChangesOutlinedIcon
+                          sx={{ fontSize: 14, color: 'rgba(74,222,128,0.95)' }}
+                        />
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            color: 'rgba(255,255,255,0.78)',
+                            fontWeight: 700
+                          }}
+                        >
+                          <Box
+                            component='span'
+                            sx={{ position: 'absolute', left: -9999 }}
+                          >
+                            On track level
+                          </Box>
+                          {ci.onTrackLevel}
+                        </Typography>
+                      </Stack>
+                    ) : null}
+                  </Stack>
+                ) : null}
 
                 {hasNotes ? (
                   <Typography

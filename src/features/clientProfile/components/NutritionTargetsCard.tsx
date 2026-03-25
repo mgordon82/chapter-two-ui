@@ -100,6 +100,7 @@ const formatDate = (value?: string | null) => {
 const NutritionTargetsCard: React.FC<NutritionTargetsCardProps> = ({
   nutrition
 }) => {
+  console.log('nutrition', nutrition);
   return (
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
@@ -170,8 +171,8 @@ const NutritionTargetsCard: React.FC<NutritionTargetsCardProps> = ({
           <MetricItem
             label='Water Target'
             value={
-              nutrition.waterTargetOz != null
-                ? `${nutrition.waterTargetOz} oz`
+              nutrition.waterTargetMl != null
+                ? `${nutrition.waterTargetMl} mL`
                 : '—'
             }
           />

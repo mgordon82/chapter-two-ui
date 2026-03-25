@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  Slider,
   Stack,
   Step,
   StepLabel,
@@ -164,11 +165,15 @@ const AddCheckInDialog = ({
   >(null);
   const [checkInRequestedAfterFinalize, setCheckInRequestedAfterFinalize] =
     useState(false);
+  const [energyLevel, setEnergyLevel] = useState<string>('');
+  const [onTrackLevel, setOnTrackLevel] = useState<string>('');
 
   const resetForm = useCallback(() => {
     setDateValue(initialDate ?? toIsoDateInputValue(new Date()));
     setWeightDisplay('');
     setNotes('');
+    setEnergyLevel('');
+    setOnTrackLevel('');
     setIncludeProgressPhotos(false);
     setIncludedExerciseSessionIds([]);
     setExcludedExerciseSessionIds([]);
@@ -227,6 +232,12 @@ const AddCheckInDialog = ({
 
     setIncludedExerciseSessionIds(sourceItem?.includedExerciseSessionIds ?? []);
     setExcludedExerciseSessionIds(sourceItem?.excludedExerciseSessionIds ?? []);
+    setEnergyLevel(
+      sourceItem?.energyLevel != null ? String(sourceItem.energyLevel) : ''
+    );
+    setOnTrackLevel(
+      sourceItem?.onTrackLevel != null ? String(sourceItem.onTrackLevel) : ''
+    );
   }, [initialItem, open, selectedDateItem, weightUnitPref]);
 
   useEffect(() => {
@@ -433,11 +444,23 @@ const AddCheckInDialog = ({
       return recordedAt.toISOString();
     })();
 
+    const parsedEnergy =
+      energyLevel && energyLevel.trim() !== ''
+        ? Number(energyLevel)
+        : undefined;
+
+    const parsedOnTrackLevel =
+      onTrackLevel && onTrackLevel.trim() !== ''
+        ? Number(onTrackLevel)
+        : undefined;
+
     return {
       representedDate: dateValue,
       recordedAt: recordedAtIso,
       weightKg,
-      notes: notes.trim() ? notes.trim() : undefined
+      notes: notes.trim() ? notes.trim() : undefined,
+      energyLevel: parsedEnergy,
+      onTrackLevel: parsedOnTrackLevel
     };
   };
 
@@ -912,6 +935,71 @@ const AddCheckInDialog = ({
                   (selectedDateItem ?? initialItem)?.weightSource === 'legacy')
             )}
           />
+
+          <Box>
+            <Typography variant='subtitle2' sx={{ mb: 0.5 }}>
+              Energy Level
+            </Typography>
+
+            <Typography variant='caption' color='text.secondary'>
+              How was your energy today?
+            </Typography>
+
+            <Slider
+              value={energyLevel ? Number(energyLevel) : 5}
+              onChange={(_, value) => setEnergyLevel(String(value))}
+              min={1}
+              max={10}
+              step={1}
+              marks
+              valueLabelDisplay='on'
+              disabled={Boolean(
+                selectedDateItem && !selectedDateItem.isEditable
+              )}
+              sx={{ mt: 2 }}
+            />
+
+            <Stack direction='row' justifyContent='space-between'>
+              <Typography variant='caption' color='text.secondary'>
+                1
+              </Typography>
+              <Typography variant='caption' color='text.secondary'>
+                10
+              </Typography>
+            </Stack>
+          </Box>
+          <Box>
+            <Typography variant='subtitle2' sx={{ mb: 0.5 }}>
+              How on track were you?
+            </Typography>
+
+            <Typography variant='caption' color='text.secondary'>
+              How well did you stick to your plan today?
+            </Typography>
+
+            <Slider
+              value={onTrackLevel ? Number(onTrackLevel) : 5}
+              onChange={(_, value) => setOnTrackLevel(String(value))}
+              min={1}
+              max={10}
+              step={1}
+              marks
+              valueLabelDisplay='on'
+              disabled={Boolean(
+                selectedDateItem && !selectedDateItem.isEditable
+              )}
+              sx={{ mt: 2 }}
+            />
+
+            <Stack direction='row' justifyContent='space-between'>
+              <Typography variant='caption' color='text.secondary'>
+                1
+              </Typography>
+              <Typography variant='caption' color='text.secondary'>
+                10
+              </Typography>
+            </Stack>
+          </Box>
 
           {Boolean(
             (selectedDateItem ?? initialItem)?.alternateWeights?.length

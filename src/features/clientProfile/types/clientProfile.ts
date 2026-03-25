@@ -93,7 +93,9 @@ export type LatestCheckIn = {
   bodyFatPercent?: number | null;
   waistCm?: number | null;
   waistDisplay?: string | null;
+  waterMl?: number | null;
   energy?: number | null;
+  onTrackLevel?: number | null;
   sleepHours?: number | null;
   steps?: number | null;
   workoutCount?: number | null;
@@ -103,7 +105,6 @@ export type LatestCheckIn = {
     recovery?: number | null;
   } | null;
   notes?: string | null;
-  mood?: string | null;
   hasPhotos: boolean;
 };
 
