@@ -1,4 +1,4 @@
-import type { CheckIn } from '../../checkIns/redux/checkInsSlice';
+import type { MappedCheckIn } from '../../checkIns/redux/checkInsSlice';
 
 export type ClientProfile = {
   overview: ClientOverview;
@@ -6,7 +6,7 @@ export type ClientProfile = {
   notes: CoachNotes;
   weightTrend: WeightTrend;
   latestCheckIn: LatestCheckIn | null;
-  checkInHistory: CheckIn[];
+  checkInHistory: MappedCheckIn[];
   activity: ActivitySnapshot;
   insights: ProgressInsights;
   photos: ProgressPhotos;
@@ -47,7 +47,7 @@ export type ClientNutrition = {
     carbsGrams: number | null;
     fatGrams: number | null;
   };
-  waterTargetOz?: number | null;
+  waterTargetMl?: number | null;
   fiberTargetGrams?: number | null;
   mealPlanStyle?: string | null;
   phase?: string | null;
