@@ -1,12 +1,10 @@
-import type { MappedCheckIn } from '../../checkIns/redux/checkInsSlice';
-
 export type ClientProfile = {
   overview: ClientOverview;
   nutrition: ClientNutrition;
   notes: CoachNotes;
   weightTrend: WeightTrend;
   latestCheckIn: LatestCheckIn | null;
-  checkInHistory: MappedCheckIn[];
+  checkInHistory: ClientProfileCheckInHistoryItem[];
   activity: ActivitySnapshot;
   insights: ProgressInsights;
   photos: ProgressPhotos;
@@ -106,6 +104,22 @@ export type LatestCheckIn = {
   } | null;
   notes?: string | null;
   hasPhotos: boolean;
+};
+
+export type ClientProfileCheckInHistoryItem = {
+  _id: string;
+  userId: string;
+  recordedAt: string | null;
+  metrics: {
+    weightKg: number | null;
+    notes: string | null;
+  };
+  hasPhotos: boolean;
+  photos: unknown;
+  createdAt: string | null;
+  createdByUserId: string;
+  isDeleted: boolean;
+  source: unknown;
 };
 
 export type ActivitySnapshot = {
