@@ -317,9 +317,12 @@ const ClientNutritionCalculator = () => {
     dispatch(persistUserProfileRequested(apiPayload));
 
     if (checkInsCount === 0 && inputs.weightKg != null) {
+      const now = new Date();
+
       dispatch(
         createCheckInRequested({
-          recordedAt: new Date().toISOString(),
+          representedDate: now.toISOString().slice(0, 10),
+          recordedAt: now.toISOString(),
           weightKg: Number(inputs.weightKg.toFixed(2)),
           notes: 'Starting weight'
         })
