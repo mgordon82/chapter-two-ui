@@ -259,7 +259,6 @@ const Login = () => {
             onChange={(e) => setConfirmNewPassword(e.target.value)}
             onFocus={(e) => {
               setPwAnchorEl(e.currentTarget);
-              if (!canSubmitNewPassword) setShowPwRules(true);
             }}
             onBlur={() => setConfirmTouched(true)}
             fullWidth
