@@ -89,6 +89,7 @@ export type MappedExerciseSession = {
   sessionType: string | null;
   name: string | null;
   notes: string | null;
+  focusArea: string | null;
 
   metrics: {
     durationMinutes: number | null;
@@ -111,12 +112,23 @@ export type MappedExerciseSession = {
 export type CreateCheckInInput = {
   representedDate: string;
   recordedAt?: string;
-  weightKg: number;
+  weightKg?: number;
   notes?: string;
   energyLevel?: number;
   onTrackLevel?: number;
   checkInType?: 'daily' | 'weekly';
   progressPhotoSetId?: string;
+};
+
+export type CreateExerciseSessionInput = {
+  performedAt: string;
+  sessionType?: string | null;
+  name: string;
+  focusArea?: string | null;
+  notes?: string | null;
+  metrics?: {
+    durationMinutes?: number | null;
+  };
 };
 
 export type SaveExerciseSelectionInput = {
@@ -137,9 +149,11 @@ type CheckInsState = {
   selectedDateError: string | null;
 
   creating: boolean;
+  creatingExerciseSession: boolean;
   updatingLifecycle: boolean;
   savingExerciseSelection: boolean;
   lastCreatedCheckInId: string | null;
+  lastCreatedExerciseSessionId: string | null;
   error: string | null;
   loadedRange: RangeKey | null;
 };
@@ -155,9 +169,11 @@ const initialState: CheckInsState = {
   selectedDateError: null,
 
   creating: false,
+  creatingExerciseSession: false,
   updatingLifecycle: false,
   savingExerciseSelection: false,
   lastCreatedCheckInId: null,
+  lastCreatedExerciseSessionId: null,
   error: null,
   loadedRange: null
 };
@@ -242,7 +258,29 @@ const checkInsSlice = createSlice({
       state.lastCreatedCheckInId = null;
       state.error = action.payload;
     },
-
+    createExerciseSessionRequested(
+      state,
+      _action: PayloadAction<CreateExerciseSessionInput>
+    ) {
+      state.creatingExerciseSession = true;
+      state.lastCreatedExerciseSessionId = null;
+      state.error = null;
+    },
+    createExerciseSessionSucceeded(
+      state,
+      action: PayloadAction<{ id: string }>
+    ) {
+      state.creatingExerciseSession = false;
+      state.lastCreatedExerciseSessionId = action.payload.id;
+    },
+    createExerciseSessionFailed(state, action: PayloadAction<string>) {
+      state.creatingExerciseSession = false;
+      state.lastCreatedExerciseSessionId = null;
+      state.error = action.payload;
+    },
+    clearLastCreatedExerciseSessionId(state) {
+      state.lastCreatedExerciseSessionId = null;
+    },
     closeCheckInRequested(state, _action: PayloadAction<{ id: string }>) {
       state.updatingLifecycle = true;
       state.error = null;
@@ -304,9 +342,13 @@ export const {
   fetchCheckInByDateSucceeded,
   fetchCheckInByDateFailed,
   clearSelectedDateCheckIn,
+  clearLastCreatedExerciseSessionId,
   createCheckInRequested,
   createCheckInSucceeded,
   createCheckInFailed,
+  createExerciseSessionRequested,
+  createExerciseSessionSucceeded,
+  createExerciseSessionFailed,
   closeCheckInRequested,
   closeCheckInSucceeded,
   closeCheckInFailed,

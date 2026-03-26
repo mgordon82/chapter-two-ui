@@ -27,7 +27,11 @@ import {
   type MappedCheckIn,
   type MappedExerciseSession,
   type CreateCheckInInput,
-  type SaveExerciseSelectionInput
+  type SaveExerciseSelectionInput,
+  createExerciseSessionFailed,
+  createExerciseSessionSucceeded,
+  type CreateExerciseSessionInput,
+  createExerciseSessionRequested
 } from './checkInsSlice';
 
 import type { RangeKey } from '../types';
@@ -382,6 +386,72 @@ const reopenCheckInEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
     })
   );
 
+const createExerciseSessionEpic: Epic<AnyAction, AnyAction, RootState> = (
+  action$
+) =>
+  action$.pipe(
+    ofType(createExerciseSessionRequested.type),
+    mergeMap((action: PayloadAction<CreateExerciseSessionInput>) => {
+      const API_URL = import.meta.env.VITE_API_URL;
+
+      return from(
+        (async () => {
+          const token = await getAccessToken();
+          if (!token) throw new Error('NOT_SIGNED_IN');
+
+          const res = await fetch(
+            `${API_URL}/api/exercise-sessions/current-user`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(action.payload)
+            }
+          );
+
+          if (!res.ok) {
+            throw new Error(await readErrorMessageFromResponse(res));
+          }
+
+          const data = (await res.json()) as { id: string };
+
+          const performedAtDate = new Date(action.payload.performedAt);
+          const followUpDate = Number.isNaN(performedAtDate.getTime())
+            ? null
+            : performedAtDate.toISOString().slice(0, 10);
+
+          const followUpActions: AnyAction[] = [
+            createExerciseSessionSucceeded({ id: String(data.id) })
+          ];
+
+          if (followUpDate) {
+            followUpActions.push(
+              fetchCheckInByDateRequested({ date: followUpDate })
+            );
+          }
+
+          return followUpActions;
+        })()
+      ).pipe(
+        mergeMap((actions) => from(actions)),
+        catchError((err: unknown) => {
+          const rawMessage = getErrorMessage(
+            err,
+            'Failed to create exercise session'
+          );
+          const msg =
+            rawMessage === 'NOT_SIGNED_IN'
+              ? 'Please sign in again.'
+              : rawMessage;
+
+          return of(createExerciseSessionFailed(msg));
+        })
+      );
+    })
+  );
+
 const saveExerciseSelectionEpic: Epic<AnyAction, AnyAction, RootState> = (
   action$
 ) =>
@@ -457,5 +527,6 @@ export const checkInsEpics: Epic<AnyAction, AnyAction, RootState>[] = [
   createCheckInEpic,
   closeCheckInEpic,
   reopenCheckInEpic,
+  createExerciseSessionEpic,
   saveExerciseSelectionEpic
 ];

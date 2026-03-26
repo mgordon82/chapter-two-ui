@@ -27,9 +27,11 @@ import {
 import { formatWeight, toIsoDateInputValue } from '../helpers';
 import {
   clearLastCreatedCheckInId,
+  clearLastCreatedExerciseSessionId,
   clearSelectedDateCheckIn,
   closeCheckInRequested,
   createCheckInRequested,
+  createExerciseSessionRequested,
   fetchCheckInByDateRequested,
   reopenCheckInRequested,
   saveExerciseSelectionRequested,
@@ -113,10 +115,12 @@ const AddCheckInDialog = ({
   const { weightUnitPref } = useAppSelector(selectUserUnitPrefs);
   const {
     creating,
+    creatingExerciseSession,
     updatingLifecycle,
     savingExerciseSelection,
     error: checkInError,
     lastCreatedCheckInId,
+    lastCreatedExerciseSessionId,
     selectedDateItem,
     selectedDateSuggestedExerciseSessions,
     loadingSelectedDate,
@@ -145,6 +149,14 @@ const AddCheckInDialog = ({
     string[]
   >([]);
 
+  const [showAddWorkoutForm, setShowAddWorkoutForm] = useState(false);
+  const [manualWorkoutName, setManualWorkoutName] = useState('');
+  const [manualWorkoutType, setManualWorkoutType] = useState('');
+  const [manualWorkoutTime, setManualWorkoutTime] = useState('12:00');
+  const [manualWorkoutMinutes, setManualWorkoutMinutes] = useState('');
+  const [manualWorkoutFocusArea, setManualWorkoutFocusArea] = useState('');
+  const [manualWorkoutNotes, setManualWorkoutNotes] = useState('');
+
   const [activeStep, setActiveStep] = useState(0);
   const [frontPhoto, setFrontPhoto] =
     useState<StarterUploadRequestPhoto | null>(null);
@@ -167,6 +179,8 @@ const AddCheckInDialog = ({
     useState(false);
   const [energyLevel, setEnergyLevel] = useState<string>('');
   const [onTrackLevel, setOnTrackLevel] = useState<string>('');
+  const [waitingForSelectionPersistence, setWaitingForSelectionPersistence] =
+    useState(false);
 
   const resetForm = useCallback(() => {
     setDateValue(initialDate ?? toIsoDateInputValue(new Date()));
@@ -177,6 +191,13 @@ const AddCheckInDialog = ({
     setIncludeProgressPhotos(false);
     setIncludedExerciseSessionIds([]);
     setExcludedExerciseSessionIds([]);
+    setShowAddWorkoutForm(false);
+    setManualWorkoutName('');
+    setManualWorkoutType('');
+    setManualWorkoutTime('12:00');
+    setManualWorkoutMinutes('');
+    setManualWorkoutFocusArea('');
+    setManualWorkoutNotes('');
     setActiveStep(0);
     setFrontPhoto(null);
     setSidePhoto(null);
@@ -187,7 +208,9 @@ const AddCheckInDialog = ({
     setPendingCheckInPayload(null);
     setCurrentProgressPhotoSetId(null);
     setCheckInRequestedAfterFinalize(false);
+    setWaitingForSelectionPersistence(false);
     dispatch(clearLastCreatedCheckInId());
+    dispatch(clearLastCreatedExerciseSessionId());
     dispatch(clearProgressUploadSession());
     dispatch(clearSelectedDateCheckIn());
   }, [dispatch, initialDate]);
@@ -229,7 +252,6 @@ const AddCheckInDialog = ({
     setWeightDisplay(displayWeight);
     setNotes(sourceItem?.notes ?? '');
     setIncludeProgressPhotos(Boolean(sourceItem?.hasPhotos));
-
     setIncludedExerciseSessionIds(sourceItem?.includedExerciseSessionIds ?? []);
     setExcludedExerciseSessionIds(sourceItem?.excludedExerciseSessionIds ?? []);
     setEnergyLevel(
@@ -260,14 +282,12 @@ const AddCheckInDialog = ({
     const wasSavingExerciseSelection =
       previousSavingExerciseSelectionRef.current;
 
-    if (
-      open &&
-      wasSavingExerciseSelection &&
-      !savingExerciseSelection &&
-      dateValue &&
-      !checkInError
-    ) {
-      dispatch(fetchCheckInByDateRequested({ date: dateValue }));
+    if (open && wasSavingExerciseSelection && !savingExerciseSelection) {
+      setWaitingForSelectionPersistence(false);
+
+      if (dateValue && !checkInError) {
+        dispatch(fetchCheckInByDateRequested({ date: dateValue }));
+      }
     }
 
     previousSavingExerciseSelectionRef.current = savingExerciseSelection;
@@ -406,12 +426,6 @@ const AddCheckInDialog = ({
   };
 
   const buildCreateCheckInPayload = (): CreateCheckInInput | null => {
-    const w = Number(weightDisplay);
-    if (!Number.isFinite(w) || w <= 0) {
-      setLocalError('Please enter a valid weight');
-      return null;
-    }
-
     if (includeProgressPhotos && !frontPhoto && !selectedDateItem?.hasPhotos) {
       setLocalError(
         'Front photo is required when progress photos are included'
@@ -419,8 +433,17 @@ const AddCheckInDialog = ({
       return null;
     }
 
-    const weightKg =
-      weightUnitPref === 'lbs' ? lbsToKgRounded(w, 2) : Number(w.toFixed(2));
+    let parsedWeightKg: number | undefined;
+    if (weightDisplay.trim()) {
+      const w = Number(weightDisplay);
+      if (!Number.isFinite(w) || w <= 0) {
+        setLocalError('Please enter a valid weight');
+        return null;
+      }
+
+      parsedWeightKg =
+        weightUnitPref === 'lbs' ? lbsToKgRounded(w, 2) : Number(w.toFixed(2));
+    }
 
     const recordedAtIso = (() => {
       const now = new Date();
@@ -454,14 +477,33 @@ const AddCheckInDialog = ({
         ? Number(onTrackLevel)
         : undefined;
 
-    return {
+    const hasAnyCheckInContent =
+      parsedWeightKg !== undefined ||
+      parsedEnergy !== undefined ||
+      parsedOnTrackLevel !== undefined ||
+      Boolean(notes.trim()) ||
+      selectedDateSuggestedExerciseSessions.length > 0 ||
+      includeProgressPhotos ||
+      Boolean(selectedDateItem?.hasPhotos);
+
+    if (!hasAnyCheckInContent) {
+      setLocalError('Add at least one check-in detail before saving.');
+      return null;
+    }
+
+    const payload: CreateCheckInInput = {
       representedDate: dateValue,
       recordedAt: recordedAtIso,
-      weightKg,
       notes: notes.trim() ? notes.trim() : undefined,
       energyLevel: parsedEnergy,
       onTrackLevel: parsedOnTrackLevel
     };
+
+    if (parsedWeightKg !== undefined) {
+      payload.weightKg = parsedWeightKg;
+    }
+
+    return payload;
   };
 
   const handleSave = () => {
@@ -469,6 +511,9 @@ const AddCheckInDialog = ({
     if (!payload) return;
 
     setLocalError(null);
+    setWaitingForSelectionPersistence(
+      selectedDateSuggestedExerciseSessions.length > 0
+    );
 
     if (!includeProgressPhotos || selectedPhotos.length === 0) {
       dispatch(createCheckInRequested(payload));
@@ -530,18 +575,54 @@ const AddCheckInDialog = ({
     );
   };
 
-  const handleSaveExerciseSelection = () => {
-    if (!selectedDateItem?.id) return;
+  const handleCreateExerciseSession = () => {
+    if (!dateValue) {
+      setLocalError('Please select a date');
+      return;
+    }
+
+    if (!manualWorkoutName.trim()) {
+      setLocalError('Workout name is required');
+      return;
+    }
+
+    const [year, month, day] = dateValue.split('-').map(Number);
+    const [hours, minutes] = manualWorkoutTime.split(':').map(Number);
+
+    const performedAt = new Date(
+      year,
+      (month ?? 1) - 1,
+      day ?? 1,
+      hours ?? 12,
+      minutes ?? 0,
+      0,
+      0
+    ).toISOString();
+
+    setLocalError(null);
 
     dispatch(
-      saveExerciseSelectionRequested({
-        id: selectedDateItem.id,
-        autoSuggestedExerciseSessionIds:
-          selectedDateSuggestedExerciseSessions.map((session) => session.id),
-        includedExerciseSessionIds,
-        excludedExerciseSessionIds
+      createExerciseSessionRequested({
+        performedAt,
+        sessionType: manualWorkoutType.trim() || null,
+        name: manualWorkoutName.trim(),
+        focusArea: manualWorkoutFocusArea.trim() || null,
+        notes: manualWorkoutNotes.trim() || null,
+        metrics: {
+          durationMinutes: manualWorkoutMinutes.trim()
+            ? Number(manualWorkoutMinutes)
+            : null
+        }
       })
     );
+
+    setManualWorkoutName('');
+    setManualWorkoutType('');
+    setManualWorkoutTime('12:00');
+    setManualWorkoutMinutes('');
+    setManualWorkoutFocusArea('');
+    setManualWorkoutNotes('');
+    setShowAddWorkoutForm(false);
   };
 
   useEffect(() => {
@@ -643,8 +724,55 @@ const AddCheckInDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    if (!lastCreatedExerciseSessionId) return;
+
+    setIncludedExerciseSessionIds((prev) =>
+      prev.includes(lastCreatedExerciseSessionId)
+        ? prev
+        : [...prev, lastCreatedExerciseSessionId]
+    );
+
+    setExcludedExerciseSessionIds((prev) =>
+      prev.filter((id) => id !== lastCreatedExerciseSessionId)
+    );
+
+    dispatch(clearLastCreatedExerciseSessionId());
+  }, [dispatch, lastCreatedExerciseSessionId, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!lastCreatedCheckInId) return;
+    if (!waitingForSelectionPersistence) return;
+    if (creating) return;
+    if (savingExerciseSelection) return;
+
+    dispatch(
+      saveExerciseSelectionRequested({
+        id: lastCreatedCheckInId,
+        autoSuggestedExerciseSessionIds:
+          selectedDateSuggestedExerciseSessions.map((s) => s.id),
+        includedExerciseSessionIds,
+        excludedExerciseSessionIds
+      })
+    );
+  }, [
+    creating,
+    dispatch,
+    excludedExerciseSessionIds,
+    includedExerciseSessionIds,
+    lastCreatedCheckInId,
+    open,
+    savingExerciseSelection,
+    selectedDateSuggestedExerciseSessions,
+    waitingForSelectionPersistence
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
     if (!lastCreatedCheckInId) return;
     if (creating) return;
+    if (savingExerciseSelection) return;
+    if (waitingForSelectionPersistence) return;
     if (checkInError) return;
 
     if (includeProgressPhotos) {
@@ -661,7 +789,9 @@ const AddCheckInDialog = ({
     localError,
     onClose,
     open,
-    photosError
+    photosError,
+    savingExerciseSelection,
+    waitingForSelectionPersistence
   ]);
 
   useEffect(() => {
@@ -672,6 +802,7 @@ const AddCheckInDialog = ({
 
   const disableClose =
     creating ||
+    creatingExerciseSession ||
     updatingLifecycle ||
     savingExerciseSelection ||
     creatingProgressUploadSession ||
@@ -731,7 +862,7 @@ const AddCheckInDialog = ({
       </DialogTitle>
 
       <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
+        <Stack spacing={2.25} sx={{ mt: 1 }}>
           <TextField
             label='Date'
             type='date'
@@ -777,557 +908,710 @@ const AddCheckInDialog = ({
             </Stack>
           ) : null}
 
-          {selectedDateItem &&
-          selectedDateSuggestedExerciseSessions.length > 0 ? (
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: 2,
-                border: '1px solid rgba(255,255,255,0.12)',
-                backgroundColor: 'rgba(255,255,255,0.03)'
-              }}
-            >
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(255,255,255,0.03)'
+            }}
+          >
+            <Stack spacing={1.5}>
               <Stack
-                direction={{ xs: 'column', sm: 'row' }}
+                direction='row'
                 justifyContent='space-between'
-                alignItems={{ xs: 'stretch', sm: 'center' }}
+                alignItems='center'
                 spacing={1}
-                sx={{ mb: 1 }}
               >
-                <Typography variant='subtitle2'>Suggested Activity</Typography>
+                <Typography variant='subtitle2'>Activity Sessions</Typography>
 
-                {selectedDateItem.isEditable ? (
-                  <Button
-                    size='small'
-                    variant='outlined'
-                    onClick={handleSaveExerciseSelection}
-                    disabled={disableClose}
-                  >
-                    {savingExerciseSelection
-                      ? 'Saving...'
-                      : 'Save Activity Selection'}
-                  </Button>
-                ) : null}
+                <Button
+                  size='small'
+                  variant='outlined'
+                  onClick={() => setShowAddWorkoutForm((prev) => !prev)}
+                  disabled={disableClose}
+                >
+                  {showAddWorkoutForm ? 'Cancel Workout' : 'Add Workout'}
+                </Button>
               </Stack>
 
+              {showAddWorkoutForm ? (
+                <Stack
+                  spacing={1.5}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1.5,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    backgroundColor: 'rgba(255,255,255,0.03)'
+                  }}
+                >
+                  <TextField
+                    label='Workout name'
+                    value={manualWorkoutName}
+                    onChange={(e) => setManualWorkoutName(e.target.value)}
+                    size='small'
+                  />
+
+                  <TextField
+                    label='Workout type'
+                    value={manualWorkoutType}
+                    onChange={(e) => setManualWorkoutType(e.target.value)}
+                    size='small'
+                    placeholder='strength, cardio, mobility...'
+                  />
+
+                  <TextField
+                    label='Time'
+                    type='time'
+                    value={manualWorkoutTime}
+                    onChange={(e) => setManualWorkoutTime(e.target.value)}
+                    size='small'
+                    InputLabelProps={{ shrink: true }}
+                  />
+
+                  <TextField
+                    label='Minutes'
+                    type='number'
+                    value={manualWorkoutMinutes}
+                    onChange={(e) => setManualWorkoutMinutes(e.target.value)}
+                    size='small'
+                    inputProps={{ min: 0, step: 1 }}
+                  />
+
+                  <TextField
+                    label='Focus area'
+                    value={manualWorkoutFocusArea}
+                    onChange={(e) => setManualWorkoutFocusArea(e.target.value)}
+                    size='small'
+                    placeholder='chest, back, legs...'
+                  />
+
+                  <TextField
+                    label='Workout notes'
+                    value={manualWorkoutNotes}
+                    onChange={(e) => setManualWorkoutNotes(e.target.value)}
+                    size='small'
+                    multiline
+                    minRows={2}
+                  />
+
+                  <Button
+                    variant='contained'
+                    sx={{ alignSelf: 'flex-start' }}
+                    disabled={disableClose || !manualWorkoutName.trim()}
+                    onClick={handleCreateExerciseSession}
+                  >
+                    {creatingExerciseSession
+                      ? 'Saving Workout...'
+                      : 'Save Workout'}
+                  </Button>
+                </Stack>
+              ) : null}
+
               <Stack spacing={0.75}>
-                {selectedDateSuggestedExerciseSessions.map((session) => {
-                  const time = session.performedAt
-                    ? new Date(session.performedAt).toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: '2-digit'
-                      })
-                    : null;
+                {selectedDateSuggestedExerciseSessions.length === 0 ? (
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 1.25,
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)'
+                    }}
+                  >
+                    <Typography variant='body2' color='text.secondary'>
+                      No activity sessions yet. Add a workout or import one to
+                      get started.
+                    </Typography>
+                  </Box>
+                ) : (
+                  selectedDateSuggestedExerciseSessions.map((session) => {
+                    const time = session.performedAt
+                      ? new Date(session.performedAt).toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })
+                      : null;
 
-                  const label = session.name ?? 'Exercise Session';
-                  const durationMinutes =
-                    session.metrics?.durationMinutes ?? null;
+                    const label = session.name ?? 'Exercise Session';
+                    const durationMinutes =
+                      session.metrics?.durationMinutes ?? null;
 
-                  const isIncluded = includedExerciseSessionIds.includes(
-                    session.id
-                  );
-                  const isExcluded = excludedExerciseSessionIds.includes(
-                    session.id
-                  );
+                    const isIncluded = includedExerciseSessionIds.includes(
+                      session.id
+                    );
+                    const isExcluded = excludedExerciseSessionIds.includes(
+                      session.id
+                    );
 
-                  return (
-                    <Box
-                      key={session.id}
-                      sx={{
-                        px: 1,
-                        py: 0.9,
-                        borderRadius: 1,
-                        backgroundColor: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                    >
-                      <Stack spacing={1}>
-                        <Stack direction='row' justifyContent='space-between'>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            {label}
-                          </Typography>
+                    return (
+                      <Box
+                        key={session.id}
+                        sx={{
+                          px: 1,
+                          py: 0.9,
+                          borderRadius: 1,
+                          backgroundColor: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)'
+                        }}
+                      >
+                        <Stack spacing={1}>
+                          <Stack direction='row' justifyContent='space-between'>
+                            <Typography
+                              variant='body2'
+                              sx={{ fontWeight: 600 }}
+                            >
+                              {label}
+                            </Typography>
 
-                          {time ? (
+                            {time ? (
+                              <Typography
+                                variant='caption'
+                                sx={{ color: 'rgba(255,255,255,0.6)' }}
+                              >
+                                {time}
+                              </Typography>
+                            ) : null}
+                          </Stack>
+
+                          {durationMinutes ? (
                             <Typography
                               variant='caption'
                               sx={{ color: 'rgba(255,255,255,0.6)' }}
                             >
-                              {time}
+                              {durationMinutes} min
                             </Typography>
                           ) : null}
+
+                          <Stack direction='row' spacing={1} flexWrap='wrap'>
+                            <Button
+                              size='small'
+                              variant={isIncluded ? 'contained' : 'outlined'}
+                              onClick={() => toggleExerciseIncluded(session.id)}
+                              disabled={
+                                disableClose ||
+                                Boolean(
+                                  selectedDateItem &&
+                                    !selectedDateItem.isEditable
+                                )
+                              }
+                            >
+                              {isIncluded ? 'Included' : 'Include'}
+                            </Button>
+
+                            <Button
+                              size='small'
+                              color='inherit'
+                              variant={isExcluded ? 'contained' : 'outlined'}
+                              onClick={() => toggleExerciseExcluded(session.id)}
+                              disabled={
+                                disableClose ||
+                                Boolean(
+                                  selectedDateItem &&
+                                    !selectedDateItem.isEditable
+                                )
+                              }
+                            >
+                              {isExcluded ? 'Excluded' : 'Exclude'}
+                            </Button>
+                          </Stack>
                         </Stack>
-
-                        {durationMinutes ? (
-                          <Typography
-                            variant='caption'
-                            sx={{ color: 'rgba(255,255,255,0.6)' }}
-                          >
-                            {durationMinutes} min
-                          </Typography>
-                        ) : null}
-
-                        <Stack direction='row' spacing={1} flexWrap='wrap'>
-                          <Button
-                            size='small'
-                            variant={isIncluded ? 'contained' : 'outlined'}
-                            onClick={() => toggleExerciseIncluded(session.id)}
-                            disabled={
-                              disableClose ||
-                              Boolean(
-                                selectedDateItem && !selectedDateItem.isEditable
-                              )
-                            }
-                          >
-                            {isIncluded ? 'Included' : 'Include'}
-                          </Button>
-
-                          <Button
-                            size='small'
-                            color='inherit'
-                            variant={isExcluded ? 'contained' : 'outlined'}
-                            onClick={() => toggleExerciseExcluded(session.id)}
-                            disabled={
-                              disableClose ||
-                              Boolean(
-                                selectedDateItem && !selectedDateItem.isEditable
-                              )
-                            }
-                          >
-                            {isExcluded ? 'Excluded' : 'Exclude'}
-                          </Button>
-                        </Stack>
-                      </Stack>
-                    </Box>
-                  );
-                })}
+                      </Box>
+                    );
+                  })
+                )}
               </Stack>
-            </Box>
-          ) : null}
-
-          {(() => {
-            const item = selectedDateItem ?? initialItem;
-            const label = formatWeightSourceLabel(item);
-
-            if (!label) return null;
-
-            return (
-              <Typography variant='caption' color='text.secondary'>
-                Source: {label}
-                {item?.hasWeightConflict
-                  ? ' • Multiple weights recorded this day'
-                  : ''}
-              </Typography>
-            );
-          })()}
-
-          <TextField
-            label={`Weight (${weightUnitPref})`}
-            type='number'
-            value={weightDisplay}
-            onChange={(e) => setWeightDisplay(e.target.value)}
-            inputProps={{ min: 0, step: '0.1' }}
-            autoFocus
-            disabled={Boolean(
-              (selectedDateItem ?? initialItem) &&
-                (!(selectedDateItem ?? initialItem)?.isEditable ||
-                  (selectedDateItem ?? initialItem)?.weightSource ===
-                    'apple_health' ||
-                  (selectedDateItem ?? initialItem)?.weightSource === 'legacy')
-            )}
-          />
-
-          <Box>
-            <Typography variant='subtitle2' sx={{ mb: 0.5 }}>
-              Energy Level
-            </Typography>
-
-            <Typography variant='caption' color='text.secondary'>
-              How was your energy today?
-            </Typography>
-
-            <Slider
-              value={energyLevel ? Number(energyLevel) : 5}
-              onChange={(_, value) => setEnergyLevel(String(value))}
-              min={1}
-              max={10}
-              step={1}
-              marks
-              valueLabelDisplay='on'
-              disabled={Boolean(
-                selectedDateItem && !selectedDateItem.isEditable
-              )}
-              sx={{ mt: 2 }}
-            />
-
-            <Stack direction='row' justifyContent='space-between'>
-              <Typography variant='caption' color='text.secondary'>
-                1
-              </Typography>
-              <Typography variant='caption' color='text.secondary'>
-                10
-              </Typography>
-            </Stack>
-          </Box>
-          <Box>
-            <Typography variant='subtitle2' sx={{ mb: 0.5 }}>
-              How on track were you?
-            </Typography>
-
-            <Typography variant='caption' color='text.secondary'>
-              How well did you stick to your plan today?
-            </Typography>
-
-            <Slider
-              value={onTrackLevel ? Number(onTrackLevel) : 5}
-              onChange={(_, value) => setOnTrackLevel(String(value))}
-              min={1}
-              max={10}
-              step={1}
-              marks
-              valueLabelDisplay='on'
-              disabled={Boolean(
-                selectedDateItem && !selectedDateItem.isEditable
-              )}
-              sx={{ mt: 2 }}
-            />
-
-            <Stack direction='row' justifyContent='space-between'>
-              <Typography variant='caption' color='text.secondary'>
-                1
-              </Typography>
-              <Typography variant='caption' color='text.secondary'>
-                10
-              </Typography>
             </Stack>
           </Box>
 
-          {Boolean(
-            (selectedDateItem ?? initialItem)?.alternateWeights?.length
-          ) && (
-            <Stack spacing={0.5}>
-              <Typography variant='caption' color='text.secondary'>
-                Other weights recorded this day:
-              </Typography>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(255,255,255,0.03)'
+            }}
+          >
+            <Stack spacing={2}>
+              <Typography variant='subtitle2'>Recovery</Typography>
 
-              {(selectedDateItem ?? initialItem)?.alternateWeights?.map(
-                (weight, idx) => (
-                  <Typography
-                    key={`${weight.source}-${weight.weightKg}-${idx}`}
-                    variant='caption'
-                    color='text.secondary'
-                  >
-                    {weight.source === 'manual'
-                      ? 'Manual'
-                      : weight.source === 'apple_health'
-                      ? 'Apple Health'
-                      : 'Legacy'}
-                    : {formatWeight(weight.weightKg, weightUnitPref)}{' '}
-                    {weightUnitPref}
+              <Box>
+                <Typography variant='subtitle2' sx={{ mb: 0.5 }}>
+                  Energy Level
+                </Typography>
+
+                <Typography variant='caption' color='text.secondary'>
+                  How was your energy today?
+                </Typography>
+
+                <Slider
+                  value={energyLevel ? Number(energyLevel) : 5}
+                  onChange={(_, value) => setEnergyLevel(String(value))}
+                  min={1}
+                  max={10}
+                  step={1}
+                  marks
+                  valueLabelDisplay='on'
+                  disabled={Boolean(
+                    selectedDateItem && !selectedDateItem.isEditable
+                  )}
+                  sx={{ mt: 2 }}
+                />
+
+                <Stack direction='row' justifyContent='space-between'>
+                  <Typography variant='caption' color='text.secondary'>
+                    1
                   </Typography>
-                )
+                  <Typography variant='caption' color='text.secondary'>
+                    10
+                  </Typography>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant='subtitle2' sx={{ mb: 0.5 }}>
+                  How on track were you?
+                </Typography>
+
+                <Typography variant='caption' color='text.secondary'>
+                  How well did you stick to your plan today?
+                </Typography>
+
+                <Slider
+                  value={onTrackLevel ? Number(onTrackLevel) : 5}
+                  onChange={(_, value) => setOnTrackLevel(String(value))}
+                  min={1}
+                  max={10}
+                  step={1}
+                  marks
+                  valueLabelDisplay='on'
+                  disabled={Boolean(
+                    selectedDateItem && !selectedDateItem.isEditable
+                  )}
+                  sx={{ mt: 2 }}
+                />
+
+                <Stack direction='row' justifyContent='space-between'>
+                  <Typography variant='caption' color='text.secondary'>
+                    1
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary'>
+                    10
+                  </Typography>
+                </Stack>
+              </Box>
+            </Stack>
+          </Box>
+
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(255,255,255,0.03)'
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Typography variant='subtitle2'>Body Metrics</Typography>
+
+              {(() => {
+                const item = selectedDateItem ?? initialItem;
+                const label = formatWeightSourceLabel(item);
+
+                if (!label) return null;
+
+                return (
+                  <Typography variant='caption' color='text.secondary'>
+                    Source: {label}
+                    {item?.hasWeightConflict
+                      ? ' • Multiple weights recorded this day'
+                      : ''}
+                  </Typography>
+                );
+              })()}
+
+              <TextField
+                label={`Weight (${weightUnitPref}) (optional)`}
+                type='number'
+                value={weightDisplay}
+                onChange={(e) => setWeightDisplay(e.target.value)}
+                inputProps={{ min: 0, step: '0.1' }}
+                autoFocus
+                disabled={Boolean(
+                  (selectedDateItem ?? initialItem) &&
+                    (!(selectedDateItem ?? initialItem)?.isEditable ||
+                      (selectedDateItem ?? initialItem)?.weightSource ===
+                        'apple_health' ||
+                      (selectedDateItem ?? initialItem)?.weightSource ===
+                        'legacy')
+                )}
+              />
+
+              {Boolean(
+                (selectedDateItem ?? initialItem)?.alternateWeights?.length
+              ) && (
+                <Stack spacing={0.5}>
+                  <Typography variant='caption' color='text.secondary'>
+                    Other weights recorded this day:
+                  </Typography>
+
+                  {(selectedDateItem ?? initialItem)?.alternateWeights?.map(
+                    (weight, idx) => (
+                      <Typography
+                        key={`${weight.source}-${weight.weightKg}-${idx}`}
+                        variant='caption'
+                        color='text.secondary'
+                      >
+                        {weight.source === 'manual'
+                          ? 'Manual'
+                          : weight.source === 'apple_health'
+                          ? 'Apple Health'
+                          : 'Legacy'}
+                        : {formatWeight(weight.weightKg, weightUnitPref)}{' '}
+                        {weightUnitPref}
+                      </Typography>
+                    )
+                  )}
+                </Stack>
               )}
             </Stack>
-          )}
+          </Box>
 
-          <TextField
-            label='Notes (optional)'
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            multiline
-            minRows={2}
-            disabled={Boolean(selectedDateItem && !selectedDateItem.isEditable)}
-          />
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(255,255,255,0.03)'
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Typography variant='subtitle2'>Notes</Typography>
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={includeProgressPhotos}
-                onChange={(e) => {
-                  setIncludeProgressPhotos(e.target.checked);
-                  setLocalError(null);
-                }}
+              <TextField
+                label='Notes (optional)'
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                multiline
+                minRows={2}
                 disabled={Boolean(
                   selectedDateItem && !selectedDateItem.isEditable
                 )}
               />
-            }
-            label='Include progress photos'
-          />
+            </Stack>
+          </Box>
 
-          {includeProgressPhotos ? (
-            <Stack spacing={3} sx={{ pt: 1 }}>
-              <Stepper activeStep={activeStep}>
-                {steps.map((step) => (
-                  <Step key={step.key}>
-                    <StepLabel>{step.label}</StepLabel>
-                  </Step>
-                ))}
-              </Stepper>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(255,255,255,0.03)'
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Typography variant='subtitle2'>Progress Photos</Typography>
 
-              {!isReviewStep ? (
-                <Stack spacing={1.5}>
-                  <Typography variant='subtitle1'>
-                    {currentStep.label}
-                  </Typography>
-
-                  <Typography variant='body2' color='text.secondary'>
-                    {currentStep.required
-                      ? 'This photo is required.'
-                      : 'This photo is optional. You can upload one or skip it.'}
-                  </Typography>
-
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                    {isNative ? (
-                      <>
-                        <Button
-                          variant='contained'
-                          onClick={() =>
-                            handleTakePhoto(currentStep.key as PhotoPosition)
-                          }
-                          disabled={
-                            disableClose ||
-                            Boolean(
-                              selectedDateItem && !selectedDateItem.isEditable
-                            )
-                          }
-                        >
-                          {currentPhoto ? 'Retake Photo' : 'Take Photo'}
-                        </Button>
-
-                        <Button
-                          variant='outlined'
-                          onClick={() =>
-                            handleChooseFromLibrary(
-                              currentStep.key as PhotoPosition
-                            )
-                          }
-                          disabled={
-                            disableClose ||
-                            Boolean(
-                              selectedDateItem && !selectedDateItem.isEditable
-                            )
-                          }
-                        >
-                          Choose From Library
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant='contained'
-                        component='label'
-                        disabled={
-                          disableClose ||
-                          Boolean(
-                            selectedDateItem && !selectedDateItem.isEditable
-                          )
-                        }
-                      >
-                        {currentPhoto ? 'Replace Photo' : 'Choose Photo'}
-                        <input
-                          hidden
-                          type='file'
-                          accept='image/jpeg,image/png'
-                          onChange={(e) =>
-                            handleFileInputChange(
-                              currentStep.key as PhotoPosition,
-                              e.target.files?.[0] ?? null
-                            )
-                          }
-                        />
-                      </Button>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={includeProgressPhotos}
+                    onChange={(e) => {
+                      setIncludeProgressPhotos(e.target.checked);
+                      setLocalError(null);
+                    }}
+                    disabled={Boolean(
+                      selectedDateItem && !selectedDateItem.isEditable
                     )}
-                  </Stack>
+                  />
+                }
+                label='Include progress photos'
+              />
 
-                  {currentPhoto ? (
-                    <Stack spacing={1}>
-                      <Typography variant='body2'>
-                        Selected: {currentPhoto.originalFileName}
+              {includeProgressPhotos ? (
+                <Stack spacing={3} sx={{ pt: 1 }}>
+                  <Stepper activeStep={activeStep}>
+                    {steps.map((step) => (
+                      <Step key={step.key}>
+                        <StepLabel>{step.label}</StepLabel>
+                      </Step>
+                    ))}
+                  </Stepper>
+
+                  {!isReviewStep ? (
+                    <Stack spacing={1.5}>
+                      <Typography variant='subtitle1'>
+                        {currentStep.label}
                       </Typography>
 
-                      <Box
-                        sx={{
-                          width: 160,
-                          height: 160,
-                          borderRadius: 2,
-                          overflow: 'hidden',
-                          border: '1px solid',
-                          borderColor: 'rgba(255,255,255,0.12)',
-                          bgcolor: 'grey.900'
-                        }}
+                      <Typography variant='body2' color='text.secondary'>
+                        {currentStep.required
+                          ? 'This photo is required.'
+                          : 'This photo is optional. You can upload one or skip it.'}
+                      </Typography>
+
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1.5}
                       >
-                        <Box
-                          component='img'
-                          src={URL.createObjectURL(currentPhoto.file)}
-                          alt={`${currentStep.label} preview`}
-                          sx={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block'
-                          }}
-                        />
-                      </Box>
-                    </Stack>
-                  ) : (
-                    <Typography variant='body2' color='text.secondary'>
-                      No photo selected
-                    </Typography>
-                  )}
-                </Stack>
-              ) : (
-                <Stack spacing={2}>
-                  <Typography variant='subtitle1'>
-                    Review Progress Photos
-                  </Typography>
+                        {isNative ? (
+                          <>
+                            <Button
+                              variant='contained'
+                              onClick={() =>
+                                handleTakePhoto(
+                                  currentStep.key as PhotoPosition
+                                )
+                              }
+                              disabled={
+                                disableClose ||
+                                Boolean(
+                                  selectedDateItem &&
+                                    !selectedDateItem.isEditable
+                                )
+                              }
+                            >
+                              {currentPhoto ? 'Retake Photo' : 'Take Photo'}
+                            </Button>
 
-                  <Typography variant='body2' color='text.secondary'>
-                    Please review the photos you selected before saving.
-                  </Typography>
+                            <Button
+                              variant='outlined'
+                              onClick={() =>
+                                handleChooseFromLibrary(
+                                  currentStep.key as PhotoPosition
+                                )
+                              }
+                              disabled={
+                                disableClose ||
+                                Boolean(
+                                  selectedDateItem &&
+                                    !selectedDateItem.isEditable
+                                )
+                              }
+                            >
+                              Choose From Library
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant='contained'
+                            component='label'
+                            disabled={
+                              disableClose ||
+                              Boolean(
+                                selectedDateItem && !selectedDateItem.isEditable
+                              )
+                            }
+                          >
+                            {currentPhoto ? 'Replace Photo' : 'Choose Photo'}
+                            <input
+                              hidden
+                              type='file'
+                              accept='image/jpeg,image/png'
+                              onChange={(e) =>
+                                handleFileInputChange(
+                                  currentStep.key as PhotoPosition,
+                                  e.target.files?.[0] ?? null
+                                )
+                              }
+                            />
+                          </Button>
+                        )}
+                      </Stack>
 
-                  <Stack direction='row' spacing={2} flexWrap='wrap'>
-                    {steps
-                      .filter((step) => step.key !== 'review')
-                      .map((step) => {
-                        const photo =
-                          step.key === 'front'
-                            ? frontPhoto
-                            : step.key === 'side'
-                            ? sidePhoto
-                            : backPhoto;
+                      {currentPhoto ? (
+                        <Stack spacing={1}>
+                          <Typography variant='body2'>
+                            Selected: {currentPhoto.originalFileName}
+                          </Typography>
 
-                        return (
                           <Box
-                            key={step.key}
                             sx={{
-                              width: 150,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 1
+                              width: 160,
+                              height: 160,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid',
+                              borderColor: 'rgba(255,255,255,0.12)',
+                              bgcolor: 'grey.900'
                             }}
                           >
                             <Box
+                              component='img'
+                              src={URL.createObjectURL(currentPhoto.file)}
+                              alt={`${currentStep.label} preview`}
                               sx={{
-                                width: 150,
-                                height: 150,
-                                borderRadius: 2,
-                                overflow: 'hidden',
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                display: 'block'
+                              }}
+                            />
+                          </Box>
+                        </Stack>
+                      ) : (
+                        <Typography variant='body2' color='text.secondary'>
+                          No photo selected
+                        </Typography>
+                      )}
+                    </Stack>
+                  ) : (
+                    <Stack spacing={2}>
+                      <Typography variant='subtitle1'>
+                        Review Progress Photos
+                      </Typography>
+
+                      <Typography variant='body2' color='text.secondary'>
+                        Please review the photos you selected before saving.
+                      </Typography>
+
+                      <Stack direction='row' spacing={2} flexWrap='wrap'>
+                        {steps
+                          .filter((step) => step.key !== 'review')
+                          .map((step) => {
+                            const photo =
+                              step.key === 'front'
+                                ? frontPhoto
+                                : step.key === 'side'
+                                ? sidePhoto
+                                : backPhoto;
+
+                            return (
+                              <Box
+                                key={step.key}
+                                sx={{
+                                  width: 150,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 1
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: 150,
+                                    height: 150,
+                                    borderRadius: 2,
+                                    overflow: 'hidden',
+                                    border: '1px solid',
+                                    borderColor: 'rgba(255,255,255,0.12)',
+                                    bgcolor: 'grey.900',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                >
+                                  {photo ? (
+                                    <Box
+                                      component='img'
+                                      src={URL.createObjectURL(photo.file)}
+                                      alt={`${step.label} preview`}
+                                      sx={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        display: 'block'
+                                      }}
+                                    />
+                                  ) : (
+                                    <Typography
+                                      variant='caption'
+                                      color='text.secondary'
+                                      sx={{ textTransform: 'capitalize' }}
+                                    >
+                                      Skipped
+                                    </Typography>
+                                  )}
+                                </Box>
+
+                                <Stack spacing={0.25}>
+                                  <Typography
+                                    variant='caption'
+                                    sx={{
+                                      textTransform: 'capitalize',
+                                      textAlign: 'center'
+                                    }}
+                                  >
+                                    {step.key}
+                                  </Typography>
+
+                                  <Typography
+                                    variant='caption'
+                                    color='text.secondary'
+                                    sx={{ textAlign: 'center' }}
+                                  >
+                                    {photo?.originalFileName ??
+                                      'No photo selected'}
+                                  </Typography>
+
+                                  {photo?.sizeBytes ? (
+                                    <Typography
+                                      variant='caption'
+                                      color='text.secondary'
+                                      sx={{ textAlign: 'center' }}
+                                    >
+                                      {formatBytes(photo.sizeBytes)}
+                                    </Typography>
+                                  ) : null}
+                                </Stack>
+                              </Box>
+                            );
+                          })}
+                      </Stack>
+                    </Stack>
+                  )}
+
+                  <Stack spacing={1}>
+                    <Typography variant='caption' color='text.secondary'>
+                      Selected so far:
+                    </Typography>
+
+                    <Stack direction='row' spacing={1} flexWrap='wrap'>
+                      {steps
+                        .filter((step) => step.key !== 'review')
+                        .map((step) => {
+                          const selected =
+                            step.key === 'front'
+                              ? frontPhoto
+                              : step.key === 'side'
+                              ? sidePhoto
+                              : backPhoto;
+
+                          return (
+                            <Box
+                              key={step.key}
+                              sx={{
+                                px: 1.5,
+                                py: 0.75,
+                                borderRadius: 999,
                                 border: '1px solid',
-                                borderColor: 'rgba(255,255,255,0.12)',
-                                bgcolor: 'grey.900',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
+                                borderColor: selected
+                                  ? 'rgba(42, 201, 184, 0.45)'
+                                  : 'rgba(255,255,255,0.12)',
+                                bgcolor: selected
+                                  ? 'rgba(42, 201, 184, 0.16)'
+                                  : 'rgba(255,255,255,0.04)'
                               }}
                             >
-                              {photo ? (
-                                <Box
-                                  component='img'
-                                  src={URL.createObjectURL(photo.file)}
-                                  alt={`${step.label} preview`}
-                                  sx={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    display: 'block'
-                                  }}
-                                />
-                              ) : (
-                                <Typography
-                                  variant='caption'
-                                  color='text.secondary'
-                                  sx={{ textTransform: 'capitalize' }}
-                                >
-                                  Skipped
-                                </Typography>
-                              )}
-                            </Box>
-
-                            <Stack spacing={0.25}>
                               <Typography
                                 variant='caption'
                                 sx={{
                                   textTransform: 'capitalize',
-                                  textAlign: 'center'
+                                  color: selected
+                                    ? 'primary.main'
+                                    : 'text.secondary'
                                 }}
                               >
                                 {step.key}
                               </Typography>
-
-                              <Typography
-                                variant='caption'
-                                color='text.secondary'
-                                sx={{ textAlign: 'center' }}
-                              >
-                                {photo?.originalFileName ?? 'No photo selected'}
-                              </Typography>
-
-                              {photo?.sizeBytes ? (
-                                <Typography
-                                  variant='caption'
-                                  color='text.secondary'
-                                  sx={{ textAlign: 'center' }}
-                                >
-                                  {formatBytes(photo.sizeBytes)}
-                                </Typography>
-                              ) : null}
-                            </Stack>
-                          </Box>
-                        );
-                      })}
+                            </Box>
+                          );
+                        })}
+                    </Stack>
                   </Stack>
                 </Stack>
-              )}
-
-              <Stack spacing={1}>
-                <Typography variant='caption' color='text.secondary'>
-                  Selected so far:
-                </Typography>
-
-                <Stack direction='row' spacing={1} flexWrap='wrap'>
-                  {steps
-                    .filter((step) => step.key !== 'review')
-                    .map((step) => {
-                      const selected =
-                        step.key === 'front'
-                          ? frontPhoto
-                          : step.key === 'side'
-                          ? sidePhoto
-                          : backPhoto;
-
-                      return (
-                        <Box
-                          key={step.key}
-                          sx={{
-                            px: 1.5,
-                            py: 0.75,
-                            borderRadius: 999,
-                            border: '1px solid',
-                            borderColor: selected
-                              ? 'rgba(42, 201, 184, 0.45)'
-                              : 'rgba(255,255,255,0.12)',
-                            bgcolor: selected
-                              ? 'rgba(42, 201, 184, 0.16)'
-                              : 'rgba(255,255,255,0.04)'
-                          }}
-                        >
-                          <Typography
-                            variant='caption'
-                            sx={{
-                              textTransform: 'capitalize',
-                              color: selected
-                                ? 'primary.main'
-                                : 'text.secondary'
-                            }}
-                          >
-                            {step.key}
-                          </Typography>
-                        </Box>
-                      );
-                    })}
-                </Stack>
-              </Stack>
+              ) : null}
             </Stack>
-          ) : null}
+          </Box>
 
           {selectedDateError || localError || checkInError || photosError ? (
             <Typography variant='body2' color='error'>
