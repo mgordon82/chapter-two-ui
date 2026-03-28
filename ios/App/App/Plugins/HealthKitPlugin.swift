@@ -11,7 +11,8 @@ public class HealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getLatestWeight", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getWeightSamples", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getDailyStepTotals", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getDailyWaterTotals", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getDailyWaterTotals", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getWorkoutSamples", returnType: CAPPluginReturnPromise),
     ]
 
     private let healthStore = HKHealthStore()
@@ -419,6 +420,128 @@ public class HealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
 
                 call.resolve([
                     "items": limitedItems
+                ])
+            }
+        }
+
+        healthStore.execute(query)
+    }
+    
+    private func workoutActivityName(for activityType: HKWorkoutActivityType) -> String {
+        switch activityType {
+        case .walking:
+            return "Walking"
+        case .running:
+            return "Running"
+        case .cycling:
+            return "Cycling"
+        case .traditionalStrengthTraining:
+            return "Strength Training"
+        case .functionalStrengthTraining:
+            return "Functional Strength Training"
+        case .coreTraining:
+            return "Core Training"
+        case .mixedCardio:
+            return "Cardio"
+        case .highIntensityIntervalTraining:
+            return "HIIT"
+        case .hiking:
+            return "Hiking"
+        case .yoga:
+            return "Yoga"
+        case .pickleball:
+            return "Pickleball"
+        case .tennis:
+            return "Tennis"
+        case .swimming:
+            return "Swimming"
+        case .elliptical:
+            return "Elliptical"
+        case .rowing:
+            return "Rowing"
+        case .stairClimbing:
+            return "Stair Climbing"
+        default:
+            return "Workout"
+        }
+    }
+    
+    @objc func getWorkoutSamples(_ call: CAPPluginCall) {
+        let startDateString = call.getString("startDate")
+        let limit = call.getInt("limit") ?? 100
+
+        let parseFormatter = ISO8601DateFormatter()
+        parseFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let outputFormatter = ISO8601DateFormatter()
+
+        let startDate: Date
+        if let startDateString,
+           let parsed = parseFormatter.date(from: startDateString) ?? outputFormatter.date(from: startDateString) {
+            startDate = parsed
+        } else {
+            startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        }
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startDate,
+            end: Date(),
+            options: .strictStartDate
+        )
+
+        let sortDescriptor = NSSortDescriptor(
+            key: HKSampleSortIdentifierEndDate,
+            ascending: false
+        )
+
+        let query = HKSampleQuery(
+            sampleType: HKObjectType.workoutType(),
+            predicate: predicate,
+            limit: limit,
+            sortDescriptors: [sortDescriptor]
+        ) { _, samples, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    call.reject("Failed to fetch workouts: \(error.localizedDescription)")
+                    return
+                }
+
+                let workouts = (samples as? [HKWorkout]) ?? []
+
+                let items: [[String: Any]] = workouts.map { workout in
+                    let durationMinutes = Int(workout.duration / 60)
+
+                    let sourceRevision = workout.sourceRevision
+                    let appSourceName = sourceRevision.source.name
+                    
+                    let activityName = self.workoutActivityName(for: workout.workoutActivityType)
+
+                    let deviceSourceName: Any?
+                    if let model = workout.device?.model {
+                        deviceSourceName = model
+                    } else if let name = workout.device?.name {
+                        deviceSourceName = name
+                    } else {
+                        deviceSourceName = nil
+                    }
+
+                    return [
+                        "id": workout.uuid.uuidString,
+                        "activityType": workout.workoutActivityType.rawValue,
+                        "activityName": activityName,
+                        "startDate": outputFormatter.string(from: workout.startDate),
+                        "endDate": outputFormatter.string(from: workout.endDate),
+                        "durationMinutes": durationMinutes,
+                        "source": [
+                            "integration": "apple_health",
+                            "appSourceName": appSourceName,
+                            "deviceSourceName": deviceSourceName ?? NSNull()
+                        ]
+                    ]
+                }
+
+                call.resolve([
+                    "items": items
                 ])
             }
         }

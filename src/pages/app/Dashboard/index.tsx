@@ -81,6 +81,14 @@ const Dashboard = () => {
     dispatch(healthKitSyncRequested());
   }, [dispatch, healthKit.syncing]);
 
+  const todayDateKey = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = `${now.getMonth() + 1}`.padStart(2, '0');
+    const day = `${now.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   const latestStepsItem = useMemo(() => {
     const stepItems = healthMetricsDaily.steps.items.filter(
       (item) => item.metricType === 'steps' && !item.isDeleted
@@ -88,8 +96,15 @@ const Dashboard = () => {
 
     if (!stepItems.length) return null;
 
-    return [...stepItems].sort((a, b) => b.date.localeCompare(a.date))[0];
-  }, [healthMetricsDaily.steps.items]);
+    const todayItem =
+      [...stepItems]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .find((item) => {
+          return item.date === todayDateKey;
+        }) ?? null;
+
+    return todayItem;
+  }, [healthMetricsDaily.steps.items, todayDateKey]);
 
   const latestWaterItem = useMemo(() => {
     const waterItems = healthMetricsDaily.water.items.filter(
@@ -98,8 +113,15 @@ const Dashboard = () => {
 
     if (!waterItems.length) return null;
 
-    return [...waterItems].sort((a, b) => b.date.localeCompare(a.date))[0];
-  }, [healthMetricsDaily.water.items]);
+    const todayItem =
+      [...waterItems]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .find((item) => {
+          return item.date === todayDateKey;
+        }) ?? null;
+
+    return todayItem;
+  }, [healthMetricsDaily.water.items, todayDateKey]);
 
   const latestStepsValue = latestStepsItem?.value ?? null;
   const stepGoalDaily = profileData?.stepGoalDaily ?? null;
@@ -112,35 +134,28 @@ const Dashboard = () => {
       : latestStepsValue.toLocaleString();
 
   const latestStepsHelper = useMemo(() => {
-    if (!latestStepsItem) return 'No step data yet';
+    if (!latestStepsItem) {
+      return stepGoalDaily ? 'No steps logged yet today' : 'No step data yet';
+    }
 
     const sourceLabel =
       latestStepsItem.source?.type === 'manual' ? 'Manual' : 'Apple Health';
 
-    const updatedAt = new Date(latestStepsItem.updatedAt);
-    const now = new Date();
+    if (!latestStepsItem.updatedAt) return `${sourceLabel} • Logged today`;
 
-    const isToday =
-      updatedAt.getFullYear() === now.getFullYear() &&
-      updatedAt.getMonth() === now.getMonth() &&
-      updatedAt.getDate() === now.getDate();
+    const updatedAt = new Date(latestStepsItem.updatedAt);
+
+    if (Number.isNaN(updatedAt.getTime())) {
+      return `${sourceLabel} • Logged today`;
+    }
 
     const timeText = updatedAt.toLocaleTimeString(undefined, {
       hour: 'numeric',
       minute: '2-digit'
     });
 
-    if (isToday) {
-      return `${sourceLabel} • Updated ${timeText}`;
-    }
-
-    const dateText = updatedAt.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric'
-    });
-
-    return `${sourceLabel} • Updated ${dateText} • ${timeText}`;
-  }, [latestStepsItem]);
+    return `${sourceLabel} • Updated ${timeText}`;
+  }, [latestStepsItem, stepGoalDaily]);
 
   const stepProgressPct =
     latestStepsValue != null && stepGoalDaily && stepGoalDaily > 0
@@ -186,35 +201,30 @@ const Dashboard = () => {
       : 0;
 
   const latestWaterHelper = useMemo(() => {
-    if (!latestWaterItem) return 'No water data yet';
+    if (!latestWaterItem) {
+      return waterGoalDailyMl
+        ? 'No water logged yet today'
+        : 'No water data yet';
+    }
 
     const sourceLabel =
       latestWaterItem.source?.type === 'manual' ? 'Manual' : 'Apple Health';
 
-    const updatedAt = new Date(latestWaterItem.updatedAt);
-    const now = new Date();
+    if (!latestWaterItem.updatedAt) return `${sourceLabel} • Logged today`;
 
-    const isToday =
-      updatedAt.getFullYear() === now.getFullYear() &&
-      updatedAt.getMonth() === now.getMonth() &&
-      updatedAt.getDate() === now.getDate();
+    const updatedAt = new Date(latestWaterItem.updatedAt);
+
+    if (Number.isNaN(updatedAt.getTime())) {
+      return `${sourceLabel} • Logged today`;
+    }
 
     const timeText = updatedAt.toLocaleTimeString(undefined, {
       hour: 'numeric',
       minute: '2-digit'
     });
 
-    if (isToday) {
-      return `${sourceLabel} • Updated ${timeText}`;
-    }
-
-    const dateText = updatedAt.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric'
-    });
-
-    return `${sourceLabel} • Updated ${dateText} • ${timeText}`;
-  }, [latestWaterItem]);
+    return `${sourceLabel} • Updated ${timeText}`;
+  }, [latestWaterItem, waterGoalDailyMl]);
 
   const pickWeightUnitPref = (value: unknown): WeightUnitPref | null => {
     if (!value || typeof value !== 'object') return null;
@@ -248,10 +258,19 @@ const Dashboard = () => {
   const unitPref: WeightUnitPref = unitReady ? unitPrefRaw : 'kg';
   const displayUnitLabel = unitPref === 'lbs' ? 'lb' : 'kg';
 
+  type CheckInWithWeightAndRecordedAt = {
+    weightKg: number;
+    recordedAt: string;
+  } & (typeof checkIns)[number];
+
   const nonDeleted = useMemo(
     () =>
       checkIns.filter(
-        (c) => !c.isDeleted && typeof c.metrics?.weightKg === 'number'
+        (c): c is CheckInWithWeightAndRecordedAt =>
+          !c.isDeleted &&
+          typeof c.weightKg === 'number' &&
+          typeof c.recordedAt === 'string' &&
+          c.recordedAt.length > 0
       ),
     [checkIns]
   );
@@ -269,7 +288,7 @@ const Dashboard = () => {
   const goalWeightKg = profileData?.goalWeightKg ?? null;
   const hasGoal = goalWeightKg != null && goalWeightKg > 0;
 
-  const currentWeightKg = latest?.metrics.weightKg ?? profileWeightKg ?? 0;
+  const currentWeightKg = latest?.weightKg ?? profileWeightKg ?? 0;
 
   const currentWeight = toDisplayWeight(currentWeightKg, unitPref);
   const goalWeight = hasGoal ? toDisplayWeight(goalWeightKg, unitPref) : 0;
@@ -318,12 +337,11 @@ const Dashboard = () => {
     : `Avg(last 7d) − Avg(prev 7d) • ${last7n} vs ${prev7n} check-ins`;
 
   const startWeightKg =
-    sorted.length > 0
-      ? sorted[0].metrics.weightKg
-      : profileWeightKg ?? currentWeightKg;
+    sorted.length > 0 ? sorted[0].weightKg : profileWeightKg ?? currentWeightKg;
 
-  const progressLostKg = startWeightKg - currentWeightKg;
-  const totalToLoseKg = hasGoal ? startWeightKg - goalWeightKg : 0;
+  const progressLostKg = Math.max(0, startWeightKg - currentWeightKg);
+  const totalToLoseKg =
+    hasGoal && startWeightKg > goalWeightKg ? startWeightKg - goalWeightKg : 0;
 
   const progressLost = toDisplayWeight(progressLostKg, unitPref);
   const totalToLose = toDisplayWeight(totalToLoseKg, unitPref);
@@ -334,7 +352,7 @@ const Dashboard = () => {
       : 0;
 
   const remainingToGoal = hasGoal
-    ? toDisplayWeight(currentWeightKg - goalWeightKg, unitPref)
+    ? toDisplayWeight(Math.max(0, currentWeightKg - goalWeightKg), unitPref)
     : 0;
 
   const handleRefresh = async () => {
@@ -439,7 +457,7 @@ const Dashboard = () => {
               />
             )}
 
-            {latestWaterItem && (
+            {(latestWaterItem || waterGoalDailyMl) && (
               <StatCard
                 title='Water Today'
                 value={waterCardValue}
@@ -490,8 +508,8 @@ const Dashboard = () => {
                     color='text.secondary'
                     sx={{ mt: 0.5 }}
                   >
-                    Example: {progressLost.toFixed(1)} {displayUnitLabel} lost
-                    of {totalToLose.toFixed(1)} {displayUnitLabel}
+                    {progressLost.toFixed(1)} {displayUnitLabel} lost of{' '}
+                    {totalToLose.toFixed(1)} {displayUnitLabel} total
                   </Typography>
 
                   <Box sx={{ flex: 1 }} />
@@ -651,7 +669,7 @@ const Dashboard = () => {
                         At {Math.abs(serverAvgChange).toFixed(1)}{' '}
                         {displayUnitLabel}/week, estimate ~
                         {Math.ceil(
-                          (currentWeight - goalWeight) /
+                          Math.max(0, currentWeight - goalWeight) /
                             Math.max(0.1, Math.abs(serverAvgChange))
                         )}{' '}
                         weeks

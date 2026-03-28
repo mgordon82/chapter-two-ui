@@ -15,6 +15,7 @@ export type MappedCheckIn = {
   status: 'open' | 'closed' | null;
   manualEditWindowEndsAt: string | null;
   isEditable: boolean;
+  isDeleted: boolean;
   lifecycleState: 'open' | 'closed' | 'expired';
 
   weightKg: number | null;

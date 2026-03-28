@@ -78,6 +78,7 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
                 weightRecordedAt?: string | null;
                 stepsDate?: string | null;
                 waterDate?: string | null;
+                workoutStartedAt?: string | null;
               } | null;
             } | null;
           };
@@ -267,6 +268,56 @@ const healthKitSyncEpic: Epic<AnyAction, AnyAction, RootState> = (action$) =>
               summary.water.createdCount += 1;
             } else if (data?.status === 'updated') {
               summary.water.updatedCount += 1;
+            }
+          }
+
+          const lastWorkoutStartedAt =
+            integrationData?.integration?.lastSync?.workoutStartedAt ?? null;
+
+          let workoutsStartDate: string;
+
+          if (lastWorkoutStartedAt) {
+            const lastDate = new Date(lastWorkoutStartedAt);
+            workoutsStartDate = new Date(
+              lastDate.getTime() + 1000
+            ).toISOString();
+          } else {
+            const fallback = new Date();
+            fallback.setDate(fallback.getDate() - 30);
+            workoutsStartDate = fallback.toISOString();
+          }
+
+          const workoutSamples = await HealthKit.getWorkoutSamples({
+            startDate: workoutsStartDate,
+            limit: 200
+          });
+
+          for (const workout of workoutSamples.items) {
+            const response = await fetch(
+              `${API_URL}/api/exercise-sessions/current-user/import/apple-health`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  externalId: workout.id,
+                  startDate: workout.startDate,
+                  endDate: workout.endDate,
+                  durationMinutes: workout.durationMinutes,
+                  activityType: workout.activityType,
+                  activityName: workout.activityName,
+                  source: {
+                    appSourceName: workout.source.appSourceName,
+                    deviceSourceName: workout.source.deviceSourceName
+                  }
+                })
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(await readErrorMessage(response));
             }
           }
 

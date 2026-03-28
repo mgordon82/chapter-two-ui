@@ -100,7 +100,6 @@ const formatDate = (value?: string | null) => {
 const NutritionTargetsCard: React.FC<NutritionTargetsCardProps> = ({
   nutrition
 }) => {
-  console.log('nutrition', nutrition);
   return (
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>

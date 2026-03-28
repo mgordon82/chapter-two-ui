@@ -54,6 +54,20 @@ export type DailyWaterTotalsResult = {
   items: DailyWaterTotal[];
 };
 
+export type WorkoutSample = {
+  id: string;
+  activityType: number;
+  activityName: string;
+  startDate: string;
+  endDate: string;
+  durationMinutes: number;
+  source: HealthSampleSource;
+};
+
+export type WorkoutSamplesResult = {
+  items: WorkoutSample[];
+};
+
 type HealthKitPlugin = {
   requestHealthPermissions: () => Promise<HealthPermissionResult>;
   getLatestWeight: () => Promise<LatestWeightResult>;
@@ -69,6 +83,10 @@ type HealthKitPlugin = {
     startDate?: string;
     limit?: number;
   }) => Promise<DailyWaterTotalsResult>;
+  getWorkoutSamples: (options?: {
+    startDate?: string;
+    limit?: number;
+  }) => Promise<WorkoutSamplesResult>;
 };
 
 export const HealthKit = registerPlugin<HealthKitPlugin>('HealthKit');
