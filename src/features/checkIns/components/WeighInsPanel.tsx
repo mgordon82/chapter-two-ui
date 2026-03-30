@@ -13,20 +13,20 @@ import {
 
 import InsightsIcon from '@mui/icons-material/Insights';
 
-import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import {
   fetchCheckInsRequested,
   type MappedCheckIn
-} from './redux/checkInsSlice';
-import { selectUserUnitPrefs } from '../nutritionCalculator/redux/nutritionCalculatorSlice';
+} from '../redux/checkInsSlice';
+import { selectUserUnitPrefs } from '../../nutritionCalculator/redux/nutritionCalculatorSlice';
 
-import type { RangeKey, ViewMode } from './types';
-import CheckInsChart from './components/Chart';
-import CheckInList from './components/CheckInList';
-import AddCheckInDialog from './components/AddCheckInDialog';
-import { formatWeight, startDateForRange } from './helpers';
-import { trendMetricsRequested } from '../trend/redux/trendSlice';
-import HealthKitPanel from '../healthKit/components/HealthKitPanel';
+import type { RangeKey, ViewMode } from '../types';
+import CheckInsChart from './Chart';
+import CheckInList from './CheckInList';
+import AddCheckInDialog from './AddCheckInDialog';
+import { formatWeight, startDateForRange } from '../helpers';
+import { trendMetricsRequested } from '../../trend/redux/trendSlice';
+import HealthKitPanel from '../../healthKit/components/HealthKitPanel';
 
 const rangeRank: Record<RangeKey, number> = {
   '1W': 1,
@@ -49,7 +49,7 @@ const doesLoadedRangeCoverRequestedRange = (
   return rangeRank[loaded] >= rangeRank[requested];
 };
 
-const CheckInsPanel = () => {
+const WeighInsPanel = () => {
   const dispatch = useAppDispatch();
   const { items, loading, error, loadedRange } = useAppSelector(
     (s) => s.checkIns
@@ -441,49 +441,50 @@ const CheckInsPanel = () => {
           </Typography>
         ) : null}
 
-        {!loading && items.length > 0 && latest ? (
-          <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
-            Latest: {latest.representedDate ?? '--'} —{' '}
-            {latest.weightKg != null
-              ? `${formatWeight(
-                  latest.weightKg,
-                  weightUnitPref
-                )} ${weightUnitPref}`
-              : '--'}
-          </Typography>
-        ) : null}
+        <Stack direction='row' gap={3} alignItems='center' mt={1}>
+          {!loading && items.length > 0 && latest ? (
+            <Typography variant='body2' color='text.secondary'>
+              Latest: {latest.representedDate ?? '--'} —{' '}
+              {latest.weightKg != null
+                ? `${formatWeight(
+                    latest.weightKg,
+                    weightUnitPref
+                  )} ${weightUnitPref}`
+                : '--'}
+            </Typography>
+          ) : null}
 
-        {trendDirectionLabel ? (
-          <Typography
-            variant='body2'
-            sx={{
-              mt: 1,
-              color:
-                avgChangePerWeekKg == null
-                  ? 'text.secondary'
-                  : avgChangePerWeekKg < -0.05
-                  ? 'success.main'
-                  : avgChangePerWeekKg > 0.05
-                  ? 'warning.main'
-                  : 'text.secondary',
-              fontWeight: 600
-            }}
-          >
-            Trend: {trendDirectionLabel}
-          </Typography>
-        ) : null}
+          {trendDirectionLabel ? (
+            <Typography
+              variant='body2'
+              sx={{
+                color:
+                  avgChangePerWeekKg == null
+                    ? 'text.secondary'
+                    : avgChangePerWeekKg < -0.05
+                    ? 'success.main'
+                    : avgChangePerWeekKg > 0.05
+                    ? 'warning.main'
+                    : 'text.secondary',
+                fontWeight: 600
+              }}
+            >
+              Trend: {trendDirectionLabel}
+            </Typography>
+          ) : null}
 
-        {avgWeighInsPerWeek != null && (
-          <Typography
-            variant='body2'
-            sx={{ mt: 0.5, color: consistencyTone, fontWeight: 600 }}
-          >
-            Consistency: {avgWeighInsPerWeek.toFixed(1)} weigh-ins/week
-            {avgWeighInsPerWeek < 4
-              ? ' • More frequent weigh-ins improve trend confidence'
-              : ''}
-          </Typography>
-        )}
+          {avgWeighInsPerWeek != null && (
+            <Typography
+              variant='body2'
+              sx={{ color: consistencyTone, fontWeight: 600 }}
+            >
+              Consistency: {avgWeighInsPerWeek.toFixed(1)} weigh-ins/week
+              {avgWeighInsPerWeek < 4
+                ? ' • More frequent weigh-ins improve trend confidence'
+                : ''}
+            </Typography>
+          )}
+        </Stack>
 
         {trend.metrics.status === 'loading' ? (
           <Typography variant='body2' sx={{ mt: 1 }} color='text.secondary'>
@@ -571,4 +572,4 @@ const CheckInsPanel = () => {
   );
 };
 
-export default CheckInsPanel;
+export default WeighInsPanel;

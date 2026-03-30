@@ -1,8 +1,8 @@
 import { Box, Card, CardContent, Stack, Typography } from '@mui/material';
-import CheckInsPanel from '../../features/checkIns';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import WeighInsPanel from '../../features/checkIns/components/WeighInsPanel';
 
-const WeightOverTimeChartCard = () => {
+const BodyTrendsCard = () => {
   return (
     <Card
       elevation={0}
@@ -36,16 +36,16 @@ const WeightOverTimeChartCard = () => {
                 variant='h6'
                 sx={{ fontWeight: 700, lineHeight: 1.1 }}
               >
-                Weight Over Time
+                Body Trends
               </Typography>
             </Box>
           </Stack>
 
-          <CheckInsPanel />
+          <WeighInsPanel />
         </Stack>
       </CardContent>
     </Card>
   );
 };
 
-export default WeightOverTimeChartCard;
+export default BodyTrendsCard;

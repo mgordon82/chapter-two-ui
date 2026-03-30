@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Link as RouterLink } from 'react-router-dom';
-import { Box, Stack, Card, CardContent, Typography } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import FlagIcon from '@mui/icons-material/Flag';
@@ -12,7 +12,6 @@ import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import StatCard from '../../../components/sections/statCard';
 import TrendAnalysisCard from '../../../features/trend';
-import WeightOverTimeChartCard from '../../../components/sections/weightOverTimeCard';
 import type { WeightUnitPref } from '../../../types/units';
 import { toDisplayWeight } from '../../../features/checkIns/helpers';
 import { fetchDailyMetricsRequested } from '../../../features/healthMetrics/redux/healthMetricsSlice';
@@ -20,6 +19,9 @@ import { healthKitSyncRequested } from '../../../features/healthKit/redux/health
 import { fetchCheckInsRequested } from '../../../features/checkIns/redux/checkInsSlice';
 import PullToRefresh from '../../../components/mobile/PullToRefresh';
 import { mlToLiters, mlToOz } from '../../../utils/conversions/volume';
+import BodyTrendsCard from '../../../components/sections/bodyTrendsCard';
+import ProgressToGoalCard from '../../../components/sections/ProgressToGoalCard';
+import RemainingToGoalCard from '../../../components/sections/RemaingToGoalCard';
 
 const Dashboard = () => {
   const dispatch = useAppDispatch();
@@ -469,7 +471,7 @@ const Dashboard = () => {
             )}
           </Box>
 
-          <WeightOverTimeChartCard />
+          <BodyTrendsCard />
 
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -477,245 +479,20 @@ const Dashboard = () => {
             alignItems='stretch'
             sx={{ width: '100%' }}
           >
-            <Box sx={{ flex: 1, display: 'flex' }}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 3,
-                  background:
-                    'linear-gradient(135deg, rgba(46,125,50,0.10), rgba(46,125,50,0.02))',
-                  width: '100%'
-                }}
-              >
-                <CardContent
-                  sx={{
-                    p: 2.25,
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <Typography variant='overline' sx={{ letterSpacing: 0.8 }}>
-                    Progress to Goal
-                  </Typography>
-                  <Typography variant='h4' sx={{ mt: 0.25, fontWeight: 700 }}>
-                    {progressPct.toFixed(0)}%
-                  </Typography>
-                  <Typography
-                    variant='body2'
-                    color='text.secondary'
-                    sx={{ mt: 0.5 }}
-                  >
-                    {progressLost.toFixed(1)} {displayUnitLabel} lost of{' '}
-                    {totalToLose.toFixed(1)} {displayUnitLabel} total
-                  </Typography>
-
-                  <Box sx={{ flex: 1 }} />
-
-                  {(() => {
-                    const clampedPct = Math.max(0, Math.min(100, progressPct));
-                    const thumbPct = Math.max(2, Math.min(98, clampedPct));
-
-                    return (
-                      <Box
-                        sx={{
-                          mt: 1.0,
-                          position: 'relative',
-                          overflow: 'visible',
-                          '&:hover [data-pctp], &:focus-within [data-pctp]': {
-                            opacity: 1,
-                            transform: 'translateY(-2px)'
-                          }
-                        }}
-                      >
-                        <Box
-                          data-pctp
-                          sx={{
-                            position: 'absolute',
-                            top: -26,
-                            left: `calc(${thumbPct}% - 18px)`,
-                            transition:
-                              'left 650ms ease, opacity 180ms ease, transform 180ms ease',
-                            opacity: 0,
-                            transform: 'translateY(0px)',
-                            zIndex: 2,
-                            pointerEvents: 'none'
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              px: 0.75,
-                              py: 0.25,
-                              borderRadius: 999,
-                              fontSize: 11,
-                              fontWeight: 800,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              backgroundColor: 'rgba(0,0,0,0.55)',
-                              backdropFilter: 'blur(8px)',
-                              color: 'common.white',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {clampedPct.toFixed(0)}%
-                          </Box>
-                        </Box>
-
-                        <Box
-                          role='progressbar'
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={clampedPct}
-                          tabIndex={0}
-                          sx={{
-                            height: 12,
-                            borderRadius: 999,
-                            backgroundColor: 'rgba(255,255,255,0.16)',
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            outline: 'none',
-                            '&:focus-visible': {
-                              boxShadow: '0 0 0 3px rgba(2,136,209,0.25)'
-                            }
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              height: '100%',
-                              width: `${clampedPct}%`,
-                              borderRadius: 999,
-                              background:
-                                'linear-gradient(90deg, rgba(46,125,50,0.75), rgba(2,136,209,0.55))',
-                              transition: 'width 650ms ease'
-                            }}
-                          />
-
-                          <Box
-                            sx={{
-                              position: 'absolute',
-                              top: '50%',
-                              left: `calc(${thumbPct}% - 8px)`,
-                              transform: 'translateY(-50%)',
-                              width: 16,
-                              height: 16,
-                              borderRadius: 999,
-                              backgroundColor: 'rgba(255,255,255,0.92)',
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              boxShadow:
-                                '0 4px 12px rgba(0,0,0,0.25), 0 0 10px rgba(2,136,209,0.25)',
-                              transition: 'left 650ms ease'
-                            }}
-                          />
-                        </Box>
-
-                        <Stack
-                          direction='row'
-                          justifyContent='space-between'
-                          sx={{ mt: 0.5 }}
-                        >
-                          <Typography variant='caption' color='text.secondary'>
-                            Start
-                          </Typography>
-                          <Typography variant='caption' color='text.secondary'>
-                            Goal
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            </Box>
-
-            <Box sx={{ flex: 1, display: 'flex' }}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 3,
-                  background:
-                    'linear-gradient(135deg, rgba(2,136,209,0.10), rgba(2,136,209,0.02))',
-                  width: '100%'
-                }}
-              >
-                <CardContent
-                  sx={{
-                    p: 2.25,
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <Typography variant='overline' sx={{ letterSpacing: 0.8 }}>
-                    Remaining to Goal
-                  </Typography>
-                  <Typography variant='h4' sx={{ mt: 0.25, fontWeight: 700 }}>
-                    {remainingToGoal.toFixed(1)} {displayUnitLabel}
-                  </Typography>
-
-                  {hasGoal ? (
-                    serverAvgChange != null && serverAvgChange !== 0 ? (
-                      <Typography
-                        variant='body2'
-                        color='text.secondary'
-                        sx={{ mt: 0.5 }}
-                      >
-                        At {Math.abs(serverAvgChange).toFixed(1)}{' '}
-                        {displayUnitLabel}/week, estimate ~
-                        {Math.ceil(
-                          Math.max(0, currentWeight - goalWeight) /
-                            Math.max(0.1, Math.abs(serverAvgChange))
-                        )}{' '}
-                        weeks
-                      </Typography>
-                    ) : (
-                      <Typography
-                        variant='body2'
-                        color='text.secondary'
-                        sx={{ mt: 0.5 }}
-                      >
-                        Run Generate Insight to estimate time to goal.
-                      </Typography>
-                    )
-                  ) : (
-                    <Typography
-                      variant='body2'
-                      color='text.secondary'
-                      sx={{ mt: 0.5 }}
-                    >
-                      Set a goal weight to estimate time to goal.
-                    </Typography>
-                  )}
-
-                  <Box sx={{ flex: 1 }} />
-
-                  <Box
-                    sx={{
-                      mt: 1.5,
-                      p: 1.25,
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      backgroundColor: 'rgba(255,255,255,0.55)'
-                    }}
-                  >
-                    <Typography variant='body2' sx={{ fontWeight: 700 }}>
-                      Tip (static)
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      When the scale stalls, focus on consistency for 7–10 days
-                      before cutting harder.
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Box>
+            <ProgressToGoalCard
+              progressPct={progressPct}
+              progressLost={progressLost}
+              displayUnitLabel={displayUnitLabel}
+              totalToLose={totalToLose}
+            />
+            <RemainingToGoalCard
+              remainingToGoal={remainingToGoal}
+              hasGoal={hasGoal}
+              serverAvgChange={serverAvgChange}
+              currentWeight={currentWeight}
+              goalWeight={goalWeight}
+              displayUnitLabel={displayUnitLabel}
+            />
           </Stack>
         </Stack>
       </Box>
