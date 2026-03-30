@@ -414,7 +414,7 @@ const Dashboard = () => {
                   {hasGoal ? 'Goal set in ' : 'Set a goal weight in '}
                   <Typography
                     component={RouterLink}
-                    to='/app/nutrition-profile'
+                    to='/app/my-profile'
                     sx={{
                       display: 'inline',
                       fontWeight: 600,
