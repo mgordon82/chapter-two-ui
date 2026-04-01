@@ -24,7 +24,7 @@ import {
   kgToLbsRounded,
   lbsToKgRounded
 } from '../../../utils/conversions/weight';
-import { formatWeight, toIsoDateInputValue } from '../helpers';
+import { formatWeight, toLocalDateInputValue } from '../helpers';
 import {
   clearLastCreatedCheckInId,
   clearLastCreatedExerciseSessionId,
@@ -134,7 +134,7 @@ const AddCheckInDialog = ({
     progressError: photosError
   } = useAppSelector((s) => s.photos);
 
-  const today = useMemo(() => toIsoDateInputValue(new Date()), []);
+  const today = useMemo(() => toLocalDateInputValue(new Date()), []);
   const startingDate = initialDate ?? today;
 
   const [dateValue, setDateValue] = useState<string>(startingDate);
@@ -183,7 +183,7 @@ const AddCheckInDialog = ({
     useState(false);
 
   const resetForm = useCallback(() => {
-    setDateValue(initialDate ?? toIsoDateInputValue(new Date()));
+    setDateValue(initialDate ?? toLocalDateInputValue(new Date()));
     setWeightDisplay('');
     setNotes('');
     setEnergyLevel('');
@@ -230,12 +230,10 @@ const AddCheckInDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    if (!dateValue) return;
 
-    const fetchDate = initialDate ?? dateValue;
-    if (!fetchDate) return;
-
-    dispatch(fetchCheckInByDateRequested({ date: fetchDate }));
-  }, [dateValue, dispatch, initialDate, open]);
+    dispatch(fetchCheckInByDateRequested({ date: dateValue }));
+  }, [dateValue, dispatch, open]);
 
   useEffect(() => {
     if (!open) return;
