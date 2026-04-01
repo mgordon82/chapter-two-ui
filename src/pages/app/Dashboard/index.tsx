@@ -338,13 +338,14 @@ const Dashboard = () => {
     ? `Need check-ins in both weeks • ${last7n} vs ${prev7n}`
     : `Avg(last 7d) − Avg(prev 7d) • ${last7n} vs ${prev7n} check-ins`;
 
-  const startWeightKg =
-    sorted.length > 0 ? sorted[0].weightKg : profileWeightKg ?? currentWeightKg;
+  const startingWeightKg =
+    profileData?.startingWeightKg ?? profileWeightKg ?? currentWeightKg;
 
-  const progressLostKg = Math.max(0, startWeightKg - currentWeightKg);
+  const progressLostKg = Math.max(0, startingWeightKg - currentWeightKg);
   const totalToLoseKg =
-    hasGoal && startWeightKg > goalWeightKg ? startWeightKg - goalWeightKg : 0;
-
+    hasGoal && startingWeightKg > goalWeightKg
+      ? startingWeightKg - goalWeightKg
+      : 0;
   const progressLost = toDisplayWeight(progressLostKg, unitPref);
   const totalToLose = toDisplayWeight(totalToLoseKg, unitPref);
 

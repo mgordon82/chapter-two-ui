@@ -25,6 +25,7 @@ type ProfileDetailsProps = {
   actions: {
     clear: () => void;
     handleWeightDisplayChange: (value: string) => void;
+    handleStartingWeightDisplayChange: (value: string) => void;
     handleGoalWeightDisplayChange: (value: string) => void;
     handleHeightCmChange: (value: string) => void;
     handleHeightFeetChange: (value: string) => void;
@@ -38,6 +39,7 @@ type ProfileDetailsProps = {
 const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
   const {
     handleWeightDisplayChange,
+    handleStartingWeightDisplayChange,
     handleGoalWeightDisplayChange,
     handleHeightCmChange,
     handleHeightFeetChange,
@@ -225,6 +227,24 @@ const ProfileDetails = ({ form, setField, actions }: ProfileDetailsProps) => {
           </Stack>
 
           <Stack direction='row' gap={2}>
+            <TextField
+              type='number'
+              fullWidth
+              label='Starting Weight'
+              value={form.startingWeight}
+              onChange={(e) =>
+                handleStartingWeightDisplayChange(e.target.value)
+              }
+              inputProps={{ min: 0 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position='end'>
+                    {form.weightUnitPref}
+                  </InputAdornment>
+                )
+              }}
+            />
+
             <TextField
               type='number'
               fullWidth

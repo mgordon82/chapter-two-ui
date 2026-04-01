@@ -50,6 +50,22 @@ export const useClientProfileForm = () => {
     });
   };
 
+  const handleStartingWeightDisplayChange = (value: string) => {
+    setForm((prev) => {
+      const next: FormState = { ...prev, startingWeight: value };
+      const n = toNumberOrNaN(value);
+
+      if (Number.isNaN(n)) {
+        next.startingWeightKg = '';
+        return next;
+      }
+
+      const kg = prev.weightUnitPref === 'lbs' ? lbsToKg(n) : n;
+      next.startingWeightKg = String(round(kg, 2));
+      return next;
+    });
+  };
+
   const handleGoalWeightDisplayChange = (value: string) => {
     setForm((prev) => {
       const next: FormState = { ...prev, goalWeight: value };
@@ -143,6 +159,14 @@ export const useClientProfileForm = () => {
             : String(round(currentKg, 2));
       }
 
+      const startingKg = toNumberOrNaN(prev.startingWeightKg);
+      if (!Number.isNaN(startingKg) && startingKg > 0) {
+        next.startingWeight =
+          unit === 'lbs'
+            ? String(round(kgToLbs(startingKg), 2))
+            : String(round(startingKg, 2));
+      }
+
       const goalKg = toNumberOrNaN(prev.goalWeightKg);
       if (!Number.isNaN(goalKg) && goalKg > 0) {
         next.goalWeight =
@@ -186,6 +210,7 @@ export const useClientProfileForm = () => {
     replaceForm,
     clear,
     handleWeightDisplayChange,
+    handleStartingWeightDisplayChange,
     handleGoalWeightDisplayChange,
     handleHeightCmChange,
     handleHeightFeetChange,

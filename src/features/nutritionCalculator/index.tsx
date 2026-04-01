@@ -47,6 +47,7 @@ const buildHydratedForm = (
   const { measurementUnitPref, weightUnitPref, volumeUnitPref } = unitPrefs;
 
   let weight = '';
+  let startingWeight = '';
   let goalWeight = '';
   const heightCm = p.heightCm != null ? String(p.heightCm) : '';
   let heightFeet = '';
@@ -57,6 +58,13 @@ const buildHydratedForm = (
       weightUnitPref === 'lbs'
         ? String(Math.round(p.weightKg * KG_TO_LBS))
         : String(p.weightKg);
+  }
+
+  if (p.startingWeightKg != null) {
+    startingWeight =
+      weightUnitPref === 'lbs'
+        ? String(Math.round(p.startingWeightKg * KG_TO_LBS))
+        : String(p.startingWeightKg);
   }
 
   if (p.goalWeightKg != null) {
@@ -88,6 +96,9 @@ const buildHydratedForm = (
     weight,
     weightKg: p.weightKg != null ? String(p.weightKg) : '',
     goalWeight,
+    startingWeight,
+    startingWeightKg:
+      p.startingWeightKg != null ? String(p.startingWeightKg) : '',
     goalWeightKg: p.goalWeightKg != null ? String(p.goalWeightKg) : '',
     stepGoalDaily: p.stepGoalDaily != null ? String(p.stepGoalDaily) : '',
     waterGoalDailyDisplay:
@@ -120,6 +131,7 @@ const ClientNutritionCalculator = () => {
     replaceForm,
     clear,
     handleWeightDisplayChange,
+    handleStartingWeightDisplayChange,
     handleGoalWeightDisplayChange,
     handleHeightCmChange,
     handleHeightFeetChange,
@@ -155,6 +167,9 @@ const ClientNutritionCalculator = () => {
       rateLevel: form.rateLevel || null,
       heightCm: form.heightCm ? Number(form.heightCm) : null,
       weightKg: form.weightKg ? Number(form.weightKg) : null,
+      startingWeightKg: form.startingWeightKg
+        ? Number(form.startingWeightKg)
+        : null,
       goalWeightKg: form.goalWeightKg ? Number(form.goalWeightKg) : null,
       stepGoalDaily: form.stepGoalDaily ? Number(form.stepGoalDaily) : null,
       waterGoalDailyMl: form.waterGoalDailyDisplay
@@ -288,6 +303,7 @@ const ClientNutritionCalculator = () => {
         heightCm: inputs.heightCm,
         weightKg: inputs.weightKg,
         goalWeightKg: inputs.goalWeightKg,
+        startingWeightKg: inputs.startingWeightKg,
         stepGoalDaily: inputs.stepGoalDaily,
         waterGoalDailyMl: inputs.waterGoalDailyMl,
         activityLevel: inputs.activityLevel,
@@ -346,6 +362,7 @@ const ClientNutritionCalculator = () => {
             actions={{
               clear,
               handleWeightDisplayChange,
+              handleStartingWeightDisplayChange,
               handleGoalWeightDisplayChange,
               handleHeightCmChange,
               handleHeightFeetChange,

@@ -13,6 +13,10 @@ const ProgressToGoalCard = ({
   totalToLose,
   displayUnitLabel
 }: ProgressTypes) => {
+  console.log('progress pct', progressPct);
+  console.log('progress lost', progressLost);
+  console.log('total to lose', totalToLose);
+  console.log('unit label', displayUnitLabel);
   return (
     <Box sx={{ flex: 1, display: 'flex' }}>
       <Card

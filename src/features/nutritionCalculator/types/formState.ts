@@ -20,6 +20,8 @@ export type FormState = {
 
   heightCm: string;
   weightKg: string;
+  startingWeight: string;
+  startingWeightKg: string;
   goalWeightKg: string;
 
   age: string;
@@ -46,6 +48,8 @@ export const initialFormState: FormState = {
 
   heightCm: '',
   weightKg: '',
+  startingWeight: '',
+  startingWeightKg: '',
   goalWeightKg: '',
 
   age: '',

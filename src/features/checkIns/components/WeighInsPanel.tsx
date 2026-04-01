@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
-  Button,
   CircularProgress,
   IconButton,
   Paper,
@@ -23,10 +22,8 @@ import { selectUserUnitPrefs } from '../../nutritionCalculator/redux/nutritionCa
 import type { RangeKey, ViewMode } from '../types';
 import CheckInsChart from './Chart';
 import CheckInList from './CheckInList';
-import AddCheckInDialog from './AddCheckInDialog';
 import { formatWeight, startDateForRange } from '../helpers';
 import { trendMetricsRequested } from '../../trend/redux/trendSlice';
-import HealthKitPanel from '../../healthKit/components/HealthKitPanel';
 
 const rangeRank: Record<RangeKey, number> = {
   '1W': 1,
@@ -34,6 +31,10 @@ const rangeRank: Record<RangeKey, number> = {
   '3M': 3,
   '6M': 4,
   '12M': 5
+};
+
+type WeighInsTypes = {
+  handleOpenNewCheckIn?: (item?: MappedCheckIn | null) => void;
 };
 
 const parseRepresentedDate = (value: string) => {
@@ -49,7 +50,7 @@ const doesLoadedRangeCoverRequestedRange = (
   return rangeRank[loaded] >= rangeRank[requested];
 };
 
-const WeighInsPanel = () => {
+const WeighInsPanel = ({ handleOpenNewCheckIn }: WeighInsTypes) => {
   const dispatch = useAppDispatch();
   const { items, loading, error, loadedRange } = useAppSelector(
     (s) => s.checkIns
@@ -153,9 +154,6 @@ const WeighInsPanel = () => {
 
   const [view, setView] = useState<ViewMode>('chart');
   const [range, setRange] = useState<RangeKey>('3M');
-  const [open, setOpen] = useState(false);
-  const [selectedDialogItem, setSelectedDialogItem] =
-    useState<MappedCheckIn | null>(null);
 
   useEffect(() => {
     if (!loadedRange) {
@@ -312,16 +310,6 @@ const WeighInsPanel = () => {
     setView(next);
   };
 
-  const handleOpenNewCheckIn = () => {
-    setSelectedDialogItem(null);
-    setOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpen(false);
-    setSelectedDialogItem(null);
-  };
-
   return (
     <Box>
       <Paper
@@ -347,10 +335,9 @@ const WeighInsPanel = () => {
             alignItems='center'
             gap={2}
           >
-            <Typography variant='h6'>Weigh-ins</Typography>
+            <Typography variant='h6'>Weigh-Ins</Typography>
             {loading ? <CircularProgress size={18} /> : null}
             <Stack direction='row' gap={1}>
-              <HealthKitPanel />
               <IconButton
                 aria-label='analyze trend metrics'
                 onClick={() => dispatch(trendMetricsRequested({ range }))}
@@ -358,13 +345,6 @@ const WeighInsPanel = () => {
               >
                 <InsightsIcon />
               </IconButton>
-              <Button
-                variant='outlined'
-                onClick={handleOpenNewCheckIn}
-                disabled={loading}
-              >
-                + Add
-              </Button>
             </Stack>
           </Stack>
 
@@ -552,8 +532,7 @@ const WeighInsPanel = () => {
                     const clickedItem =
                       listItems.find((ci) => ci.representedDate === date) ??
                       null;
-                    setSelectedDialogItem(clickedItem);
-                    setOpen(true);
+                    handleOpenNewCheckIn?.(clickedItem);
                   }}
                 />
               </Box>
@@ -561,13 +540,6 @@ const WeighInsPanel = () => {
           </Box>
         ) : null}
       </Paper>
-
-      <AddCheckInDialog
-        open={open}
-        onClose={handleCloseDialog}
-        initialDate={selectedDialogItem?.representedDate ?? null}
-        initialItem={selectedDialogItem}
-      />
     </Box>
   );
 };

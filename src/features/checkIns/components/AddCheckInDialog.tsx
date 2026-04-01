@@ -856,6 +856,7 @@ const AddCheckInDialog = ({
       onClose={disableClose ? undefined : onClose}
       fullWidth
       maxWidth='sm'
+      disableRestoreFocus
     >
       <DialogTitle>
         {selectedDateItem ? 'Edit Daily Check-in' : 'Add Check-in'}

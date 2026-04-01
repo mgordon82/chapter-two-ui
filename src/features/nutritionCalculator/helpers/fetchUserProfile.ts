@@ -18,6 +18,7 @@ export type UserProfileResponse = {
 
     heightCm: number | null;
     weightKg: number | null;
+    startingWeightKg: number | null;
     goalWeightKg: number | null;
     stepGoalDaily: number | null;
     waterGoalDailyMl: number | null;
