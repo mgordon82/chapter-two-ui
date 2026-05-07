@@ -34,7 +34,7 @@ const Login = () => {
 
   const location = useLocation();
   const { state } = location;
-  const from = (state as LocationState | null)?.from?.pathname || '/app';
+  const from = (state as LocationState | null)?.from?.pathname || '/mipt';
 
   const authStep = useSelector((s: RootState) => s.auth.step);
   const authError = useSelector((s: RootState) => s.auth.error);

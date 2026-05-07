@@ -8,6 +8,7 @@ export type InviteUserRequest = {
   roles: RoleField[];
   coachId?: string | null;
   displayName?: string;
+  inviteToMiPT?: boolean;
 };
 
 export type InviteUserResponse = {

@@ -18,6 +18,7 @@ import { assignCoachEpic } from '../features/users/redux/assignCoachEpics';
 import { healthMetricsEpics } from '../features/healthMetrics/redux/healthMetricsEpics';
 import { manageUserRolesEpic } from '../features/users/redux/manageUserRolesEpic';
 import { clientProfileEpics } from '../features/clientProfile/redux/clientProfileEpics';
+import { inviteOnboardingEpics } from '../features/invite/redux/inviteOnboardingEpics';
 
 export const rootEpic: Epic<AnyAction, AnyAction, RootState> = combineEpics(
   authEpic,
@@ -34,5 +35,6 @@ export const rootEpic: Epic<AnyAction, AnyAction, RootState> = combineEpics(
   assignCoachEpic,
   ...healthMetricsEpics,
   manageUserRolesEpic,
-  ...clientProfileEpics
+  ...clientProfileEpics,
+  ...inviteOnboardingEpics
 );

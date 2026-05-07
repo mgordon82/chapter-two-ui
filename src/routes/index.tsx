@@ -3,12 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 
 import PublicLayout from '../components/layout/PublicLayout';
-import PrivateLayout from '../components/layout/PrivateLayout';
+import MiPTLayout from '../components/layout/MiPTLayout';
 import RequireAuth from '../components/layout/RequireAuth';
 import AppLayout from '../components/layout/AppLayout';
 
 import LandingPage from '../pages/public/LandingPage';
 import Login from '../pages/public/Login';
+
+import CRMDashboard from '../pages/crm/Dashboard';
 
 import Dashboard from '../pages/app/Dashboard';
 import MealGenerator from '../pages/app/MealGenerator';
@@ -21,8 +23,10 @@ import AdminUsersPage from '../features/users/AdminUsers';
 import {
   getEffectiveRoles,
   type AppRole
-} from '../components/navigation/navConfig';
+} from '../components/navigation/miptNavConfig';
 import ClientProfilePage from '../pages/app/ClientProfile';
+import CRMLayout from '../components/layout/CRMLayout';
+import InvitationForm from '../pages/crm/Invitation';
 
 const getCurrentUserRoles = (
   currentUser: { role?: unknown; roles?: unknown } | null | undefined
@@ -40,7 +44,7 @@ const RequireRole: React.FC<{
   const hasAllowedRole = userRoles.some((role) => allowed.includes(role));
 
   if (!hasAllowedRole) {
-    return <Navigate to='/app' replace />;
+    return <Navigate to='/mipt' replace />;
   }
 
   return children;
@@ -55,7 +59,7 @@ const RootEntry: React.FC = () => {
   }
 
   if (step === 'SIGNED_IN') {
-    return <Navigate to='/app' replace />;
+    return <Navigate to='/mipt' replace />;
   }
 
   if (step === 'SIGNING_IN' || step === 'UNINITIALIZED') {
@@ -73,10 +77,47 @@ const AppRoutes: React.FC = () => {
           <Route path='/' element={<RootEntry />} />
           <Route path='/login' element={<Login />} />
           <Route path='/forgot-password' element={<ForgotPassword />} />
+          <Route path='/invite/:userId/:token' element={<InvitationForm />} />
         </Route>
 
         <Route element={<RequireAuth />}>
-          <Route path='/app' element={<PrivateLayout />}>
+          <Route
+            path='/crm'
+            element={
+              <RequireRole allowed={['admin', 'staff', 'coach']}>
+                <CRMLayout />
+              </RequireRole>
+            }
+          >
+            <Route index element={<CRMDashboard />} />
+            <Route path='users'>
+              <Route
+                index
+                element={
+                  <RequireRole allowed={['admin', 'staff', 'coach']}>
+                    <AdminUsersPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path='invite'
+                element={
+                  <RequireRole allowed={['admin', 'staff', 'coach']}>
+                    <InviteUser />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path=':userId'
+                element={
+                  <RequireRole allowed={['admin', 'staff', 'coach']}>
+                    <ClientProfilePage />
+                  </RequireRole>
+                }
+              />
+            </Route>
+          </Route>
+          <Route path='/mipt' element={<MiPTLayout />}>
             <Route index element={<Dashboard />} />
             <Route path='my-profile' element={<MyProfile />} />
             <Route path='meal-generator' element={<MealGenerator />} />
@@ -108,7 +149,7 @@ const AppRoutes: React.FC = () => {
               />
             </Route>
 
-            <Route path='*' element={<Navigate to='/app' replace />} />
+            <Route path='*' element={<Navigate to='/mipt' replace />} />
           </Route>
         </Route>
 

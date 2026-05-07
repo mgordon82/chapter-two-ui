@@ -70,13 +70,13 @@ const mainSection: NavSection = {
   items: [
     {
       label: 'Dashboard',
-      path: '/app',
+      path: '/mipt',
       icon: <DashboardIcon />,
       exact: true
     },
     {
       label: 'Meal Generator',
-      path: '/app/meal-generator',
+      path: '/mipt/meal-generator',
       icon: <RestaurantMenuIcon />
     }
   ]
@@ -90,13 +90,13 @@ const roleSectionsByRole: Record<AppRole, NavSection[]> = {
       items: [
         {
           label: 'My Clients',
-          path: '/app/users',
+          path: '/mipt/users',
           icon: <PeopleIcon />,
           exact: true
         },
         {
           label: 'Invite User',
-          path: '/app/users/invite',
+          path: '/mipt/users/invite',
           icon: <PersonAddIcon />
         }
       ]
@@ -108,13 +108,13 @@ const roleSectionsByRole: Record<AppRole, NavSection[]> = {
       items: [
         {
           label: 'All Users',
-          path: '/app/users',
+          path: '/mipt/users',
           icon: <PeopleIcon />,
           exact: true
         },
         {
           label: 'Invite User',
-          path: '/app/users/invite',
+          path: '/mipt/users/invite',
           icon: <PersonAddIcon />
         }
       ]
@@ -126,7 +126,7 @@ const roleSectionsByRole: Record<AppRole, NavSection[]> = {
       items: [
         {
           label: 'Invite User',
-          path: '/app/users/invite',
+          path: '/mipt/users/invite',
           icon: <PersonAddIcon />
         }
       ]
@@ -183,7 +183,7 @@ export const getNavSectionsForRoles = (roles: AppRole[]): NavSection[] => {
 export const bottomNavItems: NavItem[] = [
   {
     label: 'Profile',
-    path: '/app/my-profile',
+    path: '/mipt/my-profile',
     icon: <PersonOutlineIcon />
   }
 ];

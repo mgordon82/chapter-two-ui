@@ -9,6 +9,10 @@ export type UserListItem = {
   role: RoleField | string | null;
   roles: (RoleField | string)[];
   status: string | null;
+  miptAccess: {
+    status: string | null;
+    invitedAt: string | null;
+  };
   createdAt: string | null;
   updatedAt: string | null;
   assignedCoach: {

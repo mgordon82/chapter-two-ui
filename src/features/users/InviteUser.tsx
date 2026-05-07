@@ -18,7 +18,7 @@ import {
   type RoleField
 } from './redux/inviteUserSlice';
 import { coachOptionsRequested } from './redux/coachOptionsSlice';
-import { getEffectiveRoles } from '../../components/navigation/navConfig';
+import { getEffectiveRoles } from '../../components/navigation/miptNavConfig';
 
 const ALL_ROLES: RoleField[] = ['client', 'coach', 'admin', 'staff'];
 
@@ -29,14 +29,19 @@ const InviteUser: React.FC = () => {
   const [roles, setRoles] = React.useState<RoleField[]>(['client']);
   const [selectedCoachId, setSelectedCoachId] = React.useState('');
   const [assignToMe, setAssignToMe] = React.useState(false);
+  const [inviteToMiPT, setInviteToMiPT] = React.useState(false);
 
   const currentUser = useAppSelector((s) => s.auth.currentUser);
   const effectiveRoles = getEffectiveRoles(currentUser);
 
   const isAdminLike =
     effectiveRoles.includes('admin') || effectiveRoles.includes('staff');
-  const isCoach =
-    effectiveRoles.includes('coach') && !effectiveRoles.includes('admin');
+  const isCoach = effectiveRoles.includes('coach') && !isAdminLike;
+
+  const hasOnlyClientRole = roles.length === 1 && roles.includes('client');
+  const hasNonClientRole = roles.some(
+    (role) => role === 'coach' || role === 'admin' || role === 'staff'
+  );
 
   const { isInviting, error, hasInvited, lastResult } = useAppSelector(
     (s) => s.inviteUser
@@ -54,11 +59,19 @@ const InviteUser: React.FC = () => {
     }
   }, [dispatch, isAdminLike]);
 
+  React.useEffect(() => {
+    if (hasNonClientRole) {
+      setInviteToMiPT(true);
+    }
+  }, [hasNonClientRole]);
+
   const resolvedCoachId = isAdminLike
     ? selectedCoachId || null
     : isCoach && assignToMe && currentUser?.id
     ? currentUser.id
     : null;
+
+  const resolvedInviteToMiPT = hasNonClientRole ? true : inviteToMiPT;
 
   const handleInviteUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +86,8 @@ const InviteUser: React.FC = () => {
       inviteUserRequested({
         email: emailTrim,
         roles,
-        coachId: resolvedCoachId
+        coachId: resolvedCoachId,
+        inviteToMiPT: resolvedInviteToMiPT
       })
     );
   };
@@ -182,6 +196,24 @@ const InviteUser: React.FC = () => {
             />
           </Box>
         ) : null}
+
+        <Box sx={{ mt: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hasNonClientRole ? true : inviteToMiPT}
+                onChange={(e) => setInviteToMiPT(e.target.checked)}
+                disabled={isInviting || hasNonClientRole}
+              />
+            }
+            label='Invite to MiPT'
+          />
+          {hasOnlyClientRole ? (
+            <Typography variant='caption' color='text.secondary'>
+              Optional for client-only invites.
+            </Typography>
+          ) : null}
+        </Box>
 
         <TextField
           label='Enter Email'

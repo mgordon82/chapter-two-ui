@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Box, Container } from '@mui/material';
-import Header from './Header';
 import { useAppSelector } from '../../app/hooks';
 import { useDispatch } from 'react-redux';
 import { fetchStarterPhotosRequested } from '../../features/photos/redux/photosSlice';
+import Header from './CRM/Header';
 
 const drawerWidth = 240;
 
-const PrivateLayout: React.FC = () => {
+const CRMLayout: React.FC = () => {
   const dispatch = useDispatch();
   const hasUser = useAppSelector((s) => Boolean(s.auth.currentUser));
 
@@ -26,7 +26,6 @@ const PrivateLayout: React.FC = () => {
       }}
     >
       <Header />
-
       <Container
         maxWidth='lg'
         sx={{
@@ -40,4 +39,4 @@ const PrivateLayout: React.FC = () => {
   );
 };
 
-export default PrivateLayout;
+export default CRMLayout;

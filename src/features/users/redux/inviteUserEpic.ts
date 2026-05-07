@@ -40,7 +40,8 @@ export const inviteUserEpic: Epic<AnyAction, AnyAction, RootState> = (
               email: payload.email,
               roles: payload.roles,
               coachId: payload.coachId ?? null,
-              displayName: payload.displayName
+              displayName: payload.displayName,
+              inviteToMiPT: payload.inviteToMiPT
             })
           });
 

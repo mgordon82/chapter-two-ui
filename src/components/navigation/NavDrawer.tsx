@@ -17,13 +17,9 @@ import { useAppSelector } from '../../app/hooks';
 import { useDispatch } from 'react-redux';
 import { logoutRequested } from '../../auth/authSlice';
 import { useLocation, useNavigate, matchPath } from 'react-router-dom';
-import {
-  bottomNavItems,
-  getEffectiveRoles,
-  getNavSectionsForRoles,
-  type AppRole,
-  type NavItem
-} from './navConfig';
+import * as miptNav from './miptNavConfig';
+import * as crmNav from './crmNavConfig';
+import type { AppRole, NavItem } from './miptNavConfig';
 import { selectLoadedUserProfile } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 
 type NavDrawerProps = {
@@ -35,14 +31,20 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const isCrm = location.pathname.startsWith('/crm');
+
   const currentUser = useAppSelector((s) => s.auth.currentUser);
   const loadedProfile = useAppSelector(selectLoadedUserProfile);
 
-  const navRoles: AppRole[] = getEffectiveRoles(currentUser);
+  const navConfig = isCrm ? crmNav : miptNav;
 
-  const navSections = getNavSectionsForRoles(
+  const navRoles: AppRole[] = navConfig.getEffectiveRoles(currentUser);
+
+  const navSections = navConfig.getNavSectionsForRoles(
     navRoles.length > 0 ? navRoles : ['client']
   );
+
+  const bottomNavItems = navConfig.bottomNavItems;
 
   const profileFirstName = loadedProfile?.profile.firstName?.trim() ?? '';
   const profileLastName = loadedProfile?.profile.lastName?.trim() ?? '';
@@ -115,30 +117,46 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ setMobileOpen }) => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
         <Stack direction='row' alignItems='center'>
-          <Button
-            onClick={() => {
-              navigate('/app/my-profile');
-              closeMobileDrawer();
-            }}
-          >
-            <Avatar sx={{ width: 40, height: 40 }}>
-              {initials(displayName)}
-            </Avatar>
-          </Button>
+          {isCrm ? (
+            <>
+              <Avatar sx={{ width: 40, height: 40 }}>
+                {initials(displayName)}
+              </Avatar>
 
-          <Box sx={{ minWidth: 0 }}>
-            <Button
-              variant='text'
-              onClick={() => {
-                navigate('/app/my-profile');
-                closeMobileDrawer();
-              }}
-            >
-              <Typography fontSize='0.75rem' fontWeight={700} noWrap>
-                {greeting}
-              </Typography>
-            </Button>
-          </Box>
+              <Box sx={{ minWidth: 0, ml: 1 }}>
+                <Typography fontSize='0.75rem' fontWeight={700} noWrap>
+                  {greeting}
+                </Typography>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Button
+                onClick={() => {
+                  navigate('/mipt/my-profile');
+                  closeMobileDrawer();
+                }}
+              >
+                <Avatar sx={{ width: 40, height: 40 }}>
+                  {initials(displayName)}
+                </Avatar>
+              </Button>
+
+              <Box sx={{ minWidth: 0 }}>
+                <Button
+                  variant='text'
+                  onClick={() => {
+                    navigate('/mipt/my-profile');
+                    closeMobileDrawer();
+                  }}
+                >
+                  <Typography fontSize='0.75rem' fontWeight={700} noWrap>
+                    {greeting}
+                  </Typography>
+                </Button>
+              </Box>
+            </>
+          )}
         </Stack>
       </Box>
 

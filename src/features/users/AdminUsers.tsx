@@ -32,8 +32,10 @@ import {
   manageUserRolesCleared,
   manageUserRolesRequested
 } from './redux/manageUserRolesSlice';
-import { getEffectiveRoles } from '../../components/navigation/navConfig';
-import { useNavigate } from 'react-router-dom';
+import { getEffectiveRoles } from '../../components/navigation/miptNavConfig';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import Logo from '../../assets/Logo-white.png';
 
 type RoleFilter = 'all' | 'admin' | 'staff' | 'coach' | 'client';
 type StatusFilter = 'all' | 'active' | 'invited';
@@ -264,10 +266,19 @@ const AdminUsersPage: React.FC = () => {
   };
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleViewProfile = (user: UserListItem | null) => {
     if (!user) return;
-    navigate(`/app/users/${user.id}`);
+
+    const path = location.pathname;
+
+    if (path.startsWith('/mipt/users')) {
+      navigate(`/mipt/users/${user.id}`);
+    } else if (path.startsWith('/crm/users')) {
+      navigate(`/crm/users/${user.id}`);
+    }
+
     closeMenu();
   };
 
@@ -440,7 +451,7 @@ const AdminUsersPage: React.FC = () => {
           <Typography variant='body2' color='text.secondary' sx={{ mt: 0.5 }}>
             {isCoachOnly
               ? 'View users who are currently assigned to you.'
-              : 'View and manage all invited and active users.'}
+              : 'View and manage all users.'}
           </Typography>
         </Box>
 
@@ -485,6 +496,7 @@ const AdminUsersPage: React.FC = () => {
               <MenuItem value='all'>All statuses</MenuItem>
               <MenuItem value='active'>Active</MenuItem>
               <MenuItem value='invited'>Invited</MenuItem>
+              <MenuItem value='prospect'>Prospect</MenuItem>
             </TextField>
           </Stack>
 
@@ -582,15 +594,49 @@ const AdminUsersPage: React.FC = () => {
                         </Avatar>
 
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography
-                            fontWeight={700}
-                            sx={{
-                              lineHeight: 1.2,
-                              pr: 1
-                            }}
-                          >
-                            {user.displayName ?? 'No name yet'}
-                          </Typography>
+                          <Stack alignItems='center' direction='row' gap={1}>
+                            <Typography
+                              fontWeight={700}
+                              sx={{
+                                lineHeight: 1.2,
+                                pr: 1
+                              }}
+                            >
+                              {user.displayName ?? 'No name yet'}
+                            </Typography>
+
+                            {user.miptAccess?.status !== 'none' && (
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: '4px',
+                                  backgroundColor:
+                                    user.miptAccess?.status === 'invited'
+                                      ? '#fff'
+                                      : 'transparent'
+                                }}
+                              >
+                                <Box
+                                  component='img'
+                                  src={Logo}
+                                  alt='MiPT'
+                                  sx={{
+                                    width: 14,
+                                    height: 14,
+                                    objectFit: 'contain',
+                                    filter:
+                                      user.miptAccess?.status === 'invited'
+                                        ? 'invert(1)'
+                                        : 'none'
+                                  }}
+                                />
+                              </Box>
+                            )}
+                          </Stack>
 
                           <Typography
                             variant='body2'

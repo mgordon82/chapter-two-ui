@@ -12,16 +12,16 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 
-import MacroItem from '../macroItem';
-import { useAppSelector } from '../../app/hooks';
+import MacroItem from '../../macroItem';
+import { useAppSelector } from '../../../app/hooks';
 import { Link as RouterLink } from 'react-router-dom';
 
 import { useDispatch } from 'react-redux';
-import { loadUserProfileRequested } from '../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
+import { loadUserProfileRequested } from '../../../features/nutritionCalculator/redux/nutritionCalculatorSlice';
 import { Capacitor } from '@capacitor/core';
 
-import logoImg from '../../assets/Logo-white.png';
-import NavDrawer from '../navigation/NavDrawer';
+import logoImg from '../../../assets/Logo-white.png';
+import NavDrawer from '../../navigation/NavDrawer';
 
 const drawerWidth = 240;
 const nativeHeaderPadding = '30px';
@@ -83,7 +83,7 @@ const Header: React.FC = () => {
                 >
                   <Link
                     component={RouterLink}
-                    to='/app'
+                    to='/mipt'
                     underline='none'
                     color='inherit'
                     sx={{
@@ -163,7 +163,7 @@ const Header: React.FC = () => {
                 >
                   <Link
                     component={RouterLink}
-                    to='/app'
+                    to='/mipt'
                     underline='none'
                     color='inherit'
                     sx={{

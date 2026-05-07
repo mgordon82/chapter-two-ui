@@ -34,12 +34,18 @@ const buildUpsertPayloadFromProfile = (
         age: null,
         heightCm: null,
         weightKg: null,
+        startingWeightKg: null,
         goalWeightKg: null,
         stepGoalDaily: null,
+        waterGoalDailyMl: null,
         activityLevel: null,
         goal: null,
         rateLevel: null,
-        preferences: prefs
+        preferences: {
+          measurementUnitPref: prefs.measurementUnitPref,
+          weightUnitPref: prefs.weightUnitPref,
+          volumeUnitPref: prefs.volumeUnitPref
+        }
       },
       calculated: { bmr: null, tdee: null, weightGoal: null },
       nutrition: {
@@ -56,14 +62,17 @@ const buildUpsertPayloadFromProfile = (
       age: loaded.profile.age ?? null,
       heightCm: loaded.profile.heightCm ?? null,
       weightKg: loaded.profile.weightKg ?? null,
+      startingWeightKg: loaded.profile.startingWeightKg ?? null,
       goalWeightKg: loaded.profile.goalWeightKg ?? null,
       stepGoalDaily: loaded.profile.stepGoalDaily ?? null,
+      waterGoalDailyMl: loaded.profile.waterGoalDailyMl ?? null,
       activityLevel: loaded.profile.activityLevel ?? null,
       goal: loaded.profile.goal ?? null,
       rateLevel: loaded.profile.rateLevel ?? null,
       preferences: {
         measurementUnitPref: prefs.measurementUnitPref,
-        weightUnitPref: prefs.weightUnitPref
+        weightUnitPref: prefs.weightUnitPref,
+        volumeUnitPref: prefs.volumeUnitPref
       }
     },
     calculated: {
