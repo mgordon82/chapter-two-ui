@@ -4,6 +4,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
+import BusinessIcon from '@mui/icons-material/Business';
 
 export type AppRole = 'client' | 'coach' | 'admin' | 'staff';
 
@@ -116,6 +117,11 @@ const roleSectionsByRole: Record<AppRole, NavSection[]> = {
           label: 'Invite User',
           path: '/mipt/users/invite',
           icon: <PersonAddIcon />
+        },
+        {
+          label: 'CRM Dashboard',
+          path: '/crm',
+          icon: <BusinessIcon />
         }
       ]
     }
